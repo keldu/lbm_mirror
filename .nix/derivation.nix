@@ -20,5 +20,5 @@ stdenvNoCC.mkDerivation {
     kel-unit
   ];
 
-  outputs = [ "out" ];
+  outputs = [ "out" "dev" ];
 }
