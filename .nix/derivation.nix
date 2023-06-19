@@ -17,6 +17,9 @@ stdenvNoCC.mkDerivation {
   ];
 
   buildInputs = [
+    forstio.core
+    forstio.async
+    forstio.codec
     kel-unit
   ];
 
