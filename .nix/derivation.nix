@@ -2,6 +2,7 @@
 , stdenvNoCC
 , scons
 , clang
+, clang-tools
 , forstio
 , kel-unit
 }:
@@ -14,6 +15,7 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [
     scons
     clang
+    clang-tools
   ];
 
   buildInputs = [

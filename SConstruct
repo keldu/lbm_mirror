@@ -46,7 +46,7 @@ env_vars.Add('prefix',
 env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     CPPDEFINES=['SAW_UNIX'],
     CXXFLAGS=['-std=c++20','-g','-Wall','-Wextra'],
-    LIBS=['forstio-core'])
+    LIBS=['forstio-core','forstio-codec'])
 env.__class__.add_source_files = add_kel_source_files
 env.Tool('compilation_db');
 env.cdb = env.CompilationDatabase('compile_commands.json');
@@ -57,7 +57,7 @@ env.headers = [];
 env.targets = [];
 
 Export('env')
-SConscript('src/SConscript')
+SConscript('c++/SConscript')
 
 env.Alias('cdb', env.cdb);
 env.Alias('all', [env.targets]);
