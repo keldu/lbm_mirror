@@ -1,0 +1,5 @@
+result*
+*.o
+*.a
+*.os
+*.so
