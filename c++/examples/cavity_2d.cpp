@@ -21,16 +21,17 @@ using CellInfo2DType = CellType<UInt8, 2, 5, 1, 0, 0>;
 /**
  * Basic type for simulation
  */
-using CellData = CellData<
+using Cell = CellData<
 	Member<DfCell2DType, "dfs">,
 	Member<CellInfo2DType, "info">
 >;
+
 }
 
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<schema::Array<schema::CellData,2>, saw::encode::Native> lattice{512, 512};
+	saw::data<schema::Lattice<schema::Cell,2>>, saw::encode::Native> lattice{512, 512};
 
 	return 0;
 }
