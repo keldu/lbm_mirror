@@ -24,7 +24,7 @@ using CellData = Struct<
 /**
  * T is an array of CellData
  */
-template<size_t D, typename T>
+template<typename T, size_t D>
 using Lattice = Array<T, D>;
 }
 }

@@ -2,8 +2,9 @@
 
 #include <forstio/codec/data.h>
 
+namespace kel {
+namespace lbm {
 namespace schema {
-using namespace kel::lbm::schema;
 
 /**
  * Basic distribution function
@@ -27,12 +28,14 @@ using Cell = CellData<
 >;
 
 }
+}
+}
 
 template<typename Func, typename Schema, size_t Dim>
-void apply_for_cells(Func&& func, saw::data<schema::Array<Schema, Dim>, saw::encode::Native>& dat ){
+void apply_for_cells(Func&& func, saw::data<saw::schema::Array<Schema, Dim>, saw::encode::Native>& dat ){
 	for(std::size_t i = 0; i < dat.get_dim_size(0); ++i){
-		for(std::size_t j = 0; j < data.get_dim_size(1); ++j){
-			func(data.at(i,j), i, j);
+		for(std::size_t j = 0; j < dat.get_dim_size(1); ++j){
+			func(dat.at(i,j), i, j);
 		}
 	}
 }
@@ -40,10 +43,10 @@ void apply_for_cells(Func&& func, saw::data<schema::Array<Schema, Dim>, saw::enc
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<schema::Lattice<schema::Cell,2>>, saw::encode::Native> lattice{512, 512};
+	saw::data<schema::Lattice<kel::lbm::schema::Cell,2>, saw::encode::Native> lattice{512, 512};
 
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
-		
+		// cell.get<"info">();
 	}, lattice);
 
 	return 0;
