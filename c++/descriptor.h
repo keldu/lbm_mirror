@@ -27,5 +27,29 @@ using CellData = Struct<
 template<typename T, size_t D>
 using Lattice = Array<T, D>;
 }
+
+template<typename T>
+class df_info{};
+
+template<typename T>
+class df_info<Descriptor<T, 2, 5>> {
+	static constexpr std::array<std::array<int32_t, 2>, 5> directions = {
+		{ 0, 0},
+		{-1, 0},
+		{ 0,-1},
+		{ 0, 1},
+		{ 1, 0}
+	};
+
+	static constexpr std::array<std::ratio<int32_t>,5> weights = {
+		{1,3},
+		{1,6},
+		{1,6},
+		{1,6},
+		{1,6}
+	};
+
+	static constexpr std::ratio<int32_t> cs2 = {1,3};
+};
 }
 }
