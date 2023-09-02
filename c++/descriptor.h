@@ -1,6 +1,6 @@
 #pragma once
 
-#include <forstio/codec/schema.h>
+#include <forstio/codec/data.h>
 
 namespace kel {
 namespace lbm {
@@ -32,24 +32,24 @@ template<typename T>
 class df_info{};
 
 template<typename T>
-class df_info<Descriptor<T, 2, 5>> {
-	static constexpr std::array<std::array<int32_t, 2>, 5> directions = {
+class df_info<schema::Descriptor<T, 2, 5>> {
+	static constexpr std::array<std::array<int32_t, 2>, 5> directions = {{
 		{ 0, 0},
 		{-1, 0},
 		{ 0,-1},
 		{ 0, 1},
 		{ 1, 0}
+	}};
+
+	static constexpr std::array<typename saw::native_data_type<T>::type,5> weights = {
+		1./3.,
+		1./6.,
+		1./6.,
+		1./6.,
+		1./6.
 	};
 
-	static constexpr std::array<std::ratio<int32_t>,5> weights = {
-		{1,3},
-		{1,6},
-		{1,6},
-		{1,6},
-		{1,6}
-	};
-
-	static constexpr std::ratio<int32_t> cs2 = {1,3};
+	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
 }
 }

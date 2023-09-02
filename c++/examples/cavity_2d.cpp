@@ -17,7 +17,8 @@ namespace schema {
  * D factor
  * Q factor
  */
-using DfCell2DType = CellType<Float32, 2, 5, 0, 0, 1>;
+using T = Float32;
+using DfCell2DType = CellType<T, 2, 5, 0, 0, 1>;
 
 using CellInfo2DType = CellType<UInt8, 2, 5, 1, 0, 0>;
 
@@ -30,9 +31,59 @@ using Cell = CellData<
 >;
 
 }
+
+template<size_t D, size_t Q>
+class collision {
+public:
+	typename saw::native_data_type<schema::T>::type relaxation_;
+public:
+	std::array<typename saw::native_data_type<schema::T>::type,Q> equilibrium(
+		typename saw::native_data_type<schema::T>::type rho,
+		std::array<typename saw::native_data_type<schema::T>::type, D> vel
+	){
+		using dfi = df_info<schema::Descriptor<schema::T, D, Q>>;
+
+		typename std::array<saw::native_data_type<schema::T>::type,Q> eq;
+
+		for(std::size_t i = 0; i < eq.size(); ++i){
+			auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
+			auto vel_c_cs2 = vel_c / dfi::cs2;
+			eq[i] = dfi::weights[i] * rho * (
+				1
+				+ vel_c_cs2
+				+ vel_c_cs2 * vel_c_cs2
+				- ( vel[0] * vel[0] + vel[1] * vel[1] ) / ( 2. * dfi::cs2 )
+			);
+		}
+
+		return eq;
+		
+	}
+
+	void compute_rho_u(
+		saw::data<schema::DfCell2DType>& dfs,
+		typename saw::native_data_type<schema::T>::type& rho,
+		std::array<typename saw::native_data_type<schema::T>::type, 2>& vel
+	){
+		using dfi = df_info<schema::Descriptor<schema::T, D, Q>>;
+
+		rho = 0;
+		std::fill(vel.begin(), vel.end(), 0);
+
+		for(size_t i = 0; i < Q; ++i){
+			rho += dfs[i];
+			vel[0] += dfi::directions[i][0] * dfs.at(i).get();
+			vel[1] += dfi::directions[i][1] * dfs.at(i).get();
+		}
+
+		vel[0] /= rho;
+		vel[1] /= rho;
+	}
+};
 }
 }
 
+constexpr size_t dim_size = 2;
 constexpr size_t dim_x = 32;
 constexpr size_t dim_y = 32;
 
@@ -94,6 +145,10 @@ int main(){
 	 * 
 	 */
 	set_initial_conditions(lattice);
+
+	/**
+	 * Timeloop
+	 */
 
 	/**
 	 * Print basic setup info
