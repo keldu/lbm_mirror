@@ -32,9 +32,24 @@ using Cell = CellData<
 
 }
 
+template<typename T>
+class df_cell_view;
+
 /**
- * 2 A pull pattern
+ * Minor helper for the AA-Pull Pattern
  */
+template<size_t D, size_t Q, size_t SN, size_t DN, size_t QN>
+class df_cell_view<schema::CellType<schema::T,D,Q,SN,DN,QN>> {
+private:
+		std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN> view_;
+public:
+		df_cell(const std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN>& view):
+				view_{view}
+		{}
+
+
+};
+
 template<size_t D, size_t Q>
 class collision {
 public:
