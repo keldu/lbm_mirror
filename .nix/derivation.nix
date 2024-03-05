@@ -1,20 +1,18 @@
 { lib
-, stdenvNoCC
+, stdenv
 , scons
-, clang
 , clang-tools
 , forstio
 , kel-unit
 }:
 
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "kel-lbm";
   version = "0.0.0";
   src = ./..;
 
   nativeBuildInputs = [
     scons
-    clang
     clang-tools
   ];
 

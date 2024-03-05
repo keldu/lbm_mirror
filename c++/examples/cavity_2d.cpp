@@ -32,6 +32,9 @@ using Cell = CellData<
 
 }
 
+/**
+ * 2 A pull pattern
+ */
 template<size_t D, size_t Q>
 class collision {
 public:
@@ -57,7 +60,6 @@ public:
 		}
 
 		return eq;
-		
 	}
 
 	void compute_rho_u(
@@ -177,6 +179,8 @@ int main(){
 	}, lattice);
 
 	std::cout<<std::endl;
+
+
 
 	return 0;
 }

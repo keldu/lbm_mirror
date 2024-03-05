@@ -1,6 +1,6 @@
 { pkgs ? import <nixpkgs> {}
-, clang ? pkgs.clang_15
-, clang-tools ? pkgs.clang-tools_15
+, stdenv ? pkgs.stdenv
+, clang-tools ? pkgs.clang-tools_16
 }:
 
 let
@@ -8,7 +8,7 @@ let
     url = "git@git.keldu.de:forstio/forstio";
     ref = "dev";
   }).outPath + "/default.nix"){
-    inherit clang;
+    inherit stdenv;
     inherit clang-tools;
   }).forstio;
 
@@ -16,13 +16,13 @@ let
     url = "git@git.keldu.de:libs/unit";
     ref = "dev";
   }).outPath + "/default.nix"){
-    inherit clang;
+    inherit stdenv;
     inherit clang-tools;
   });
 
 in pkgs.callPackage ./.nix/derivation.nix {
   inherit forstio;
   inherit kel-unit;
-  inherit clang;
+  inherit stdenv;
   inherit clang-tools;
 }
