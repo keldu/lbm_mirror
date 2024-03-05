@@ -1,6 +1,6 @@
 #include "../descriptor.h"
 
-#include <forstio/codec/data.h>
+#include <forstio/codec/data.hpp>
 
 #include <iostream>
 
@@ -73,7 +73,7 @@ public:
 		std::fill(vel.begin(), vel.end(), 0);
 
 		for(size_t i = 0; i < Q; ++i){
-			rho += dfs[i];
+			rho += dfs.at(i).get();
 			vel[0] += dfi::directions[i][0] * dfs.at(i).get();
 			vel[1] += dfi::directions[i][1] * dfs.at(i).get();
 		}

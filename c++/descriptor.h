@@ -1,6 +1,6 @@
 #pragma once
 
-#include <forstio/codec/data.h>
+#include <forstio/codec/data.hpp>
 
 namespace kel {
 namespace lbm {
