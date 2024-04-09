@@ -164,7 +164,15 @@ void lbm_step(
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<schema::FixedArray<schema::Lattice<kel::lbm::schema::Cell,2>>, saw::encode::Native> lattice{dim_x, dim_y};
+	saw::data<
+		schema::FixedArray<
+			schema::Lattice<kel::lbm::schema::Cell, 2>, 2
+		>
+		,saw::encode::Native
+	> lattices; //{dim_x, dim_y};
+	for(uint64_t i = 0; i < lattices.get_dim_size<0u>(); ++i){
+		lattices.at(i) = {dim_x, dim_y};
+	}
 
 	/**
 	 * Set meta information describing what this cell is
@@ -191,7 +199,7 @@ int main(){
 			}else{
 				std::cout<<"\n";
 			}
-	}, lattice.at(0));
+	}, lattices.at(0));
 	
 	std::cout<<"\n";
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
