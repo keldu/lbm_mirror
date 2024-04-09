@@ -32,6 +32,11 @@ using Cell = CellData<
 
 }
 
+template<typename T, size_t D, size_t Q, size_t SN, size_t DN, size_t QN>
+struct cell_type {
+	using Type = schema::CellType<T, D, Q, SN, DN, QN>;
+};
+
 template<typename T>
 class df_cell_view;
 
@@ -39,15 +44,13 @@ class df_cell_view;
  * Minor helper for the AA-Pull Pattern
  */
 template<size_t D, size_t Q, size_t SN, size_t DN, size_t QN>
-class df_cell_view<schema::CellType<schema::T,D,Q,SN,DN,QN>> {
+class df_cell_view<cell_type<schema::T, D, Q, SN, DN, QN>> {
 private:
 		std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN> view_;
 public:
-		df_cell(const std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN>& view):
+		df_cell_view(const std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN>& view):
 				view_{view}
 		{}
-
-
 };
 
 template<size_t D, size_t Q>
@@ -145,23 +148,32 @@ void set_geometry(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>
 void set_initial_conditions(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
+		(void) i;
+		(void) j;
 		cell.template get<"dfs">().at(0).set(1.0);
 	}, latt);
+}
+
+void lbm_step(
+	saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& old_latt,
+	saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& new_latt
+){
+	
 }
 
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<schema::Lattice<kel::lbm::schema::Cell,2>, saw::encode::Native> lattice{dim_x, dim_y};
+	saw::data<schema::FixedArray<schema::Lattice<kel::lbm::schema::Cell,2>>, saw::encode::Native> lattice{dim_x, dim_y};
 
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(lattice);
+	set_geometry(lattices.at(0));
 	/**
 	 * 
 	 */
-	set_initial_conditions(lattice);
+	set_initial_conditions(lattices.at(0));
 
 	/**
 	 * Timeloop
@@ -179,7 +191,7 @@ int main(){
 			}else{
 				std::cout<<"\n";
 			}
-	}, lattice);
+	}, lattice.at(0));
 	
 	std::cout<<"\n";
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
@@ -191,11 +203,24 @@ int main(){
 			}else{
 				std::cout<<"\n";
 			}
-	}, lattice);
+	}, lattices.at(0));
 
-	std::cout<<std::endl;
+	uint64_t lattice_steps = 32;
+	bool even_step = true;
 
+	for(uint64_t step = 0; step < lattice_steps; ++step){
+		uint64_t old_lattice_index = even_step ? 0 : 1;
+		uint64_t new_lattice_index = even_step ? 1 : 0;
 
+		lbm_step(lattices.at(old_lattice_index), lattices.at(new_lattice_index));
 
+		even_step = !even_step;
+	}
+
+	/**
+	 * Flush cout
+	 */
+	std::cout<<"\n\n";
+	std::cout.flush();
 	return 0;
 }
