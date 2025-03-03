@@ -3,7 +3,6 @@
 , scons
 , clang-tools
 , forstio
-, kel-unit
 }:
 
 stdenv.mkDerivation {
@@ -20,7 +19,7 @@ stdenv.mkDerivation {
     forstio.core
     forstio.async
     forstio.codec
-    kel-unit
+    forstio.codec-unit
   ];
 
   outputs = [ "out" "dev" ];

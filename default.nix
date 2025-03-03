@@ -1,5 +1,5 @@
 { pkgs ? import <nixpkgs> {}
-, stdenv ? pkgs.stdenv
+, stdenv ? pkgs.llvmPackages_19.stdenv
 , clang-tools ? pkgs.clang-tools_16
 }:
 
@@ -12,17 +12,8 @@ let
     inherit clang-tools;
   }).forstio;
 
-  kel-unit = (import ((builtins.fetchGit {
-    url = "git@git.keldu.de:libs/unit";
-    ref = "dev";
-  }).outPath + "/default.nix"){
-    inherit stdenv;
-    inherit clang-tools;
-  });
-
 in pkgs.callPackage ./.nix/derivation.nix {
   inherit forstio;
-  inherit kel-unit;
   inherit stdenv;
   inherit clang-tools;
 }

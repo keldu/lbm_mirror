@@ -7,19 +7,19 @@ namespace lbm {
 namespace sch {
 using namespace saw::schema;
 
-template<uint64_t D, uint64_t Q>
+template<uint64_t DV, uint64_t QV>
 struct Descriptor {
-	static constexpr uint64_t D = D;
-	static constexpr uint64_t Q = Q;
+	static constexpr uint64_t D = DV;
+	static constexpr uint64_t Q = QV;
 };
 
-template<typename Sch, typename Desc, uint64_t SC, uint64_t DC, uint64_t QC>
+template<typename Sch, typename Desc, uint64_t SC_V, uint64_t DC_V, uint64_t QC_V>
 struct Field {
 	using Alias = Sch;
 	using Descriptor = Desc;
-	static constexpr uint64_t SC = SC;
-	static constexpr uint64_t DC = DC;
-	static constexpr uint64_t QC = QC;
+	static constexpr uint64_t SC = SC_V;
+	static constexpr uint64_t DC = DC_V;
+	static constexpr uint64_t QC = QC_V;
 };
 
 /**
@@ -29,7 +29,6 @@ template<typename... CellT>
 using CellData = Struct<
 	CellT...
 >;
-^
 /**
  * T is an array of CellData
  */

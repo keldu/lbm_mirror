@@ -6,7 +6,8 @@
 
 namespace kel {
 namespace lbm {
-namespace schema {
+namespace sch {
+using namespace saw::schema;
 
 /**
  * Basic distribution function
@@ -18,6 +19,7 @@ namespace schema {
  * Q factor
  */
 using T = Float32;
+using D2Q5 = Descriptor<2,5>;
 using DfCell2D = Field<T, D2Q5, 0, 0, 1>;
 
 using CellInfo2D = Field<UInt8, D2Q5, 1, 0, 0>;
@@ -34,7 +36,7 @@ using Cell = CellData<
 
 template<typename T, typename Desc, size_t SN, size_t DN, size_t QN>
 struct cell_type {
-	using Type = schema::Field<T, Desc, SN, DN, QN>;
+	using Type = sch::Field<T, Desc, SN, DN, QN>;
 };
 
 template<typename T>
@@ -44,11 +46,11 @@ class df_cell_view;
  * Minor helper for the AA-Pull Pattern
  */
 template<typename Desc, size_t SN, size_t DN, size_t QN>
-class df_cell_view<cell_type<schema::T, Desc, SN, DN, QN>> {
+class df_cell_view<cell_type<sch::T, Desc, SN, DN, QN>> {
 private:
-		std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN> view_;
+		std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN> view_;
 public:
-		df_cell_view(const std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN>& view):
+		df_cell_view(const std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN>& view):
 				view_{view}
 		{}
 };
@@ -56,15 +58,15 @@ public:
 template<typename Desc>
 class collision {
 public:
-	typename saw::native_data_type<schema::T>::type relaxation_;
+	typename saw::native_data_type<sch::T>::type relaxation_;
 public:
-	std::array<typename saw::native_data_type<schema::T>::type,Desc::Q> equilibrium(
-		typename saw::native_data_type<schema::T>::type rho,
-		std::array<typename saw::native_data_type<schema::T>::type, Desc::D> vel
+	std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
+		typename saw::native_data_type<sch::T>::type rho,
+		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel
 	){
-		using dfi = df_info<schema::T, Desc>;
+		using dfi = df_info<sch::T, Desc>;
 
-		typename std::array<saw::native_data_type<schema::T>::type,Desc::Q> eq;
+		typename std::array<saw::native_data_type<sch::T>::type,Desc::Q> eq;
 
 		for(std::size_t i = 0; i < eq.size(); ++i){
 			auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
@@ -82,15 +84,15 @@ public:
 
 	void compute_rho_u(
 		saw::data<sch::DfCell2D>& dfs,
-		typename saw::native_data_type<schema::T>::type& rho,
-		std::array<typename saw::native_data_type<schema::T>::type, 2>& vel
+		typename saw::native_data_type<sch::T>::type& rho,
+		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
 	){
-		using dfi = df_info<schema::Descriptor<schema::T, D, Q>>;
+		using dfi = df_info<sch::T, Desc>;
 
 		rho = 0;
 		std::fill(vel.begin(), vel.end(), 0);
 
-		for(size_t i = 0; i < Q; ++i){
+		for(size_t i = 0; i < Desc::Q; ++i){
 			rho += dfs.at(i).get();
 			vel[0] += dfi::directions[i][0] * dfs.at(i).get();
 			vel[1] += dfi::directions[i][1] * dfs.at(i).get();
@@ -120,7 +122,7 @@ struct rectangle {
 };
 
 template<typename Func, typename Schema, size_t Dim>
-void apply_for_cells(Func&& func, saw::data<saw::schema::Array<Schema, Dim>>& dat){
+void apply_for_cells(Func&& func, saw::data<saw::sch::Array<Schema, Dim>>& dat){
 	for(std::size_t i = 0; i < dat.get_dim_size(0); ++i){
 		for(std::size_t j = 0; j < dat.get_dim_size(1); ++j){
 			func(dat.at(i,j), i, j);
@@ -128,7 +130,7 @@ void apply_for_cells(Func&& func, saw::data<saw::schema::Array<Schema, Dim>>& da
 	}
 }
 
-void set_geometry(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& latt){
+void set_geometry(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
@@ -145,7 +147,7 @@ void set_geometry(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>
 	}, latt);
 }
 
-void set_initial_conditions(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& latt){
+void set_initial_conditions(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		(void) i;
@@ -155,8 +157,8 @@ void set_initial_conditions(saw::data<kel::lbm::schema::Lattice<kel::lbm::schema
 }
 
 void lbm_step(
-	saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& old_latt,
-	saw::data<kel::lbm::schema::Lattice<kel::lbm::schema::Cell,2>>& new_latt
+	saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& old_latt,
+	saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& new_latt
 ){
 	
 }
@@ -165,8 +167,8 @@ int main(){
 	using namespace kel::lbm;
 
 	saw::data<
-		schema::FixedArray<
-			schema::Lattice<kel::lbm::schema::Cell, 2>, 2
+		sch::FixedArray<
+			sch::Lattice<kel::lbm::sch::Cell, 2>, 2
 		>
 		,saw::encode::Native
 	> lattices; //{dim_x, dim_y};
