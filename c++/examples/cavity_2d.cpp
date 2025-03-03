@@ -18,23 +18,23 @@ namespace schema {
  * Q factor
  */
 using T = Float32;
-using DfCell2DType = CellType<T, 2, 5, 0, 0, 1>;
+using DfCell2D = Field<T, D2Q5, 0, 0, 1>;
 
-using CellInfo2DType = CellType<UInt8, 2, 5, 1, 0, 0>;
+using CellInfo2D = Field<UInt8, D2Q5, 1, 0, 0>;
 
 /**
  * Basic type for simulation
  */
 using Cell = CellData<
-	Member<DfCell2DType, "dfs">,
-	Member<CellInfo2DType, "info">
+	Member<DfCell2D, "dfs">,
+	Member<CellInfo2D, "info">
 >;
 
 }
 
-template<typename T, size_t D, size_t Q, size_t SN, size_t DN, size_t QN>
+template<typename T, typename Desc, size_t SN, size_t DN, size_t QN>
 struct cell_type {
-	using Type = schema::CellType<T, D, Q, SN, DN, QN>;
+	using Type = schema::Field<T, Desc, SN, DN, QN>;
 };
 
 template<typename T>
@@ -43,8 +43,8 @@ class df_cell_view;
 /**
  * Minor helper for the AA-Pull Pattern
  */
-template<size_t D, size_t Q, size_t SN, size_t DN, size_t QN>
-class df_cell_view<cell_type<schema::T, D, Q, SN, DN, QN>> {
+template<typename Desc, size_t SN, size_t DN, size_t QN>
+class df_cell_view<cell_type<schema::T, Desc, SN, DN, QN>> {
 private:
 		std::array<std::decay_t<typename saw::native_data_type<schema::T>::type>*, QN> view_;
 public:
@@ -53,18 +53,18 @@ public:
 		{}
 };
 
-template<size_t D, size_t Q>
+template<typename Desc>
 class collision {
 public:
 	typename saw::native_data_type<schema::T>::type relaxation_;
 public:
-	std::array<typename saw::native_data_type<schema::T>::type,Q> equilibrium(
+	std::array<typename saw::native_data_type<schema::T>::type,Desc::Q> equilibrium(
 		typename saw::native_data_type<schema::T>::type rho,
-		std::array<typename saw::native_data_type<schema::T>::type, D> vel
+		std::array<typename saw::native_data_type<schema::T>::type, Desc::D> vel
 	){
-		using dfi = df_info<schema::Descriptor<schema::T, D, Q>>;
+		using dfi = df_info<schema::T, Desc>;
 
-		typename std::array<saw::native_data_type<schema::T>::type,Q> eq;
+		typename std::array<saw::native_data_type<schema::T>::type,Desc::Q> eq;
 
 		for(std::size_t i = 0; i < eq.size(); ++i){
 			auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
@@ -81,7 +81,7 @@ public:
 	}
 
 	void compute_rho_u(
-		saw::data<schema::DfCell2DType>& dfs,
+		saw::data<sch::DfCell2D>& dfs,
 		typename saw::native_data_type<schema::T>::type& rho,
 		std::array<typename saw::native_data_type<schema::T>::type, 2>& vel
 	){

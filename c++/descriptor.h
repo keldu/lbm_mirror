@@ -4,14 +4,23 @@
 
 namespace kel {
 namespace lbm {
-namespace schema {
+namespace sch {
 using namespace saw::schema;
 
-template<typename T, uint64_t D, uint64_t Q>
-struct Descriptor {};
+template<uint64_t D, uint64_t Q>
+struct Descriptor {
+	static constexpr uint64_t D = D;
+	static constexpr uint64_t Q = Q;
+};
 
-template<typename T, uint64_t D, uint64_t Q, uint64_t SC, uint64_t DC, uint64_t QC>
-using CellType = FixedArray<T,SC+D*DC+Q*QC>;
+template<typename Sch, typename Desc, uint64_t SC, uint64_t DC, uint64_t QC>
+struct Field {
+	using Alias = Sch;
+	using Descriptor = Desc;
+	static constexpr uint64_t SC = SC;
+	static constexpr uint64_t DC = DC;
+	static constexpr uint64_t QC = QC;
+};
 
 /**
  * T... is restricted to Member schemas
@@ -20,7 +29,7 @@ template<typename... CellT>
 using CellData = Struct<
 	CellT...
 >;
-
+^
 /**
  * T is an array of CellData
  */
@@ -28,11 +37,11 @@ template<typename T, size_t D>
 using Lattice = Array<T, D>;
 }
 
-template<typename T>
+template<typename T, typename Desc>
 class df_info{};
 
 template<typename T>
-class df_info<schema::Descriptor<T, 2, 5>> {
+class df_info<T,sch::Descriptor<2, 5>> {
 	static constexpr std::array<std::array<int32_t, 2>, 5> directions = {{
 		{ 0, 0},
 		{-1, 0},
