@@ -14,12 +14,17 @@ struct Descriptor {
 };
 
 template<typename Sch, typename Desc, uint64_t SC_V, uint64_t DC_V, uint64_t QC_V>
-struct Field {
-	using Alias = Sch;
+struct Cell {
 	using Descriptor = Desc;
 	static constexpr uint64_t SC = SC_V;
 	static constexpr uint64_t DC = DC_V;
 	static constexpr uint64_t QC = QC_V;
+	static constexpr uint64_t Size = SC + Desc::D * DC + Desc::Q * QC;
+};
+
+template<typename CellT>
+struct Field {
+	using Cell = CellT;
 };
 
 /**
@@ -60,4 +65,40 @@ class df_info<T,sch::Descriptor<2, 5>> {
 	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
 }
+}
+
+namespace saw {
+template<typename T, typename Desc, uint64_t S, uint64_t D, uint64_t Q>
+struct meta_schema<kel::lbm::sch::Cell<Sch,Desc,S,D,Q>> {
+  using MetaSchema = schema::Void;
+	using Schema = kel::lbm::sch::Cell<Sch,Desc,S,D,Q>;
+};
+
+template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typename Encode>
+class data<kel::lbm::sch::Cell<Sch, Desc, S, D, Q>, Encode> final {
+public:
+	using Schema = kel::lbm::sch::Cell<Sch,Desc,S,D,Q>;
+private:
+	data<schema::FixedArray<Sch, Schema::Size>, Encode> inner_;
+public:
+	data() = default;
+
+	data<Sch, Encode>& operator()(const data<schema::UInt64>& index){
+		return inner_(index);
+	}
+};
+
+template<typename CellT, typename Encode>
+class data<kel::lbm::sch::Field<CellT>, Encode> final {
+private:
+	data<schema::Array<CellT,CellT::Desc::D>, Encode> inner_;
+public:
+	data(const data<schema::FixedArray<schema::UInt64, CellT::Desc::D>>& inner_meta__):
+		inner_{inner_meta__}
+	{}
+
+	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64>, Encode>& index){
+		return inner_(index);
+	}
+};
 }

@@ -20,33 +20,32 @@ using namespace saw::schema;
  */
 using T = Float32;
 using D2Q5 = Descriptor<2,5>;
-using DfCell2D = Field<T, D2Q5, 0, 0, 1>;
 
-using CellInfo2D = Field<UInt8, D2Q5, 1, 0, 0>;
+using DfCell2D = Cell<T, D2Q5, 0, 0, 1>;
+using CellInfo2D = Cell<UInt8, D2Q5, 1, 0, 0>;
 
 /**
  * Basic type for simulation
  */
-using Cell = CellData<
-	Member<DfCell2D, "dfs">,
-	Member<CellInfo2D, "info">
+using FieldStruct = Struct<
+	Member<Field<DfCell2D>, "dfs">,
+	Member<Field<CellInfo2D>, "info">
 >;
 
 }
 
-template<typename T, typename Desc, size_t SN, size_t DN, size_t QN>
-struct cell_type {
-	using Type = sch::Field<T, Desc, SN, DN, QN>;
-};
-
-template<typename T>
+/*
+template<typename T, typename Encode>
 class df_cell_view;
-
+*/
 /**
  * Minor helper for the AA-Pull Pattern
  */
-template<typename Desc, size_t SN, size_t DN, size_t QN>
-class df_cell_view<cell_type<sch::T, Desc, SN, DN, QN>> {
+/*
+template<typename Desc, size_t SN, size_t DN, size_t QN, typename Encode>
+class df_cell_view<sch::Cell<sch::T, Desc, SN, DN, QN>, Encode> {
+public:
+	using Schema = sch::Cell<sch::T,Desc,SN,DN,QN>;
 private:
 		std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN> view_;
 public:
@@ -54,6 +53,7 @@ public:
 				view_{view}
 		{}
 };
+*/
 
 template<typename Desc>
 class collision {
@@ -93,9 +93,9 @@ public:
 		std::fill(vel.begin(), vel.end(), 0);
 
 		for(size_t i = 0; i < Desc::Q; ++i){
-			rho += dfs.at(i).get();
-			vel[0] += dfi::directions[i][0] * dfs.at(i).get();
-			vel[1] += dfi::directions[i][1] * dfs.at(i).get();
+			rho += dfs(i).get();
+			vel[0] += dfi::directions[i][0] * dfs(i).get();
+			vel[1] += dfi::directions[i][1] * dfs(i).get();
 		}
 
 		vel[0] /= rho;
@@ -122,15 +122,15 @@ struct rectangle {
 };
 
 template<typename Func, typename Schema, size_t Dim>
-void apply_for_cells(Func&& func, saw::data<saw::sch::Array<Schema, Dim>>& dat){
+void apply_for_cells(Func&& func, saw::data<saw::schema::Array<Schema, Dim>>& dat){
 	for(std::size_t i = 0; i < dat.get_dim_size(0); ++i){
 		for(std::size_t j = 0; j < dat.get_dim_size(1); ++j){
-			func(dat.at(i,j), i, j);
+			func(dat(i,j), i, j);
 		}
 	}
 }
 
-void set_geometry(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& latt){
+void set_geometry(saw::data<kel::lbm::sch::FieldStruct>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
@@ -143,7 +143,7 @@ void set_geometry(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& latt
 		if(i == 0 || j == 0 || (i+1) == dim_x || (j+1) == dim_y){
 			val = 1;
 		}
-		cell.template get<"info">().at(0).set(val);
+		cell.template get<"info">()(0).set(val);
 	}, latt);
 }
 
@@ -152,7 +152,8 @@ void set_initial_conditions(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		(void) i;
 		(void) j;
-		cell.template get<"dfs">().at(0).set(1.0);
+		auto& dfs = cell.template get<"dfs">();
+		dfs(0).set(1.0);
 	}, latt);
 }
 
@@ -167,23 +168,23 @@ int main(){
 	using namespace kel::lbm;
 
 	saw::data<
-		sch::FixedArray<
-			sch::Lattice<kel::lbm::sch::Cell, 2>, 2
-		>
-		,saw::encode::Native
+		sch::FieldStruct
+		, saw::encode::Native
 	> lattices; //{dim_x, dim_y};
-	for(uint64_t i = 0; i < lattices.get_dim_size<0u>(); ++i){
-		lattices.at(i) = {dim_x, dim_y};
-	}
+
+	auto& df_field = lattices.template get<"dfs">();
+	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
+	//	lattices.at(i) = {dim_x, dim_y};
+	//}
 
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(lattices.at(0));
+	set_geometry(lattices);
 	/**
 	 * 
 	 */
-	set_initial_conditions(lattices.at(0));
+	set_initial_conditions(lattices);
 
 	/**
 	 * Timeloop
