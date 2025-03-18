@@ -78,6 +78,7 @@ template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typena
 class data<kel::lbm::sch::Cell<Sch, Desc, S, D, Q>, Encode> final {
 public:
 	using Schema = kel::lbm::sch::Cell<Sch,Desc,S,D,Q>;
+	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
 private:
 	data<schema::FixedArray<Sch, Schema::Size>, Encode> inner_;
 public:
@@ -90,6 +91,9 @@ public:
 
 template<typename Desc, typename CellT, typename Encode>
 class data<kel::lbm::sch::Field<Desc, CellT>, Encode> final {
+public:
+	using Schema = kel::lbm::sch::Field<Desc,CellT>;
+	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
 private:
 	data<schema::Array<CellT,Desc::D>, Encode> inner_;
 public:
