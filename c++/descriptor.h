@@ -22,23 +22,17 @@ struct Cell {
 	static constexpr uint64_t Size = SC + Desc::D * DC + Desc::Q * QC;
 };
 
-template<typename CellT>
-struct Field {
-	using Cell = CellT;
-};
+template<typename Desc, typename CellStruct>
+struct Field;
 
-/**
- * T... is restricted to Member schemas
- */
-template<typename... CellT> 
-using CellData = Struct<
-	CellT...
+template<typename Desc, typename... CellMembers>
+struct Field<
+	Desc,
+	Struct<
+		CellMembers...
+	>
 >;
-/**
- * T is an array of CellData
- */
-template<typename T, size_t D>
-using Lattice = Array<T, D>;
+
 }
 
 template<typename T, typename Desc>
@@ -69,9 +63,15 @@ class df_info<T,sch::Descriptor<2, 5>> {
 
 namespace saw {
 template<typename T, typename Desc, uint64_t S, uint64_t D, uint64_t Q>
-struct meta_schema<kel::lbm::sch::Cell<Sch,Desc,S,D,Q>> {
+struct meta_schema<kel::lbm::sch::Cell<T,Desc,S,D,Q>> {
   using MetaSchema = schema::Void;
-	using Schema = kel::lbm::sch::Cell<Sch,Desc,S,D,Q>;
+	using Schema = kel::lbm::sch::Cell<T,Desc,S,D,Q>;
+};
+
+template<typename Desc, typename CellT>
+struct meta_schema<kel::lbm::sch::Field<Desc, CellT>> {
+  using MetaSchema = schema::FixedArray<schema::UInt64,CellT::Descriptor::D>;
+	using Schema = kel::lbm::sch::Field<Desc, CellT>;
 };
 
 template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typename Encode>
@@ -88,16 +88,22 @@ public:
 	}
 };
 
-template<typename CellT, typename Encode>
-class data<kel::lbm::sch::Field<CellT>, Encode> final {
+template<typename Desc, typename CellT, typename Encode>
+class data<kel::lbm::sch::Field<Desc, CellT>, Encode> final {
 private:
-	data<schema::Array<CellT,CellT::Desc::D>, Encode> inner_;
+	data<schema::Array<CellT,Desc::D>, Encode> inner_;
 public:
-	data(const data<schema::FixedArray<schema::UInt64, CellT::Desc::D>>& inner_meta__):
+	data(const data<schema::FixedArray<schema::UInt64, Desc::D>>& inner_meta__):
 		inner_{inner_meta__}
 	{}
 
-	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64>, Encode>& index){
+	template<uint64_t i>
+	data<schema::UInt64,Encode> get_dim_size() const {
+		static_assert(i < Desc::D, "Not enough dimensions");
+		return inner_.template get_dim_size<i>();
+	}
+
+	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
 		return inner_(index);
 	}
 };

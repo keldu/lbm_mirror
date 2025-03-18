@@ -21,17 +21,23 @@ using namespace saw::schema;
 using T = Float32;
 using D2Q5 = Descriptor<2,5>;
 
-using DfCell2D = Cell<T, D2Q5, 0, 0, 1>;
-using CellInfo2D = Cell<UInt8, D2Q5, 1, 0, 0>;
+template<typename Desc>
+using DfCell = Cell<T, Desc, 0, 0, 1>;
+
+template<typename Desc>
+using CellInfo = Cell<UInt8, D2Q5, 1, 0, 0>;
 
 /**
  * Basic type for simulation
  */
-using FieldStruct = Struct<
-	Member<Field<DfCell2D>, "dfs">,
-	Member<Field<CellInfo2D>, "info">
+template<typename Desc>
+using CellStruct = Struct<
+	Member<DfCell<Desc>, "dfs">,
+	Member<CellInfo<Desc>, "info">
 >;
 
+
+using CavityFieldD2Q5 = Field<D2Q5, CellStruct<D2Q5>>;
 }
 
 /*
@@ -83,7 +89,7 @@ public:
 	}
 
 	void compute_rho_u(
-		saw::data<sch::DfCell2D>& dfs,
+		saw::data<sch::DfCell<sch::D2Q5>>& dfs,
 		typename saw::native_data_type<sch::T>::type& rho,
 		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
 	){
@@ -121,16 +127,16 @@ struct rectangle {
 	}
 };
 
-template<typename Func, typename Schema, size_t Dim>
-void apply_for_cells(Func&& func, saw::data<saw::schema::Array<Schema, Dim>>& dat){
-	for(std::size_t i = 0; i < dat.get_dim_size(0); ++i){
-		for(std::size_t j = 0; j < dat.get_dim_size(1); ++j){
-			func(dat(i,j), i, j);
+template<typename Func>
+void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q5>& dat){
+	for(std::size_t i = 0; i < dat.template get_dim_size<0>().get(); ++i){
+		for(std::size_t j = 0; j < dat.template get_dim_size<1>().get(); ++j){
+			func(dat({i,j}), i, j);
 		}
 	}
 }
 
-void set_geometry(saw::data<kel::lbm::sch::FieldStruct>& latt){
+void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q5>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
@@ -147,7 +153,7 @@ void set_geometry(saw::data<kel::lbm::sch::FieldStruct>& latt){
 	}, latt);
 }
 
-void set_initial_conditions(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& latt){
+void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q5>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		(void) i;
@@ -158,8 +164,8 @@ void set_initial_conditions(saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& old_latt,
-	saw::data<kel::lbm::sch::Lattice<kel::lbm::sch::Cell,2>>& new_latt
+	saw::data<kel::lbm::sch::CavityFieldD2Q5>& old_latt,
+	saw::data<kel::lbm::sch::CavityFieldD2Q5>& new_latt
 ){
 	
 }
@@ -168,11 +174,13 @@ int main(){
 	using namespace kel::lbm;
 
 	saw::data<
-		sch::FieldStruct
+		sch::FixedArray<
+			sch::CavityFieldD2Q5, 2
+		>
 		, saw::encode::Native
 	> lattices; //{dim_x, dim_y};
 
-	auto& df_field = lattices.template get<"dfs">();
+	auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
 	//	lattices.at(i) = {dim_x, dim_y};
 	//}
@@ -180,11 +188,11 @@ int main(){
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(lattices);
+	set_geometry(lattices.at(0));
 	/**
 	 * 
 	 */
-	set_initial_conditions(lattices);
+	set_initial_conditions(lattices.at(0));
 
 	/**
 	 * Timeloop
