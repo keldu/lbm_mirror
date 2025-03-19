@@ -80,7 +80,7 @@ public:
 			eq[i] = dfi::weights[i] * rho * (
 				1
 				+ vel_c_cs2
-				+ vel_c_cs2 * vel_c_cs2
+				+ vel_c_cs2 * vel_c_cs2 / 2.
 				- ( vel[0] * vel[0] + vel[1] * vel[1] ) / ( 2. * dfi::cs2 )
 			);
 		}
@@ -89,7 +89,7 @@ public:
 	}
 
 	void compute_rho_u(
-		saw::data<sch::DfCell<sch::D2Q5>>& dfs,
+		saw::data<sch::DfCell<Desc>>& dfs,
 		typename saw::native_data_type<sch::T>::type& rho,
 		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
 	){
@@ -106,6 +106,15 @@ public:
 
 		vel[0] /= rho;
 		vel[1] /= rho;
+	}
+
+	void apply(saw::data<sch::DfCell<Desc>>& dfs){
+		for(uint64_t i = 0u; i < Desc::Q; ++i){
+			typename saw::native_data_type<sch::T>::type rho;
+			std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
+			compute_rho_u(dfs,rho,vel);
+			auto eq = equilibrium(rho,vel);
+		}
 	}
 };
 }
