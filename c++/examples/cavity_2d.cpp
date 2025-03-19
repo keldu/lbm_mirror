@@ -176,12 +176,10 @@ void lbm_step(
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<
-		sch::FixedArray<
-			sch::CavityFieldD2Q5, 2
-		>
-		, saw::encode::Native
-	> lattices; //{dim_x, dim_y};
+	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q5::D>> dim{{dim_x, dim_y}};
+
+	saw::data<sch::CavityFieldD2Q5, saw::encode::Native> old_lattice{dim};
+	saw::data<sch::CavityFieldD2Q5, saw::encode::Native> new_lattice{dim};
 
 	// auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
@@ -191,11 +189,11 @@ int main(){
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(lattices.at(0));
+	set_geometry(old_lattice);
 	/**
 	 * 
 	 */
-	set_initial_conditions(lattices.at(0));
+	set_initial_conditions(old_lattice);
 
 	/**
 	 * Timeloop
@@ -207,13 +205,13 @@ int main(){
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 			// Not needed
 			(void) i;
-			std::cout<<static_cast<uint32_t>(cell.template get<"info">()({0}).get());
+			std::cout<<(static_cast<uint32_t>(cell.template get<"info">()({0}).get()));
 			if( (j+1) < dim_y){
 				std::cout<<" ";
 			}else{
 				std::cout<<"\n";
 			}
-	}, lattices.at(0));
+	}, old_lattice);
 	
 	std::cout<<"\n";
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
@@ -225,16 +223,16 @@ int main(){
 			}else{
 				std::cout<<"\n";
 			}
-	}, lattices.at(0));
+	}, old_lattice);
 
 	uint64_t lattice_steps = 32;
 	bool even_step = true;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
-		uint64_t old_lattice_index = even_step ? 0 : 1;
-		uint64_t new_lattice_index = even_step ? 1 : 0;
+		auto& old_lat = even_step ? old_lattice : new_lattice;
+		auto& new_lat = even_step ? new_lattice : old_lattice;
 
-		lbm_step(lattices.at(old_lattice_index), lattices.at(new_lattice_index));
+		lbm_step(old_lat, new_lat);
 
 		even_step = !even_step;
 	}
