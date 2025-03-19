@@ -131,7 +131,10 @@ template<typename Func>
 void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q5>& dat){
 	for(std::size_t i = 0; i < dat.template get_dim_size<0>().get(); ++i){
 		for(std::size_t j = 0; j < dat.template get_dim_size<1>().get(); ++j){
-			func(dat({i,j}), i, j);
+			saw::data<saw::schema::UInt64> di{i};
+			saw::data<saw::schema::UInt64> dj{j};
+			auto& cell_v = dat({{di,dj}});
+			func(cell_v, i, j);
 		}
 	}
 }
@@ -180,7 +183,7 @@ int main(){
 		, saw::encode::Native
 	> lattices; //{dim_x, dim_y};
 
-	auto& df_field = lattices.at(0).template get<"dfs">();
+	// auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
 	//	lattices.at(i) = {dim_x, dim_y};
 	//}
@@ -204,7 +207,7 @@ int main(){
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 			// Not needed
 			(void) i;
-			std::cout<<static_cast<uint32_t>(cell.template get<"info">().at(0).get());
+			std::cout<<static_cast<uint32_t>(cell.template get<"info">()({0}).get());
 			if( (j+1) < dim_y){
 				std::cout<<" ";
 			}else{
@@ -216,7 +219,7 @@ int main(){
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 			// Not needed
 			(void) i;
-			std::cout<<cell.template get<"dfs">().at(0).get();
+			std::cout<<cell.template get<"dfs">()({0}).get();
 			if( (j+1) < dim_y){
 				std::cout<<" ";
 			}else{

@@ -85,7 +85,10 @@ public:
 	data() = default;
 
 	data<Sch, Encode>& operator()(const data<schema::UInt64>& index){
-		return inner_(index);
+		return inner_.at(index);
+	}
+	const data<Sch, Encode>& operator()(const data<schema::UInt64>& index)const{
+		return inner_.at(index);
 	}
 };
 
@@ -97,6 +100,7 @@ public:
 private:
 	data<schema::Array<CellT,Desc::D>, Encode> inner_;
 public:
+	data() = default;
 	data(const data<schema::FixedArray<schema::UInt64, Desc::D>>& inner_meta__):
 		inner_{inner_meta__}
 	{}
@@ -107,8 +111,12 @@ public:
 		return inner_.template get_dim_size<i>();
 	}
 
+	const data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
+		return inner_.at(index);
+	}
+
 	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
-		return inner_(index);
+		return inner_.at(index);
 	}
 };
 }
