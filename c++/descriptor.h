@@ -70,7 +70,7 @@ struct meta_schema<kel::lbm::sch::Cell<T,Desc,S,D,Q>> {
 
 template<typename Desc, typename CellT>
 struct meta_schema<kel::lbm::sch::Field<Desc, CellT>> {
-  using MetaSchema = schema::FixedArray<schema::UInt64,CellT::Descriptor::D>;
+  using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
 	using Schema = kel::lbm::sch::Field<Desc, CellT>;
 };
 
