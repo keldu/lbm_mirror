@@ -5,6 +5,7 @@
 #include <string_view>
 
 namespace kel {
+namespace lbm {
 namespace lbm_type {
 struct meter {
 	static constexpr std::string_view name = "meter_l";
@@ -28,4 +29,5 @@ using lbm_velocity = unit<S, unit_component<lbm_type::meter, 1>, unit_component<
 
 template<typename S>
 using lbm_acceleration = unit<S, unit_component<lbm_type::meter, 1>, unit_component<lbm_type::second, -2>>;
+}
 }
