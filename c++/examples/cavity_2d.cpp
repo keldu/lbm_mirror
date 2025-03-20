@@ -62,10 +62,71 @@ public:
 */
 
 template<typename Desc>
+class bounce_back {
+public:
+
+	void apply(saw::data<sch::DfCell<Desc>>& dfs){
+		using dfi = df_info<sch::T,Desc>;
+
+		// Technically use .copy()
+		auto df_cpy = dfs;
+
+		for(uint64_t i = 1u; i < Desc::Q; ++i){
+			dfs({i}) = df_cpy({dfi::opposite_index.at(i)});
+		}
+	}
+};
+
+template<typename Desc>
+class cavity_boundary {
+public:
+		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
+	
+public:
+	void compute_rho_u(
+		saw::data<sch::DfCell<Desc>>& dfs,
+		typename saw::native_data_type<sch::T>::type& rho,
+		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
+	){
+		using dfi = df_info<sch::T, Desc>;
+
+		rho = 0;
+		std::fill(vel.begin(), vel.end(), 0);
+
+		for(size_t i = 0; i < Desc::Q; ++i){
+			rho += dfs(i).get();
+			vel[0] += dfi::directions[i][0] * dfs(i).get();
+			vel[1] += dfi::directions[i][1] * dfs(i).get();
+		}
+
+		vel[0] /= rho;
+		vel[1] /= rho;
+	}
+
+	void apply(
+		saw::data<sch::DfCell<Desc>>& dfs
+	){
+		using dfi = df_info<sch::T,Desc>;
+		
+		// Technically use .copy()
+		auto df_cpy = dfs;
+		
+		typename saw::native_data_type<sch::T>::type rho;
+		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
+		compute_rho_u(dfs,rho,vel);
+
+		for(uint64_t i = 1u; i < Desc::Q; ++i){
+			dfs({i}) = df_cpy({dfi::opposite_index.at(i)}) - dfi::weights[i] * rho * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) / dfi::cs2;
+		}
+	}
+};
+
+template<typename Desc>
 class collision {
 public:
 	typename saw::native_data_type<sch::T>::type relaxation_;
 public:
+
 	std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
 		typename saw::native_data_type<sch::T>::type rho,
 		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel
@@ -114,6 +175,8 @@ public:
 			std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
 			compute_rho_u(dfs,rho,vel);
 			auto eq = equilibrium(rho,vel);
+
+			dfs({i}).set(dfs({i}).get() + (1 / relaxation_) * (eq[i] - dfs({i}).get()));
 		}
 	}
 };
@@ -179,7 +242,46 @@ void lbm_step(
 	saw::data<kel::lbm::sch::CavityFieldD2Q5>& old_latt,
 	saw::data<kel::lbm::sch::CavityFieldD2Q5>& new_latt
 ){
-	
+	using namespace kel::lbm;
+  using dfi = df_info<sch::T,sch::D2Q5>;
+
+	collision<sch::D2Q5> coll;
+	coll.relaxation_ = 0.6;
+
+	bounce_back<sch::D2Q5> bb;
+	cavity_boundary<sch::D2Q5> bb_lid;
+	bb_lid.lid_vel = {0.1,0.0};
+
+	apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
+		auto& df = cell.template get<"dfs">();
+		auto& info = cell.template get<"info">();
+
+		auto info_val = info({0u}).get();
+		switch(info_val){
+		case 0u:
+			coll.apply(df);
+			break;
+		case 2u:
+			bb.apply(df);
+			break;
+		case 3u:
+			bb_lid.apply(df);
+			break;
+		}
+	}, old_latt);
+
+	for(uint64_t i = 1; (i+1) < old_latt.template get_dim_size<0>().get(); ++i){
+		for(uint64_t j = 1; (j+1) < old_latt.template get_dim_size<1>().get(); ++j){
+			auto& df_new = new_latt({{i,j}}).template get<"dfs">();
+
+			for(uint64_t k = 1u; k < sch::D2Q5::Q; ++k){
+				auto dir = dfi::directions[dfi::opposite_index[k]];
+				
+				auto& df_old = old_latt({{i+dir[0],j+dir[1]}}).template get<"dfs">();
+				df_new({k}) = df_old({k});
+			}
+		}
+	}
 }
 
 int main(){
@@ -242,6 +344,18 @@ int main(){
 		auto& new_lat = even_step ? new_lattice : old_lattice;
 
 		lbm_step(old_lat, new_lat);
+
+		std::cout<<"\n";
+		apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
+				// Not needed
+				(void) i;
+				std::cout<<cell.template get<"dfs">()({0}).get();
+				if( (j+1) < dim_y){
+					std::cout<<" ";
+				}else{
+					std::cout<<"\n";
+				}
+		}, old_lat);
 
 		even_step = !even_step;
 	}
