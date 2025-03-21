@@ -184,8 +184,8 @@ public:
 }
 
 constexpr size_t dim_size = 2;
-constexpr size_t dim_x = 16;
-constexpr size_t dim_y = 16;
+constexpr size_t dim_x = 64;
+constexpr size_t dim_y = 64;
 
 struct rectangle {
 	std::array<size_t,4> data_;
@@ -216,7 +216,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q5>& latt){
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
 		if(i == 1){
-			val = 2;
+			val = 3;
 		}
 		if(j == 1 || (i+2) == dim_x || (j+2) == dim_y){
 			val = 3;
