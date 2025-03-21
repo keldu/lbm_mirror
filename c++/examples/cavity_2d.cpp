@@ -136,13 +136,13 @@ public:
 		typename std::array<saw::native_data_type<sch::T>::type,Desc::Q> eq;
 
 		for(std::size_t i = 0; i < eq.size(); ++i){
-			auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
+			auto vel_c = 3.0 * (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
 			auto vel_c_cs2 = vel_c / dfi::cs2;
 			eq[i] = dfi::weights[i] * rho * (
 				1
 				+ vel_c_cs2
-				+ vel_c_cs2 * vel_c_cs2 / 2.
-				- ( vel[0] * vel[0] + vel[1] * vel[1] ) / ( 2. * dfi::cs2 )
+				+ vel_c_cs2 * vel_c_cs2 * 0.5
+				- 3.0 * ( vel[0] * vel[0] + vel[1] * vel[1] ) / ( 2. * dfi::cs2 )
 			);
 		}
 
@@ -184,8 +184,8 @@ public:
 }
 
 constexpr size_t dim_size = 2;
-constexpr size_t dim_x = 32;
-constexpr size_t dim_y = 32;
+constexpr size_t dim_x = 16;
+constexpr size_t dim_y = 16;
 
 struct rectangle {
 	std::array<size_t,4> data_;
@@ -246,7 +246,7 @@ void lbm_step(
   using dfi = df_info<sch::T,sch::D2Q5>;
 
 	collision<sch::D2Q5> coll;
-	coll.relaxation_ = 0.6;
+	coll.relaxation_ = 1.0;
 
 	bounce_back<sch::D2Q5> bb;
 	cavity_boundary<sch::D2Q5> bb_lid;
@@ -262,10 +262,10 @@ void lbm_step(
 			coll.apply(df);
 			break;
 		case 2u:
-			bb.apply(df);
+			bb_lid.apply(df);
 			break;
 		case 3u:
-			bb_lid.apply(df);
+			bb.apply(df);
 			break;
 		}
 	}, old_latt);
@@ -301,10 +301,12 @@ int main(){
 	 * Set meta information describing what this cell is
 	 */
 	set_geometry(old_lattice);
+	set_geometry(new_lattice);
 	/**
 	 * 
 	 */
 	set_initial_conditions(old_lattice);
+	set_initial_conditions(new_lattice);
 
 	/**
 	 * Timeloop
@@ -336,14 +338,13 @@ int main(){
 			}
 	}, old_lattice);
 
-	uint64_t lattice_steps = 32;
+	uint64_t lattice_steps = 1024u;
 	bool even_step = true;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
 		auto& old_lat = even_step ? old_lattice : new_lattice;
 		auto& new_lat = even_step ? new_lattice : old_lattice;
 
-		lbm_step(old_lat, new_lat);
 
 		std::cout<<"\n";
 		apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
@@ -356,7 +357,10 @@ int main(){
 					std::cout<<"\n";
 				}
 		}, old_lat);
+		
+		lbm_step(old_lat, new_lat);
 
+		std::cout<<"Even: "<<(even_step ? "true" : "false")<<std::endl;
 		even_step = !even_step;
 	}
 

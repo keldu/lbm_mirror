@@ -68,6 +68,7 @@ public:
 		2
 	};
 
+	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
 	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
 }
