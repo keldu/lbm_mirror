@@ -129,20 +129,20 @@ public:
 
 	std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
 		typename saw::native_data_type<sch::T>::type rho,
-		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel
+		const std::array<typename saw::native_data_type<sch::T>::type, Desc::D>& vel
 	){
 		using dfi = df_info<sch::T, Desc>;
 
 		typename std::array<saw::native_data_type<sch::T>::type,Desc::Q> eq;
 
 		for(std::size_t i = 0; i < eq.size(); ++i){
-			auto vel_c = 3.0 * (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
-			auto vel_c_cs2 = vel_c / dfi::cs2;
+			auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
+			auto vel_c_cs2 = vel_c * dfi::inv_cs2;
 			eq[i] = dfi::weights[i] * rho * (
 				1
 				+ vel_c_cs2
 				+ vel_c_cs2 * vel_c_cs2 * 0.5
-				- 3.0 * ( vel[0] * vel[0] + vel[1] * vel[1] ) / ( 2. * dfi::cs2 )
+				- dfi::inv_cs2 * 0.5 * ( vel[0] * vel[0] + vel[1] * vel[1] )
 			);
 		}
 
@@ -176,7 +176,7 @@ public:
 			compute_rho_u(dfs,rho,vel);
 			auto eq = equilibrium(rho,vel);
 
-			dfs({i}).set(dfs({i}).get() + (1 / relaxation_) * (eq[i] - dfs({i}).get()));
+			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
 		}
 	}
 };
@@ -216,15 +216,15 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q5>& latt){
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
 		if(i == 1){
-			val = 3;
+			val = 2u;
 		}
 		if(j == 1 || (i+2) == dim_x || (j+2) == dim_y){
-			val = 3;
+			val = 3u;
 		}
 		if(i == 0 || j == 0 || (i+1) == dim_x || (j+1) == dim_y){
-			val = 1;
+			val = 1u;
 		}
-		cell.template get<"info">()(0).set(val);
+		cell.template get<"info">()(0u).set(val);
 	}, latt);
 }
 
@@ -274,7 +274,7 @@ void lbm_step(
 		for(uint64_t j = 1; (j+1) < old_latt.template get_dim_size<1>().get(); ++j){
 			auto& df_new = new_latt({{i,j}}).template get<"dfs">();
 
-			for(uint64_t k = 1u; k < sch::D2Q5::Q; ++k){
+			for(uint64_t k = 0u; k < sch::D2Q5::Q; ++k){
 				auto dir = dfi::directions[dfi::opposite_index[k]];
 				
 				auto& df_old = old_latt({{i+dir[0],j+dir[1]}}).template get<"dfs">();
@@ -338,7 +338,7 @@ int main(){
 			}
 	}, old_lattice);
 
-	uint64_t lattice_steps = 1024u;
+	uint64_t lattice_steps = 16u;
 	bool even_step = true;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
