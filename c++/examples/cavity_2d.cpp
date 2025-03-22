@@ -360,7 +360,6 @@ int main(){
 		
 		lbm_step(old_lat, new_lat);
 
-		std::cout<<"Even: "<<(even_step ? "true" : "false")<<std::endl;
 		even_step = !even_step;
 	}
 
