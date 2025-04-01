@@ -5,6 +5,7 @@
 #include <forstio/codec/data.hpp>
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
 
 namespace kel {
@@ -69,6 +70,26 @@ void compute_rho_u (
 	vel[1] /= rho;
 }
 
+template<typename Desc>
+void compute_const_rho_u (
+		saw::data<sch::DfCell<Desc>>& dfs,
+		const typename saw::native_data_type<sch::T>::type rho,
+		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
+	)
+{
+	using dfi = df_info<sch::T, Desc>;
+
+	std::fill(vel.begin(), vel.end(), 0);
+
+	for(size_t i = 0; i < Desc::Q; ++i){
+		vel[0] += dfi::directions[i][0] * dfs(i).get();
+		vel[1] += dfi::directions[i][1] * dfs(i).get();
+	}
+
+	vel[0] /= rho;
+	vel[1] /= rho;
+}
+
 /**
  * Calculates the equilibrium for each direction
  */
@@ -85,10 +106,10 @@ std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
 		auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
 		auto vel_c_cs2 = vel_c * dfi::inv_cs2;
 		eq[i] = dfi::weights[i] * rho * (
-			1
+			1.0
 			+ vel_c_cs2
-			+ vel_c_cs2 * vel_c_cs2 * 0.5
 			- dfi::inv_cs2 * 0.5 * ( vel[0] * vel[0] + vel[1] * vel[1] )
+			+ vel_c_cs2 * vel_c_cs2 * 0.5
 		);
 	}
 
@@ -128,10 +149,11 @@ public:
 */
 namespace cmpt {
 struct BounceBack{};
-template<typename ColliderComponent>
 struct MovingWall {};
 struct BGK {};
+struct ConstRhoBGK {};
 }
+
 
 /**
  * Full-Way BounceBack. I suspect that the moving wall requires half-way bounce back.
@@ -156,10 +178,9 @@ public:
  * Full-Way moving wall Bounce back, something is not right here.
  * Technically it should reflect properly.
  */
-template<typename CollisionCmp, typename Desc>
-class component<cmpt::MovingWall<CollisionCmp>, Desc> {
+template<typename Desc>
+class component<cmpt::MovingWall, Desc> {
 public:
-	component<CollisionCmp, Desc>* collision_;
 	std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
 	
 public:
@@ -168,9 +189,14 @@ public:
 	){
 		using dfi = df_info<sch::T,Desc>;
 
-		collision_->apply(dfs);
-		
 		// Technically use .copy()
+		/*
+		auto dfs_cpy = dfs;
+		
+		for(uint64_t i = 0u; i < Desc::Q; ++i){
+			dfs({dfi::opposite_index.at(i)}) = dfs_cpy({i}) - 2.0 * dfi::weights[i] * 1.0 * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
+		}
+		*/
 	}
 };
 
@@ -180,12 +206,29 @@ public:
 	typename saw::native_data_type<sch::T>::type relaxation_;
 public:
 	void apply(saw::data<sch::DfCell<Desc>>& dfs){
+		typename saw::native_data_type<sch::T>::type rho;
+		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
+		compute_rho_u<Desc>(dfs,rho,vel);
+		auto eq = equilibrium<Desc>(rho,vel);
+		
 		for(uint64_t i = 0u; i < Desc::Q; ++i){
-			typename saw::native_data_type<sch::T>::type rho;
-			std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
-			compute_rho_u<Desc>(dfs,rho,vel);
-			auto eq = equilibrium<Desc>(rho,vel);
+			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
+		}
+	}
+};
 
+template<typename Desc>
+class component<cmpt::ConstRhoBGK, Desc> {
+public:
+	typename saw::native_data_type<sch::T>::type relaxation_;
+	typename saw::native_data_type<sch::T>::type rho_;
+public:
+	void apply(saw::data<sch::DfCell<Desc>>& dfs){
+		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
+		compute_const_rho_u<Desc>(dfs,rho_,vel);
+		auto eq = equilibrium<Desc>(rho_,vel);
+		
+		for(uint64_t i = 0u; i < Desc::Q; ++i){
 			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
 		}
 	}
@@ -194,18 +237,18 @@ public:
 }
 
 constexpr size_t dim_size = 2;
-constexpr size_t dim_x = 128;
-constexpr size_t dim_y = 128;
+constexpr size_t dim_x = 256;
+constexpr size_t dim_y = 256;
 
 
 template<typename Func>
 void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q9>& dat){
-	for(std::size_t i = 0; i < dat.template get_dim_size<0>().get(); ++i){
-		for(std::size_t j = 0; j < dat.template get_dim_size<1>().get(); ++j){
+	for(std::size_t i = 0; i < dat.template get_dim_size<1u>().get(); ++i){
+		for(std::size_t j = 0; j < dat.template get_dim_size<0u>().get(); ++j){
 			saw::data<saw::schema::UInt64> di{i};
 			saw::data<saw::schema::UInt64> dj{j};
-			auto& cell_v = dat({{di,dj}});
-			func(cell_v, i, j);
+			auto& cell_v = dat({{dj,di}});
+			func(cell_v, j, i);
 		}
 	}
 }
@@ -214,21 +257,17 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
-		if(i == 1){
-			if( j > 2 && (j+3) < dim_y ){
-				val = 2u;
-			}else{
-				val = 3u;
-			}
+		if(j == 1){
+			val = 2u;
 		}
-		if(j == 1 || (i+2) == dim_x || (j+2) == dim_y){
+		if(i == 1 || (i+2) == dim_x || (j+2) == dim_y){
 			val = 3u;
-		}
-		if(i == 0 || j == 0 || (i+1) == dim_x || (j+1) == dim_y){
-			val = 0u;
 		}
 		if(i > 1 && (i+2) < dim_x && j > 1 && (j+2) < dim_y){
 			val = 1u;
+		}
+		if(i == 0 || j == 0 || (i+1) == dim_x || (j+1) == dim_y){
+			val = 0u;
 		}
 		cell.template get<"info">()(0u).set(val);
 	}, latt);
@@ -246,8 +285,9 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			(void) i;
 			(void) j;
 			auto& dfs = cell.template get<"dfs">();
-			for(uint64_t i = 0; i < sch::D2Q9::Q; ++i){
-				dfs(i).set(eq[i]);
+			auto info = cell.template get<"info">()(0u).get();
+			for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
+				dfs(k).set(eq[k]);
 			}
 		}, latt);
 	}
@@ -262,13 +302,12 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			auto& dfs = cell.template get<"dfs">();
 			auto info = cell.template get<"info">()(0u).get();
 			if(info == 2u){
-				for(uint64_t i = 0; i < sch::D2Q9::Q; ++i){
-					dfs(i).set(eq[i]);
+				for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
+					dfs(k).set(eq[k]);
 				}
 			}
 		}, latt);
 	}
-
 }
 
 void lbm_step(
@@ -279,11 +318,13 @@ void lbm_step(
   using dfi = df_info<sch::T,sch::D2Q9>;
 
 	component<cmpt::BGK,sch::D2Q9> coll;
-	coll.relaxation_ = 0.5384;
+	coll.relaxation_ = 0.653846;
+	component<cmpt::ConstRhoBGK,sch::D2Q9> rho_coll;
+	rho_coll.relaxation_ = 0.501538;
+	rho_coll.rho_ = 1.0;
 
 	component<cmpt::BounceBack,sch::D2Q9> bb;
-	component<cmpt::MovingWall<cmpt::BGK>,sch::D2Q9> bb_lid;
-	bb_lid.collision_ = &coll;
+	component<cmpt::MovingWall,sch::D2Q9> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
 	// Collide
@@ -294,7 +335,7 @@ void lbm_step(
 		auto info_val = info({0u}).get();
 		switch(info_val){
 		case 1u:
-			coll.apply(df);
+			rho_coll.apply(df);
 			break;
 		case 2u:
 			// bb.apply(df);
@@ -312,20 +353,22 @@ void lbm_step(
 			auto& cell_new = new_latt({{i,j}});
 			auto& df_new = cell_new.template get<"dfs">();
 			auto& info_new = cell_new.template get<"info">();
-			auto df_cpy_old = old_latt({{i,j}}).template get<"dfs">();
 
-			for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
-				auto dir = dfi::directions[dfi::opposite_index[k]];
-				
-				auto& cell_old = old_latt({{i+dir[0],j+dir[1]}});
-				auto& df_old = cell_old.template get<"dfs">();
-				auto& info_old = cell_old.template get<"info">();
+			if(info_new({0u}).get() > 0u && info_new({0u}).get() != 2u){
+				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
+					auto dir = dfi::directions[dfi::opposite_index[k]];
+					
+					auto& cell_old = old_latt({{i+dir[0],j+dir[1]}});
+					auto& df_old = cell_old.template get<"dfs">();
+					auto& info_old = cell_old.template get<"info">();
 
-				if(info_new({0}).get() == 2u && info_old({0}).get() == 0u){
-						// Density set to 1.0
-						df_new({dfi::opposite_index.at(i)}) = df_cpy_old({i}) - 2.0 * dfi::weights[i] * 1.0 * ( bb_lid.lid_vel[0] * dfi::directions[i][0] + bb_lid.lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
-				}else{
-					df_new({k}) = df_old({k});
+					if( info_old({0}).get() == 2u ){
+						auto& df_old_loc = old_latt({{i,j}}).template get<"dfs">();
+						df_new({k}) = df_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * ( bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
+						// dfs({dfi::opposite_index.at(i)}) = dfs_cpy({i}) - 2.0 * dfi::weights[i] * 1.0 * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
+					} else {
+						df_new({k}) = df_old({k});
+					}
 				}
 			}
 		}
@@ -365,28 +408,29 @@ int main(){
 	 */
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 			// Not needed
-			(void) i;
+			(void) j;
 			std::cout<<(static_cast<uint32_t>(cell.template get<"info">()({0}).get()));
-			if( (j+1) < dim_y){
+			if( (i+1) < dim_x){
 				std::cout<<" ";
 			}else{
 				std::cout<<"\n";
 			}
 	}, old_lattice);
 	
-	uint64_t lattice_steps = 37000u;
+	uint64_t lattice_steps = 74000u;
 	bool even_step = true;
 
-	uint64_t print_every = 128u;
+	uint64_t print_every = 256u;
+	uint64_t file_no = 0u;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
 		auto& old_lat = even_step ? old_lattice : new_lattice;
 		auto& new_lat = even_step ? new_lattice : old_lattice;
 
 
-		std::cout<<"\n";
 
 		if(step % print_every == 0u){
+			std::cout<<"\n";
 			typename saw::native_data_type<sch::T>::type sum = 0.0;
 
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
@@ -399,7 +443,7 @@ int main(){
 					sum += rho;
 				}
 				auto angle = std::atan2(vel[1],vel[0]);
-				
+			
 				auto dir_char = [&]() -> std::string_view {
 					constexpr auto pi = M_PI;
 					if((vel[1] * vel[1] + vel[0]*vel[0]) < 1e-16){
@@ -426,10 +470,13 @@ int main(){
 					if(angle > -5.0 / 8.0 * pi){
 						return "↓";
 					}
+					if(angle > -7.0 / 8.0 * pi){
+						return "↙";
+					}
 					return "←";
 				}();
 				std::cout<<dir_char;
-				if( (j+1) < dim_y){
+				if( (i+1) < dim_x){
 					std::cout<<" ";
 				}else{
 					std::cout<<"\n";
@@ -437,6 +484,31 @@ int main(){
 			}, old_lat);
 
 			std::cout<<"Average rho: "<<(sum / ((dim_x-4)*(dim_y-4)))<<std::endl;
+
+			std::ofstream vtk_file{"tmp/cavity_2d_"+std::to_string(file_no)+".vtk"};
+
+			vtk_file <<"# vtk DataFile Version 3.0\n";
+			vtk_file <<"Velocity Cavity2D example\n";
+			vtk_file <<"ASCII\n";
+			vtk_file <<"DATASET STRUCTURED_POINTS\n";
+			vtk_file <<"DIMENSIONS "<< dim_x <<" "<<dim_y<<" 1\n";
+			vtk_file <<"SPACING 1.0 1.0 1.0\n";
+			vtk_file <<"ORIGIN 0.0 0.0 0.0\n";
+			vtk_file <<"POINT_DATA "<<(dim_x*dim_y)<<"\n";
+			vtk_file <<"VECTORS Velocity float\n";
+			
+			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
+				auto dfs = cell.template get<"dfs">();
+
+				typename saw::native_data_type<sch::T>::type rho;
+				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
+				compute_rho_u<sch::D2Q9>(dfs,rho,vel);
+
+				vtk_file << static_cast<float>(vel[0u]) << " " << static_cast<float>(vel[1u])<<" 0.0\n";
+			}, old_lat);
+			
+
+			++file_no;
 		}
 		
 		lbm_step(old_lat, new_lat);
