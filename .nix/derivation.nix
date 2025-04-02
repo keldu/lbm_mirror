@@ -7,7 +7,7 @@
 
 stdenv.mkDerivation {
   pname = "kel-lbm";
-  version = "0.0.0";
+  version = "0.0.1";
   src = ./..;
 
   nativeBuildInputs = [
@@ -23,6 +23,10 @@ stdenv.mkDerivation {
 	];
 
 	doCheck = true;
+	checkPhase = ''
+    scons test
+		./bin/tests
+	'';
 
   outputs = [ "out" "dev" ];
 }
