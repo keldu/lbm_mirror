@@ -1,0 +1,32 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+test_cases_env = env.Clone();
+
+test_cases_env.Append(LIBS=['forstio-test']);
+
+test_cases_env.sources = sorted(glob.glob(dir_path + "/*.cpp"))
+test_cases_env.headers = sorted(glob.glob(dir_path + "/*.hpp"))
+
+env.sources += test_cases_env.sources;
+env.headers += test_cases_env.headers;
+
+objects_static = []
+test_cases_env.add_source_files(objects_static, test_cases_env.sources, shared=False);
+test_cases_env.program = test_cases_env.Program('#bin/tests', [objects_static]);
+# , env.library_static]);
+
+# Set Alias
+env.Alias('test', test_cases_env.program);
+env.Alias('check', test_cases_env.program);
+
+env.targets += ['test','check'];

@@ -58,6 +58,7 @@ env.targets = [];
 
 Export('env')
 SConscript('c++/SConscript')
+SConscript('tests/SConscript')
 
 env.Alias('cdb', env.cdb);
 env.Alias('all', [env.targets]);

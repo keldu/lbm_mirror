@@ -20,7 +20,9 @@ stdenv.mkDerivation {
     forstio.async
     forstio.codec
     forstio.codec-unit
-  ];
+	];
+
+	doCheck = true;
 
   outputs = [ "out" "dev" ];
 }
