@@ -41,6 +41,8 @@ class df_info{};
 template<typename T>
 class df_info<T,sch::Descriptor<2, 5>> {
 public:
+	using Descriptor = sch::Descriptor<2,5>;
+
 	static constexpr uint64_t D = 2u;
 	static constexpr uint64_t Q = 5u;
 
@@ -75,6 +77,8 @@ public:
 template<typename T>
 class df_info<T,sch::Descriptor<2, 9>> {
 public:
+	using Descriptor = sch::Descriptor<2,9>;
+	
 	static constexpr uint64_t D = 2u;
 	static constexpr uint64_t Q = 9u;
 
