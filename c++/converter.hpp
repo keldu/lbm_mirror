@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lbm_unit.h"
+#include "lbm_unit.hpp"
 
 namespace kel {
 namespace lbm {

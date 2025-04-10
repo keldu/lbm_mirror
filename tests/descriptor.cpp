@@ -19,6 +19,11 @@ void check_opposite_dirs(){
 	}
 }
 
+SAW_TEST("Opposites and Dirs D1Q3"){
+	using namespace kel;
+	check_opposite_dirs<lbm::sch::Descriptor<1,3>>();
+}
+
 SAW_TEST("Opposites and Dirs D2Q5"){
 	using namespace kel;
 	check_opposite_dirs<lbm::sch::Descriptor<2,5>>();

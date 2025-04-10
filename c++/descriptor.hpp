@@ -22,14 +22,14 @@ struct Cell {
 	static constexpr uint64_t Size = SC + Desc::D * DC + Desc::Q * QC;
 };
 
-template<typename Desc, typename CellStruct>
-struct Field;
+template<typename Desc, typename Cell>
+struct CellFields;
 
-template<typename Desc, typename... CellMembers>
-struct Field<
+template<typename Desc, typename... CellFieldTypes, saw::string_literal... CellFieldNames>
+struct CellFields<
 	Desc,
 	Struct<
-		CellMembers...
+		Member<Array<CellFieldTypes,Desc::D>, CellFieldNames>...
 	>
 >;
 
@@ -38,6 +38,37 @@ struct Field<
 template<typename T, typename Desc>
 class df_info{};
 
+template<typename T> 
+class df_info<T,sch::Descriptor<1,3>> {
+public:
+	using Descriptor = sch::Descriptor<1,3>;
+
+	static constexpr uint64_t D = 1u;
+	static constexpr uint64_t Q = 3u;
+
+	static constexpr std::array<std::array<int32_t,D>,Q> directions = {{
+		{ 0},
+		{-1},
+		{ 1}
+	}};
+
+	static constexpr std::array<typename saw::native_data_type<T>::type, Q> weights = {
+		2./3.,
+		1./6.,
+		1./6.
+	};
+
+	static constexpr std::array<uint64_t,Q> opposite_index = {
+		0,2,1
+	};
+	
+	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
+	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
+};
+
+/**
+ * D2Q5 Descriptor
+ */
 template<typename T>
 class df_info<T,sch::Descriptor<2, 5>> {
 public:
@@ -132,9 +163,9 @@ struct meta_schema<kel::lbm::sch::Cell<T,Desc,S,D,Q>> {
 };
 
 template<typename Desc, typename CellT>
-struct meta_schema<kel::lbm::sch::Field<Desc, CellT>> {
+struct meta_schema<kel::lbm::sch::CellFields<Desc, CellT>> {
   using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
-	using Schema = kel::lbm::sch::Field<Desc, CellT>;
+	using Schema = kel::lbm::sch::CellFields<Desc, CellT>;
 };
 
 template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typename Encode>
@@ -156,16 +187,18 @@ public:
 };
 
 template<typename Desc, typename CellT, typename Encode>
-class data<kel::lbm::sch::Field<Desc, CellT>, Encode> final {
+class data<kel::lbm::sch::CellFields<Desc, CellT>, Encode> final {
 public:
-	using Schema = kel::lbm::sch::Field<Desc,CellT>;
+	using Schema = kel::lbm::sch::CellFields<Desc,CellT>;
 	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
 private:
-	data<schema::Array<CellT,Desc::D>, Encode> inner_;
+	data<CellT, Encode> inner_;
+	data<MetaSchema, Encode> inner_meta_;
 public:
 	data() = default;
-	data(const data<schema::FixedArray<schema::UInt64, Desc::D>>& inner_meta__):
-		inner_{inner_meta__}
+	data(const data<MetaSchema,Encode>& inner_meta__):
+		inner_{inner_meta__},
+		inner_meta_{inner_meta__}
 	{}
 
 	template<uint64_t i>

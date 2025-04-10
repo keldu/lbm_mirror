@@ -37,12 +37,12 @@ using CellInfo = Cell<UInt8, D2Q9, 1, 0, 0>;
  */
 template<typename Desc>
 using CellStruct = Struct<
-	Member<DfCell<Desc>, "dfs">,
-	Member<CellInfo<Desc>, "info">
+	Member<Array<DfCell<Desc>,Desc::D>, "dfs">,
+	Member<Array<CellInfo<Desc>,Desc::D>, "info">
 >;
 
 
-using CavityFieldD2Q9 = Field<D2Q9, CellStruct<D2Q9>>;
+using CavityFieldD2Q9 = CellFields<D2Q9, CellStruct<D2Q9>>;
 }
 
 /**
@@ -350,9 +350,8 @@ void lbm_step(
 	// Stream
 	for(uint64_t i = 1; (i+1) < old_latt.template get_dim_size<0>().get(); ++i){
 		for(uint64_t j = 1; (j+1) < old_latt.template get_dim_size<1>().get(); ++j){
-			auto& cell_new = new_latt({{i,j}});
-			auto& df_new = cell_new.template get<"dfs">();
-			auto& info_new = cell_new.template get<"info">();
+			auto& df_new = new_latt.template get<"dfs">()({{i,j}});
+			auto& info_new = new_latt.template get<"info">()({{i,j}});
 
 			if(info_new({0u}).get() > 0u && info_new({0u}).get() != 2u){
 				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){

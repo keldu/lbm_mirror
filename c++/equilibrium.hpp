@@ -9,7 +9,11 @@ saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<sch::T> rho, 
 	using dfi = df_info<T, Descriptor>;
 
 	saw::data<sch::FixedArray<T,Descriptor::Q>> eq;
-	saw::data<T> vel_vel{};
+	//   ^
+	//  0.0
+	//  / \
+	//  | |
+	saw::data<T> vel_vel{0.0};
 	for(uint64_t j = 0u; j < Descriptor::D; ++j){
 		vel_vel = vel_vel + vel.at(j) * vel.at(j);
 	}
