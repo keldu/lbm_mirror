@@ -23,7 +23,7 @@ void check_equilibrium(){
 	}
 }
 
-SAW_TEST("Equilibrium At rest D1Q3"){
+SAW_TEST("Equilibrium at rest D1Q3"){
 	using namespace kel;
 	check_equilibrium<lbm::sch::Descriptor<1,3>>();
 }

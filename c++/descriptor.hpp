@@ -23,13 +23,13 @@ struct Cell {
 };
 
 template<typename Desc, typename Cell>
-struct CellFields;
+struct CellField;
 
 template<typename Desc, typename... CellFieldTypes, saw::string_literal... CellFieldNames>
-struct CellFields<
+struct CellField<
 	Desc,
 	Struct<
-		Member<Array<CellFieldTypes,Desc::D>, CellFieldNames>...
+		Member<CellFieldTypes, CellFieldNames>...
 	>
 >;
 
@@ -163,9 +163,9 @@ struct meta_schema<kel::lbm::sch::Cell<T,Desc,S,D,Q>> {
 };
 
 template<typename Desc, typename CellT>
-struct meta_schema<kel::lbm::sch::CellFields<Desc, CellT>> {
+struct meta_schema<kel::lbm::sch::CellField<Desc, CellT>> {
   using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
-	using Schema = kel::lbm::sch::CellFields<Desc, CellT>;
+	using Schema = kel::lbm::sch::CellField<Desc, CellT>;
 };
 
 template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typename Encode>
@@ -187,19 +187,22 @@ public:
 };
 
 template<typename Desc, typename CellT, typename Encode>
-class data<kel::lbm::sch::CellFields<Desc, CellT>, Encode> final {
+class data<kel::lbm::sch::CellField<Desc, CellT>, Encode> final {
 public:
-	using Schema = kel::lbm::sch::CellFields<Desc,CellT>;
+	using Schema = kel::lbm::sch::CellField<Desc,CellT>;
 	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
 private:
-	data<CellT, Encode> inner_;
-	data<MetaSchema, Encode> inner_meta_;
+	data<schema::Array<CellT,Desc::D>, Encode> inner_;
 public:
 	data() = default;
 	data(const data<MetaSchema,Encode>& inner_meta__):
 		inner_{inner_meta__},
 		inner_meta_{inner_meta__}
 	{}
+
+	const data<MetaSchema, Encode>& meta() const {
+		return inner_.dims();
+	}
 
 	template<uint64_t i>
 	data<schema::UInt64,Encode> get_dim_size() const {

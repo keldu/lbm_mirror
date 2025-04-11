@@ -37,8 +37,8 @@ using CellInfo = Cell<UInt8, D2Q9, 1, 0, 0>;
  */
 template<typename Desc>
 using CellStruct = Struct<
-	Member<Array<DfCell<Desc>,Desc::D>, "dfs">,
-	Member<Array<CellInfo<Desc>,Desc::D>, "info">
+	Member<DfCell<Desc>, "dfs">,
+	Member<CellInfo<Desc>, "info">
 >;
 
 
@@ -243,11 +243,11 @@ constexpr size_t dim_y = 256;
 
 template<typename Func>
 void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q9>& dat){
-	for(std::size_t i = 0; i < dat.template get_dim_size<1u>().get(); ++i){
-		for(std::size_t j = 0; j < dat.template get_dim_size<0u>().get(); ++j){
+	for(std::size_t i = 0; i < dat.meta().at({1u}).get(); ++i){
+		for(std::size_t j = 0; j < dat.meta().at({0u}).get(); ++j){
 			saw::data<saw::schema::UInt64> di{i};
 			saw::data<saw::schema::UInt64> dj{j};
-			auto& cell_v = dat({{dj,di}});
+			auto& cell_v = dat.template get<"dfs">().at({{dj,di}});
 			func(cell_v, j, i);
 		}
 	}
@@ -350,19 +350,18 @@ void lbm_step(
 	// Stream
 	for(uint64_t i = 1; (i+1) < old_latt.template get_dim_size<0>().get(); ++i){
 		for(uint64_t j = 1; (j+1) < old_latt.template get_dim_size<1>().get(); ++j){
-			auto& df_new = new_latt.template get<"dfs">()({{i,j}});
-			auto& info_new = new_latt.template get<"info">()({{i,j}});
+			auto& df_new = new_latt.template get<"dfs">().at({{i,j}});
+			auto& info_new = new_latt.template get<"info">().at({{i,j}});
 
 			if(info_new({0u}).get() > 0u && info_new({0u}).get() != 2u){
 				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
 					auto dir = dfi::directions[dfi::opposite_index[k]];
 					
-					auto& cell_old = old_latt({{i+dir[0],j+dir[1]}});
-					auto& df_old = cell_old.template get<"dfs">();
-					auto& info_old = cell_old.template get<"info">();
+					auto& df_old = old_latt.template get<"dfs">().at({{i+dir[0],j+dir[1]}});
+					auto& info_old = old_latt.template get<"info">().at({{i+dir[0],j+dir[1]}});
 
 					if( info_old({0}).get() == 2u ){
-						auto& df_old_loc = old_latt({{i,j}}).template get<"dfs">();
+						auto& df_old_loc = old_latt.template get<"dfs">().at({{i,j}});
 						df_new({k}) = df_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * ( bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
 						// dfs({dfi::opposite_index.at(i)}) = dfs_cpy({i}) - 2.0 * dfi::weights[i] * 1.0 * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
 					} else {
