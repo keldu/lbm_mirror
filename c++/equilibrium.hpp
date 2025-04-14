@@ -5,7 +5,7 @@
 namespace kel {
 namespace lbm {
 template<typename T, typename Descriptor>
-saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<sch::T> rho, saw::data<sch::FixedArray<T,Descriptor::D>> vel){
+saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<T> rho, saw::data<sch::FixedArray<T,Descriptor::D>> vel){
 	using dfi = df_info<T, Descriptor>;
 
 	saw::data<sch::FixedArray<T,Descriptor::Q>> eq;
@@ -18,26 +18,26 @@ saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<sch::T> rho, 
 		vel_vel = vel_vel + vel.at(j) * vel.at(j);
 	}
 
-	for(uint64_t i = 0u; i < eq.get_dim_size<0u>(); ++i){
+	for(uint64_t i = 0u; i < eq.template get_dim_size<0u>(); ++i){
 		saw::data<T> vel_c{};
 		for(uint64_t j = 0u; j < Descriptor::D; ++j){
-			vel_c = vel_c + (vel.at(j) * {dfi::directions[i][j]});
+			vel_c = vel_c + (vel.at(j) * saw::data<T>{static_cast<saw::native_data_type<T>::type>(dfi::directions[i][j])});
 		}
 
-		auto vel_c_cs2 = vel_c * {dfi::inv_cs2};
+		auto vel_c_cs2 = vel_c * saw::data<T>{dfi::inv_cs2};
 
 		eq.at(i).set(
 			dfi::weights[i] * rho.get() * 
 			(
 			 1.0
-			 + vel_c_cs2
+			 + vel_c_cs2.get()
 			 - dfi::inv_cs2 * 0.5 * vel_vel.get()
-			 + vel_c_cs2 * vel_c_cs2 * 0.5
+			 + vel_c_cs2.get() * vel_c_cs2.get() * 0.5
 			)
 		);
-
-		return eq;
 	}
+
+	return eq;
 }
 }
 }

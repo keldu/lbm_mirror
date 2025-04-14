@@ -38,11 +38,12 @@ using CellInfo = Cell<UInt8, D2Q9, 1, 0, 0>;
 template<typename Desc>
 using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
+	Member<DfCell<Desc>, "dfs_old">,
 	Member<CellInfo<Desc>, "info">
 >;
 
 
-using CavityFieldD2Q9 = CellFields<D2Q9, CellStruct<D2Q9>>;
+using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
 
 /**
@@ -237,8 +238,8 @@ public:
 }
 
 constexpr size_t dim_size = 2;
-constexpr size_t dim_x = 256;
-constexpr size_t dim_y = 256;
+constexpr size_t dim_x = 128;
+constexpr size_t dim_y = 128;
 
 
 template<typename Func>
@@ -247,7 +248,7 @@ void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q9>& dat
 		for(std::size_t j = 0; j < dat.meta().at({0u}).get(); ++j){
 			saw::data<saw::schema::UInt64> di{i};
 			saw::data<saw::schema::UInt64> dj{j};
-			auto& cell_v = dat.template get<"dfs">().at({{dj,di}});
+			auto& cell_v = dat({{dj,di}});
 			func(cell_v, j, i);
 		}
 	}
@@ -285,9 +286,11 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			(void) i;
 			(void) j;
 			auto& dfs = cell.template get<"dfs">();
+			auto& dfs_old = cell.template get<"dfs_old">();
 			auto info = cell.template get<"info">()(0u).get();
 			for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
 				dfs(k).set(eq[k]);
+				dfs_old(k).set(eq[k]);
 			}
 		}, latt);
 	}
@@ -300,10 +303,12 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			(void) i;
 			(void) j;
 			auto& dfs = cell.template get<"dfs">();
+			auto& dfs_old = cell.template get<"dfs_old">();
 			auto info = cell.template get<"info">()(0u).get();
 			if(info == 2u){
 				for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
 					dfs(k).set(eq[k]);
+					dfs_old(k).set(eq[k]);
 				}
 			}
 		}, latt);
@@ -311,16 +316,16 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& old_latt,
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& new_latt
+	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	bool even_step
 ){
 	using namespace kel::lbm;
   using dfi = df_info<sch::T,sch::D2Q9>;
 
 	component<cmpt::BGK,sch::D2Q9> coll;
-	coll.relaxation_ = 0.653846;
+	coll.relaxation_ = 0.5384;
 	component<cmpt::ConstRhoBGK,sch::D2Q9> rho_coll;
-	rho_coll.relaxation_ = 0.501538;
+	rho_coll.relaxation_ = 0.5384;
 	rho_coll.rho_ = 1.0;
 
 	component<cmpt::BounceBack,sch::D2Q9> bb;
@@ -329,13 +334,13 @@ void lbm_step(
 
 	// Collide
 	apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
-		auto& df = cell.template get<"dfs">();
+		auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 		auto& info = cell.template get<"info">();
 
 		auto info_val = info({0u}).get();
 		switch(info_val){
 		case 1u:
-			rho_coll.apply(df);
+			coll.apply(df);
 			break;
 		case 2u:
 			// bb.apply(df);
@@ -345,23 +350,25 @@ void lbm_step(
 			bb.apply(df);
 			break;
 		}
-	}, old_latt);
+	}, latt);
 
 	// Stream
-	for(uint64_t i = 1; (i+1) < old_latt.template get_dim_size<0>().get(); ++i){
-		for(uint64_t j = 1; (j+1) < old_latt.template get_dim_size<1>().get(); ++j){
-			auto& df_new = new_latt.template get<"dfs">().at({{i,j}});
-			auto& info_new = new_latt.template get<"info">().at({{i,j}});
+	for(uint64_t i = 1; (i+1) < latt.template get_dim_size<0>().get(); ++i){
+		for(uint64_t j = 1; (j+1) < latt.template get_dim_size<1>().get(); ++j){
+			auto& cell = latt({{i,j}});
+			auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
+			auto& info_new = cell.template get<"info">();
 
 			if(info_new({0u}).get() > 0u && info_new({0u}).get() != 2u){
 				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
 					auto dir = dfi::directions[dfi::opposite_index[k]];
+					auto& cell_dir_old = latt({{i+dir[0],j+dir[1]}});
 					
-					auto& df_old = old_latt.template get<"dfs">().at({{i+dir[0],j+dir[1]}});
-					auto& info_old = old_latt.template get<"info">().at({{i+dir[0],j+dir[1]}});
+					auto& df_old = even_step ? cell_dir_old.template get<"dfs_old">() : cell_dir_old.template get<"dfs">();
+					auto& info_old = cell_dir_old.template get<"info">();
 
 					if( info_old({0}).get() == 2u ){
-						auto& df_old_loc = old_latt.template get<"dfs">().at({{i,j}});
+						auto& df_old_loc = even_step ? latt({{i,j}}).template get<"dfs_old">() : latt({{i,j}}).template get<"dfs">();
 						df_new({k}) = df_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * ( bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
 						// dfs({dfi::opposite_index.at(i)}) = dfs_cpy({i}) - 2.0 * dfi::weights[i] * 1.0 * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
 					} else {
@@ -378,8 +385,7 @@ int main(){
 
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
 
-	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> old_lattice{dim};
-	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> new_lattice{dim};
+	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
 
 	// auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
@@ -389,13 +395,11 @@ int main(){
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(old_lattice);
-	set_geometry(new_lattice);
+	set_geometry(lattice);
 	/**
 	 * 
 	 */
-	set_initial_conditions(old_lattice);
-	set_initial_conditions(new_lattice);
+	set_initial_conditions(lattice);
 
 	/**
 	 * Timeloop
@@ -413,19 +417,15 @@ int main(){
 			}else{
 				std::cout<<"\n";
 			}
-	}, old_lattice);
+	}, lattice);
 	
-	uint64_t lattice_steps = 74000u;
+	uint64_t lattice_steps = 512000u;
 	bool even_step = true;
 
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
-		auto& old_lat = even_step ? old_lattice : new_lattice;
-		auto& new_lat = even_step ? new_lattice : old_lattice;
-
-
 
 		if(step % print_every == 0u){
 			std::cout<<"\n";
@@ -479,7 +479,7 @@ int main(){
 				}else{
 					std::cout<<"\n";
 				}
-			}, old_lat);
+			}, lattice);
 
 			std::cout<<"Average rho: "<<(sum / ((dim_x-4)*(dim_y-4)))<<std::endl;
 
@@ -496,20 +496,20 @@ int main(){
 			vtk_file <<"VECTORS Velocity float\n";
 			
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
-				auto dfs = cell.template get<"dfs">();
+				auto dfs = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
 				typename saw::native_data_type<sch::T>::type rho;
 				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
 				compute_rho_u<sch::D2Q9>(dfs,rho,vel);
 
 				vtk_file << static_cast<float>(vel[0u]) << " " << static_cast<float>(vel[1u])<<" 0.0\n";
-			}, old_lat);
+			}, lattice);
 			
 
 			++file_no;
 		}
 		
-		lbm_step(old_lat, new_lat);
+		lbm_step(lattice, even_step);
 
 		even_step = !even_step;
 	}

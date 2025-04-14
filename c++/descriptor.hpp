@@ -196,12 +196,11 @@ private:
 public:
 	data() = default;
 	data(const data<MetaSchema,Encode>& inner_meta__):
-		inner_{inner_meta__},
-		inner_meta_{inner_meta__}
+		inner_{inner_meta__}
 	{}
 
-	const data<MetaSchema, Encode>& meta() const {
-		return inner_.dims();
+	const data<MetaSchema, Encode> meta() const {
+		return inner_.get_dims();
 	}
 
 	template<uint64_t i>
