@@ -71,6 +71,9 @@ void compute_rho_u (
 	vel[1] /= rho;
 }
 
+/**
+ * Unsure if feasible. I would have a rho normalization on the dfs and then I would use the const rho_computation
+ */
 template<typename Desc>
 void compute_const_rho_u (
 		saw::data<sch::DfCell<Desc>>& dfs,
@@ -80,15 +83,20 @@ void compute_const_rho_u (
 {
 	using dfi = df_info<sch::T, Desc>;
 
+	saw::native_data_type<sch::T>::type real_rho = 0;
 	std::fill(vel.begin(), vel.end(), 0);
 
 	for(size_t i = 0; i < Desc::Q; ++i){
+		real_rho += dfs(i).get();
 		vel[0] += dfi::directions[i][0] * dfs(i).get();
 		vel[1] += dfi::directions[i][1] * dfs(i).get();
 	}
+	for(size_t i = 0; i < Desc::Q; ++i){
+		dfs(i).set(dfs(i).get() * (rho/real_rho));
+	}
 
-	vel[0] /= rho;
-	vel[1] /= rho;
+	vel[0] *= real_rho / (rho*rho)
+	vel[1] *= real_rho / (rho*rho)
 }
 
 /**
