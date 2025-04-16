@@ -95,8 +95,8 @@ void compute_const_rho_u (
 		dfs(i).set(dfs(i).get() * (rho/real_rho));
 	}
 
-	vel[0] *= real_rho / (rho*rho)
-	vel[1] *= real_rho / (rho*rho)
+	vel[0] *= real_rho / (rho*rho);
+	vel[1] *= real_rho / (rho*rho);
 }
 
 /**
