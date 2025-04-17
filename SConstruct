@@ -43,6 +43,11 @@ env_vars.Add('prefix',
 	validator=isAbsolutePath
 )
 
+env_vars.Add('build_examples',
+	help='If examples should be built',
+	default="true"
+)
+
 env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     CPPDEFINES=['SAW_UNIX'],
     CXXFLAGS=['-std=c++20','-g','-Wall','-Wextra'],
@@ -58,6 +63,7 @@ env.targets = [];
 
 Export('env')
 SConscript('c++/SConscript')
+SConscript('examples/SConscript')
 SConscript('tests/SConscript')
 
 env.Alias('cdb', env.cdb);

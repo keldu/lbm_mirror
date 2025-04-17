@@ -1,4 +1,4 @@
-#include "../descriptor.hpp"
+#include "../c++/descriptor.hpp"
 
 /**
  */
@@ -439,6 +439,7 @@ int main(){
 			std::cout<<"\n";
 			typename saw::native_data_type<sch::T>::type sum = 0.0;
 
+
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 				auto& dfs = cell.template get<"dfs">();
 				typename saw::native_data_type<sch::T>::type rho;
@@ -449,47 +450,79 @@ int main(){
 					sum += rho;
 				}
 				auto angle = std::atan2(vel[1],vel[0]);
+				double vel_mag = vel[1] * vel[1] + vel[0] * vel[0];
 			
 				auto dir_char = [&]() -> std::string_view {
+					/**
+					 * Flipped y due to print order
+					 */
 					constexpr auto pi = M_PI;
-					if((vel[1] * vel[1] + vel[0]*vel[0]) < 1e-16){
+					return "■";
+					if(vel_mag < 1e-4){
 						return "•";
 					}
 					if(angle > 7.0 / 8.0 * pi){
 						return "←";
 					}
 					if(angle > 5.0 / 8.0 * pi){
-						return "↖";
+						return "↙";
 					}
 					if(angle > 3.0 / 8.0 * pi){
-						return "↑";
+						return "↓";
 					}
 					if(angle > 1.0 / 8.0 * pi){
-						return "↗";
+						return "↘";
 					}
 					if(angle > -1.0 / 8.0 * pi){
 						return "→";
 					}
 					if(angle > -3.0 / 8.0 * pi){
-						return "↘";
+						return "↗";
 					}
 					if(angle > -5.0 / 8.0 * pi){
-						return "↓";
+						return "↑";
 					}
 					if(angle > -7.0 / 8.0 * pi){
-						return "↙";
+						return "↖";
 					}
 					return "←";
 				}();
-				std::cout<<dir_char;
+
+				std::array<uint32_t,3u> rgb_start{64,64,255};
+				std::array<uint32_t,3u> rgb_stop{255,64,64};
+				std::array<uint32_t,3u> rgb_middle{255,255,255};
+
+
+				auto col_interpol = [&](){
+					std::array<uint32_t, 3u> rgb_interpol = rgb_start;
+					double vel_mag_cut = std::min(1.0,std::max(vel_mag/(0.07*0.07),0.0));
+
+					if(vel_mag_cut < 0.5){
+						uint32_t vel_mag_i = static_cast<uint32_t>(2.0 * vel_mag_cut * 256);
+						for(uint8_t i = 0u; i < 3u; ++i){
+							rgb_interpol[i] = (rgb_middle[i] * vel_mag_i + (256-vel_mag_i) * rgb_start[i]) / 256;
+						}
+					}else{
+						uint32_t vel_mag_i = static_cast<uint32_t>((2.0*(vel_mag_cut-0.5)) * 256);
+						for(uint8_t i = 0u; i < 3u; ++i){
+							rgb_interpol[i] = (rgb_stop[i] * vel_mag_i + (256-vel_mag_i) * rgb_middle[i]) / 256;
+						}
+					}
+					return rgb_interpol;
+				};
+				auto rgb_interpol = col_interpol();
+
+				std::cout<<"\x1b[38;2;"<<rgb_interpol[0]<<";"<<rgb_interpol[1]<<";"<<rgb_interpol[2]<<"m"<<dir_char;
 				if( (i+1) < dim_x){
 					std::cout<<" ";
 				}else{
 					std::cout<<"\n";
 				}
 			}, lattice);
+			std::cout<<"\x1b[38;2;255;255;255m";
 
-			std::cout<<"Average rho: "<<(sum / ((dim_x-4)*(dim_y-4)))<<std::endl;
+			/// std::cout<<"Average rho: "<<(sum / ((dim_x-4)*(dim_y-4)))<<std::endl;
+			std::cout.flush();
 
 			std::ofstream vtk_file{"tmp/cavity_2d_"+std::to_string(file_no)+".vtk"};
 
