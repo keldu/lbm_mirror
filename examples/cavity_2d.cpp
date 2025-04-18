@@ -193,7 +193,7 @@ public:
 	void apply(saw::data<sch::DfCell<Desc>>& dfs){
 		typename saw::native_data_type<sch::T>::type rho;
 		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
-		compute_rho_u<Desc>(dfs,rho,vel);
+		compute_rho_u<sch::T,Desc>(dfs,rho,vel);
 		auto eq = equilibrium<Desc>(rho,vel);
 		
 		for(uint64_t i = 0u; i < Desc::Q; ++i){
@@ -420,7 +420,7 @@ int main(){
 				auto& dfs = cell.template get<"dfs">();
 				typename saw::native_data_type<sch::T>::type rho;
 				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
-				compute_rho_u<sch::D2Q9>(dfs,rho,vel);
+				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 
 				if(i > 1 && (i+2) < dim_x && j > 1 && (j+2) < dim_y){
 					sum += rho;
@@ -517,7 +517,7 @@ int main(){
 
 				typename saw::native_data_type<sch::T>::type rho;
 				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
-				compute_rho_u<sch::D2Q9>(dfs,rho,vel);
+				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 
 				vtk_file << static_cast<float>(vel[0u]) << " " << static_cast<float>(vel[1u])<<" 0.0\n";
 			}, lattice);

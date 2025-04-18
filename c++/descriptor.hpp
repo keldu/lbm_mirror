@@ -1,6 +1,7 @@
 #pragma once
 
 #include <forstio/codec/data.hpp>
+#include <forstio/codec/schema_factory.hpp>
 
 namespace kel {
 namespace lbm {
@@ -164,10 +165,12 @@ public:
 		factory_struct_{inp}
 	{}
 
+	/*
 	template<typename TA, saw::string_literal KA>
 	constexpr auto require() const noexcept {
 		return {factory_struct_.add_maybe()};
 	}
+	*/
 };
  
 }

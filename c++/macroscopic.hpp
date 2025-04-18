@@ -1,18 +1,20 @@
 #pragma once
 
+#include "descriptor.hpp"
+
 namespace kel {
 namespace lbm {
 /**
  * Calculate the macroscopic variables rho and u in Lattice Units.
  */
-template<typename Desc>
+template<typename T, typename Desc>
 void compute_rho_u (
-		const saw::data<sch::DfCell<Desc>>& dfs,
-		typename saw::native_data_type<sch::T>::type& rho,
-		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
+		saw::data<sch::Cell<T, Desc, 0, 0, 1>>& dfs,
+		typename saw::native_data_type<T>::type& rho,
+		std::array<typename saw::native_data_type<T>::type, 2>& vel
 	)
 {
-	using dfi = df_info<sch::T, Desc>;
+	using dfi = df_info<T, Desc>;
 
 	rho = 0;
 	std::fill(vel.begin(), vel.end(), 0);
