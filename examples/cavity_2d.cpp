@@ -1,4 +1,5 @@
 #include "../c++/descriptor.hpp"
+#include "../c++/macroscopic.hpp"
 
 /**
  */
@@ -44,31 +45,6 @@ using CellStruct = Struct<
 
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
-}
-
-/**
- * Calculate the macroscopic variables rho and u in Lattice Units.
- */
-template<typename Desc>
-void compute_rho_u (
-		saw::data<sch::DfCell<Desc>>& dfs,
-		typename saw::native_data_type<sch::T>::type& rho,
-		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
-	)
-{
-	using dfi = df_info<sch::T, Desc>;
-
-	rho = 0;
-	std::fill(vel.begin(), vel.end(), 0);
-
-	for(size_t i = 0; i < Desc::Q; ++i){
-		rho += dfs(i).get();
-		vel[0] += dfi::directions[i][0] * dfs(i).get();
-		vel[1] += dfi::directions[i][1] * dfs(i).get();
-	}
-
-	vel[0] /= rho;
-	vel[1] /= rho;
 }
 
 /**

@@ -13,14 +13,20 @@ saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<T> rho, saw::
 	//  0.0
 	//  / \
 	//  | |
+	//
+	//  Velocity * Velocity meaning || vel ||_2^2 or <vel,vel>_2
 	saw::data<T> vel_vel{0.0};
 	for(uint64_t j = 0u; j < Descriptor::D; ++j){
 		vel_vel = vel_vel + vel.at(j) * vel.at(j);
 	}
 
+	/**
+	 * Calculate equilibrium
+	 */
 	for(uint64_t i = 0u; i < eq.template get_dim_size<0u>(); ++i){
 		saw::data<T> vel_c{};
 		for(uint64_t j = 0u; j < Descriptor::D; ++j){
+			// <vel,c_i>_2
 			vel_c = vel_c + (vel.at(j) * saw::data<T>{static_cast<saw::native_data_type<T>::type>(dfi::directions[i][j])});
 		}
 

@@ -152,6 +152,24 @@ public:
 	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
 	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
+
+template<typename Schema>
+class cell_schema_builder {
+private:
+	saw::schema_factory<Schema> factory_struct_;
+public:
+	cell_schema_builder() = default;
+
+	cell_schema_builder(saw::schema_factory<Schema> inp):
+		factory_struct_{inp}
+	{}
+
+	template<typename TA, saw::string_literal KA>
+	constexpr auto require() const noexcept {
+		return {factory_struct_.add_maybe()};
+	}
+};
+ 
 }
 }
 
