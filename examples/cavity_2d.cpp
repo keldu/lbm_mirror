@@ -1,5 +1,6 @@
 #include "../c++/descriptor.hpp"
 #include "../c++/macroscopic.hpp"
+#include "../c++/lbm.hpp"
 
 /**
  */
@@ -371,7 +372,14 @@ int main(){
 
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
 
-	// auto& df_field = lattices.at(0).template get<"dfs">();
+	converter<sch::T> conv{
+		{0.1},
+		{0.1}
+	};
+
+	print_lbm_meta(conv);
+
+	//auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
 	//	lattices.at(i) = {dim_x, dim_y};
 	//}
@@ -380,6 +388,7 @@ int main(){
 	 * Set meta information describing what this cell is
 	 */
 	set_geometry(lattice);
+	
 	/**
 	 * 
 	 */
