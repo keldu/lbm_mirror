@@ -1,4 +1,7 @@
 #pragma once
+	/**
+	 * Get the conversion parameter with the conversion type
+	 */
 
 #include <forstio/codec/unit/unit.hpp>
 
@@ -39,7 +42,7 @@ template<typename S>
 using LbmMeter = Unit<S, UnitElement<lbm_type::meter, 1>>;
 
 template<typename S>
-using SiSecond = Unit<S, UnitElement<si_type::meter, 1>>;
+using SiSecond = Unit<S, UnitElement<si_type::second, 1>>;
 
 template<typename S>
 using LbmSecond = Unit<S, UnitElement<lbm_type::second, 1>>;

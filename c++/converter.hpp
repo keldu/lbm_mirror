@@ -20,6 +20,20 @@ public:
 		second_conv_{second_conv__}
 	{}
 
+	/**
+	 * Get the conversion parameter with the conversion type
+	 */
+	auto conversion_x() const {
+		return meter_conv_;
+	}
+
+	/**
+	 * Get the conversion parameter with the conversion type
+	 */
+	auto conversion_t() const {
+		return second_conv_;
+	}
+
 	auto delta_x() const {
 		return meter_conv_*saw::data<sch::LbmMeter<T>>{1.0};
 	}
@@ -45,7 +59,7 @@ public:
 	}
 
 	saw::data<sch::LbmKinematicViscosity<T>> kinematic_viscosity_si_to_lbm (const saw::data<sch::SiKinematicViscosity<T>>& kin_si) const {
-		return kin_si * second_conv_ / (meter_conv_ * meter_conv_);
+		return kin_si / (meter_conv_ * meter_conv_) * second_conv_;
 	}
 };
 
