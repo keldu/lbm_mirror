@@ -30,31 +30,37 @@ struct second {
 };
 }
 
-namesapce sch {
+namespace sch {
+using namespace saw::schema;
+template<typename S>
+using SiMeter = Unit<S, UnitElement<si_type::meter, 1>>;
 
 template<typename S>
-using SiMeter = schema::Unit<S, schema::UnitElement<si_type::meter, 1>>;
+using LbmMeter = Unit<S, UnitElement<lbm_type::meter, 1>>;
 
 template<typename S>
-using LbmMeter = schema::Unit<S, schema::UnitElement<lbm_type::meter, 1>>;
+using SiSecond = Unit<S, UnitElement<si_type::meter, 1>>;
 
 template<typename S>
-using SiSecond = schema::Unit<S, schema::UnitElement<si_type::meter, 1>>;
+using LbmSecond = Unit<S, UnitElement<lbm_type::second, 1>>;
 
 template<typename S>
-using LbmSecond = schema::Unit<S, schema::UnitElement<lbm_type::second, 1>>;
+using SiVelocity = Unit<S, UnitElement<si_type::meter, 1>, UnitElement<si_type::second, -1>>;
 
 template<typename S>
-using SiVelocity = schema::Unit<S, schema::UnitElement<si_type::meter, 1>, schema::UnitElement<si_type::second, -1>>;
+using LbmVelocity = Unit<S, UnitElement<lbm_type::meter, 1>, UnitElement<lbm_type::second, -1>>;
 
 template<typename S>
-using LbmVelocity = schema::Unit<S, schema::UnitElement<lbm_type::meter, 1>, schema::UnitElement<lbm_type::second, -1>>;
+using SiAcceleration = Unit<S, UnitElement<si_type::meter, 1>, UnitElement<si_type::second, -2>>;
 
 template<typename S>
-using SiAcceleration = schema::Unit<S, schema::UnitElement<si_type::meter, 1>, schema::UnitElement<si_type::second, -2>>;
+using LbmAcceleration = Unit<S, UnitElement<lbm_type::meter, 1>, UnitElement<lbm_type::second, -2>>;
 
 template<typename S>
-using LbmAcceleration = schema::Unit<S, schema::UnitElement<lbm_type::meter, 1>, schema::UnitElement<lbm_type::second, -2>>;
+using SiKinematicViscosity = Unit<S, UnitElement<si_type::meter, 2>, UnitElement<si_type::second, -1>>;
+
+template<typename S>
+using LbmKinematicViscosity = Unit<S, UnitElement<lbm_type::meter, 2>, UnitElement<lbm_type::second, -1>>;
 
 }
 }
