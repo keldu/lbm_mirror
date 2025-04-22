@@ -2,6 +2,7 @@
 
 #include "descriptor.hpp"
 #include "converter.hpp"
+#include "config.hpp"
 
 #include <forstio/codec/unit/unit_print.hpp>
 #include <iostream>

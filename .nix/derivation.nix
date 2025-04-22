@@ -20,13 +20,14 @@ stdenv.mkDerivation {
     forstio.async
     forstio.codec
     forstio.codec-unit
-	];
+    forstio.codec-json
+  ];
 
-	doCheck = true;
-	checkPhase = ''
+  doCheck = true;
+  checkPhase = ''
     scons test
-		./bin/tests
-	'';
+    ./bin/tests
+  '';
 
   outputs = [ "out" "dev" ];
 }
