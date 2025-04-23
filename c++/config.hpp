@@ -16,7 +16,8 @@ template<typename T, typename Desc>
 using LbmConfig = Struct<
     Member<T, "delta_x">,
     Member<T, "kinematic_viscosity">,
-    Member<T, "delta_t">
+    Member<T, "delta_t">,
+    Member<FixedArray<UInt64,Desc::D>, "dims">
 >;
 }
 

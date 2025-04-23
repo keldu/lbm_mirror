@@ -49,34 +49,6 @@ using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
 
 /**
- * Unsure if feasible. I would have a rho normalization on the dfs and then I would use the const rho_computation
- */
-template<typename Desc>
-void compute_const_rho_u (
-		saw::data<sch::DfCell<Desc>>& dfs,
-		const typename saw::native_data_type<sch::T>::type rho,
-		std::array<typename saw::native_data_type<sch::T>::type, 2>& vel
-	)
-{
-	using dfi = df_info<sch::T, Desc>;
-
-	saw::native_data_type<sch::T>::type real_rho = 0;
-	std::fill(vel.begin(), vel.end(), 0);
-
-	for(size_t i = 0; i < Desc::Q; ++i){
-		real_rho += dfs(i).get();
-		vel[0] += dfi::directions[i][0] * dfs(i).get();
-		vel[1] += dfi::directions[i][1] * dfs(i).get();
-	}
-	for(size_t i = 0; i < Desc::Q; ++i){
-		dfs(i).set(dfs(i).get() * (rho/real_rho));
-	}
-
-	vel[0] *= real_rho / (rho*rho);
-	vel[1] *= real_rho / (rho*rho);
-}
-
-/**
  * Calculates the equilibrium for each direction
  */
 template<typename Desc>
