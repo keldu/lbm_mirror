@@ -10,7 +10,7 @@ using namespace kel::lbm::sch;
 using T = Float64;
 }
 
-SAW_TEST("Meter"){
+SAW_TEST("Si Meter to Lbm Meter"){
 	using namespace kel;
 
 	lbm::converter<sch::T> converter{

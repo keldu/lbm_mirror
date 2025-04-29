@@ -1,15 +1,15 @@
 #pragma once
 
+#include "../particle.hpp"
+
 namespace kel {
 namespace lbm {
 
 template<typename T>
 class particle_circle_geometry {
 private:
-	saw::data<T> radius_;
 public:
-	particle_circle_geometry(saw::data<T> radius__):
-		radius_{radius__}
+	particle_circle_geometry()
 	{}
 
 	template<typename MT>
@@ -18,19 +18,25 @@ public:
 
 		auto& grid = mask.template get<"grid">();
 
-		uint64_t size = resolution + 2*boundary_nodes;
-		grid = {{size,size}};
+		//uint64_t rad_i = static_cast<uint64_t>(resolution * radius_.get())+1u;
+		uint64_t rad_i = resolution;
+		uint64_t size = rad_i + 2*boundary_nodes;
+		grid = {{{size,size}}};
 
-		saw::data<T> radius_squared = radius_ * radius_;
-
-
+		saw::data<T> delta_x{2.0  / rad_i};
+		saw::data<T> center = (saw::data<T>{1.0} + saw::data<T>{2.0} * saw::data<T>{static_cast<saw::native_data_type<T>::type>(boundary_nodes)/rad_i});
 
 		for(uint64_t i = 0; i < size; ++i){
 			for(uint64_t j = 0; j < size; ++j){
-				if(i < boundary_nodes || j < boundary_nodes || i >= resolution+boundary_nodes || j >= resolution + boundary_nodes ){
-					grid.at({i,j}).set(0);
-				}else{
+				grid.at({{i,j}}).set(0);
+				if(i >= boundary_nodes and j >= boundary_nodes and i < (rad_i + boundary_nodes) and j < (rad_i + boundary_nodes) ){
+					saw::data<T> fi = saw::data<T>{0.5+static_cast<saw::native_data_type<T>::type>(i)} * delta_x - center;
+					saw::data<T> fj = saw::data<T>{0.5+static_cast<saw::native_data_type<T>::type>(j)} * delta_x - center;
 
+					auto norm_f_ij = fi*fi + fj*fj;
+					if(norm_f_ij.get() <= 1){
+						grid.at({{i,j}}).set(1);
+					}
 				}
 			}
 		}
