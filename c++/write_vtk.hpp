@@ -26,7 +26,7 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<MemberTypes,MemberNames>...>> {
 
 template<typename T, uint64_t D>
 struct lbm_vtk_writer<sch::FixedArray<T,D>> {
-	static saw::error_or<void> apply(std::ofstream& vtk_file, std::string_view name){
+	static saw::error_or<void> apply(std::ostream& vtk_file, std::string_view name){
 		vtk_file<<"VECTORS "<<name<<" float\n";
 	}
 };
@@ -34,14 +34,14 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 template<typename Desc, typename... StructT, saw::string_literal... StructN>
 struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>> {
 	template<uint64_t i, uint64_t Dep>
-	saw::error_or<void> write_i_iterate_d(std::ofstream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field, saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
+	saw::error_or<void> write_i_iterate_d(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field, saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
 		if constexpr (Dep == Desc::D){
 
 		}
 	}
 
 	template<uint64_t i>
-	saw::error_or<void> write_i(std::ofstream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
+	saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
 
 		auto meta = field.meta();
 		saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -59,7 +59,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 	}
 
 	template<uint64_t i>
-	saw::error_or<void> iterate_i(std::ofstream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
+	saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
 		{
 			auto eov = write_i<i>(vtk_file, field);
 			if(eov.is_error()){
@@ -72,8 +72,17 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 		return saw::make_void();
 	}
 
-	saw::error_or<void> apply(std::ofstream& vtk_file, 
+	saw::error_or<void> apply(std::ostream& vtk_file,
 		const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
+
+		vtk_file
+			<<"# vtk DataFile Version 3.0\n"
+			<<"LBM File\n"
+			<<"ASCII\n"
+			<<"DATASET STRUCTURED POINTS\n"
+			<<"SPACING 1.0 1.0 1.0\n"
+			<<"ORIGIN 0.0 0.0 0.0\n"
+		;
 		
 		auto meta = field.meta();
 		saw::data<sch::UInt64> pd_size{1u};
@@ -119,15 +128,6 @@ saw::error_or<void> write_vtk(const std::string_view file_name, const saw::data<
 	if(!vtk_file.is_open()){
 		return saw::make_error<saw::err::critical>("Could not open file.");
 	}
-
-	vtk_file
-		<<"# vtk DataFile Version 3.0\n"
-		<<"LBM File\n"
-		<<"ASCII\n"
-		<<"DATASET STRUCTURED POINTS\n"
-		<<"SPACING 1.0 1.0 1.0\n"
-		<<"ORIGIN 0.0 0.0 0.0\n"
-	;
 
 
 	auto eov = impl::lbm_vtk_writer<Struct>::apply(vtk_file, field);

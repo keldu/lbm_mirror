@@ -33,6 +33,8 @@ using CellStruct = Struct<
 SAW_TEST("VTK Write test example"){
 	using namespace kel;
 
+	write_vtk();
+
 	// using Type = typename parameter_pack_type<i,T...>::type;
 }
 }
