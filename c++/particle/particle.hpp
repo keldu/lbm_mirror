@@ -35,7 +35,7 @@ class particle_system {
 private:
 	saw::data<sch::Array<Particle, D>> particles_;
 
-	void verlet_step(saw::data<sch::Particle<T,D>& particle, saw::data<T> time_step_delta){
+	void verlet_step(saw::data<sch::Particle<T,D>>& particle, saw::data<T> time_step_delta){
 		auto& body = particle.template get<"rigid_body">();
 
 		auto& pos = body.template get<"position">();
