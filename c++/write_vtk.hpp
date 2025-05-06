@@ -19,7 +19,7 @@ struct lbm_vtk_writer {
 template<typename... MemberTypes, saw::string_literal... MemberNames>
 struct lbm_vtk_writer<sch::Struct<sch::Member<MemberTypes,MemberNames>...>> {
 
-	saw::error_or<void> apply(){
+	static saw::error_or<void> apply(){
 		return saw::make_void();
 	}
 };
@@ -34,14 +34,14 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 template<typename Desc, typename... StructT, saw::string_literal... StructN>
 struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>> {
 	template<uint64_t i, uint64_t Dep>
-	saw::error_or<void> write_i_iterate_d(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field, saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
+	static saw::error_or<void> write_i_iterate_d(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field, saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
 		if constexpr (Dep == Desc::D){
 
 		}
 	}
 
 	template<uint64_t i>
-	saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
+	static saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
 
 		auto meta = field.meta();
 		saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -59,7 +59,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 	}
 
 	template<uint64_t i>
-	saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
+	static saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
 		{
 			auto eov = write_i<i>(vtk_file, field);
 			if(eov.is_error()){
@@ -72,7 +72,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 		return saw::make_void();
 	}
 
-	saw::error_or<void> apply(std::ostream& vtk_file,
+	static saw::error_or<void> apply(std::ostream& vtk_file,
 		const saw::data<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>>& field){
 
 		vtk_file
@@ -120,7 +120,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 }
 
 template<typename Struct>
-saw::error_or<void> write_vtk(const std::string_view file_name, const saw::data<Struct>& field){
+saw::error_or<void> write_vtk_file(const std::string_view file_name, const saw::data<Struct>& field){
 
 	std::string vtk_file_name{file_name};
 	std::ofstream vtk_file{vtk_file_name};

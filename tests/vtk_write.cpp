@@ -3,6 +3,7 @@
 #include <iostream>
 #include "../c++/write_vtk.hpp"
 
+#include <sstream>
 
 namespace {
 namespace sch {
@@ -33,7 +34,14 @@ using CellStruct = Struct<
 SAW_TEST("VTK Write test example"){
 	using namespace kel;
 
-	write_vtk();
+	// write_vtk();
+
+	std::stringstream sstream;
+
+	saw::data<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>> cells;
+
+	auto eov = lbm::impl::lbm_vtk_writer<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>>::apply(sstream, cells);
+	SAW_EXPECT(eov.is_value(), "vtk writer failed to write");
 
 	// using Type = typename parameter_pack_type<i,T...>::type;
 }
