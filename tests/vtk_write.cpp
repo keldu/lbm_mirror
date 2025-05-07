@@ -38,7 +38,7 @@ SAW_TEST("VTK Write test example"){
 
 	std::stringstream sstream;
 
-	saw::data<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>> cells;
+	saw::data<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>> cells{{{2u,2u}}};
 
 	auto eov = lbm::impl::lbm_vtk_writer<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>>::apply(sstream, cells);
 	SAW_EXPECT(eov.is_value(), "vtk writer failed to write");

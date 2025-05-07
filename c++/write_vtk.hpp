@@ -31,6 +31,14 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 	}
 };
 
+template<typename Sch, typename Desc, uint64_t SC_V, uint64_t DC_V, uint64_t QC_V>
+struct lbm_vtk_writer<sch::Cell<Sch,Desc,SC_V, DC_V, QC_V>> {
+	static saw::error_or<void> apply(std::ostream& vtk_file, std::string_view name){
+		vtk_file<<"VECTORS "<<name<<" float\n";
+		return saw::make_void();
+	}
+};
+
 template<typename Desc, typename... StructT, saw::string_literal... StructN>
 struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,StructN>...>>> {
 	template<uint64_t i, uint64_t Dep>
@@ -38,6 +46,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 		if constexpr (Dep == Desc::D){
 
 		}
+		return saw::make_void();
 	}
 
 	template<uint64_t i>
@@ -87,6 +96,7 @@ struct lbm_vtk_writer<sch::CellField<Desc,sch::Struct<sch::Member<StructT,Struct
 		auto meta = field.meta();
 		saw::data<sch::UInt64> pd_size{1u};
 		// DIMENSIONS
+
 		{
 			vtk_file << "DIMENSIONS ";
 			for(saw::data<sch::UInt64> i{0u}; i.get() < Desc::D; ++i){

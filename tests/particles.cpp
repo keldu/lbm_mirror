@@ -31,4 +31,12 @@ SAW_TEST("Minor Test for mask"){
 	//saw::data<sch::Array<sch::T,2>> reference_mask{{{4+2,4+2}}};
 	//reference_mask.at({{0,0}});
 }
+
+SAW_TEST("Verlet integration test"){
+	using namespace kel;
+	lbm::particle_system<sch::T,2,sch::Particle<sch::T,2>> system;
+
+	// system.step();
+
+}
 }
