@@ -29,6 +29,12 @@ using CellStruct = Struct<
 	Member<CellInfo<Desc>, "info">
 >;
 
+template<typename T, uint64_t D>
+using MacroStruct = Struct<
+	Member<FixedArray<T,D>, "velocity">,
+	Member<T, "pressure">
+>;
+
 }
 
 SAW_TEST("VTK Write test example"){
@@ -38,10 +44,16 @@ SAW_TEST("VTK Write test example"){
 
 	std::stringstream sstream;
 
-	saw::data<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>> cells{{{2u,2u}}};
+	saw::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
 
-	auto eov = lbm::impl::lbm_vtk_writer<sch::CellField<sch::D2Q5,sch::CellStruct<sch::D2Q5>>>::apply(sstream, cells);
+	auto& cell_0 = cells.at({{{0,0}}});
+	cell_0.template get<"velocity">()= {{0.5,-0.1}};
+	cell_0.template get<"pressure">().set({1.1});
+
+	auto eov = lbm::impl::lbm_vtk_writer<sch::Array<sch::MacroStruct<sch::T,2>, 2>>::apply(sstream, cells);
 	SAW_EXPECT(eov.is_value(), "vtk writer failed to write");
+
+	std::cout<<sstream.str()<<std::endl;
 
 	// using Type = typename parameter_pack_type<i,T...>::type;
 }
