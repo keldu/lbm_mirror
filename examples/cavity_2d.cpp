@@ -44,6 +44,11 @@ using CellStruct = Struct<
 	Member<CellInfo<Desc>, "info">
 >;
 
+template<typename T, uint64_t D>
+using MacroStruct = Struct<
+	Member<FixedArray<T,D>, "velocity">,
+	Member<T, "pressure">
+>;
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
@@ -390,6 +395,8 @@ int main(){
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
+	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+
 	for(uint64_t step = 0; step < lattice_steps; ++step){
 
 		if(step % print_every == 0u){
@@ -481,28 +488,17 @@ int main(){
 			/// std::cout<<"Average rho: "<<(sum / ((dim_x-4)*(dim_y-4)))<<std::endl;
 			std::cout.flush();
 
-			std::ofstream vtk_file{"tmp/cavity_2d_"+std::to_string(file_no)+".vtk"};
-
-			vtk_file <<"# vtk DataFile Version 3.0\n";
-			vtk_file <<"Velocity Cavity2D example\n";
-			vtk_file <<"ASCII\n";
-			vtk_file <<"DATASET STRUCTURED_POINTS\n";
-			vtk_file <<"DIMENSIONS "<< dim_x <<" "<<dim_y<<" 1\n";
-			vtk_file <<"SPACING 1.0 1.0 1.0\n";
-			vtk_file <<"ORIGIN 0.0 0.0 0.0\n";
-			vtk_file <<"POINT_DATA "<<(dim_x*dim_y)<<"\n";
-			vtk_file <<"VECTORS Velocity float\n";
-			
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 				auto dfs = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
-				typename saw::native_data_type<sch::T>::type rho;
-				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
+				auto& rho = macros.at({{i,j}}).template get<"pressure">();
+				auto& vel = macros.at({{i,j}}).template get<"velocity">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
-
-				vtk_file << static_cast<float>(vel[0u]) << " " << static_cast<float>(vel[1u])<<" 0.0\n";
 			}, lattice);
-			
+
+			std::string vtk_f_name{"tmp/cavity_2d_"};
+			vtk_f_name += std::to_string(file_no) + ".vtk";
+			write_vtk_file(vtk_f_name, macros);
 
 			++file_no;
 		}

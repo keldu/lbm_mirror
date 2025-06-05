@@ -49,14 +49,14 @@ void compute_rho_u (
 	}
 
 	for(size_t j = 0; j < Desc::Q; ++j){
-		rho = rho + dfs(j);
+		rho() = rho() + dfs(j);
 		for(size_t i = 0; i < Desc::D; ++i){
-			vel[i] = vel[i] + saw::data<T>{dfi::directions[j][i]} * dfs(j);
+			vel().at({i}) = vel().at({i}) + saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[j][i])} * dfs(j);
 		}
 	}
 
 	for(size_t i = 0; i < Desc::D; ++i){
-		vel[i] = vel[i] / rho;
+		vel().at({i}) = vel().at({i}) / rho();
 	}
 }
 }
