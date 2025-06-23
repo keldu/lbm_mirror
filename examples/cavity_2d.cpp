@@ -2,6 +2,7 @@
 #include "../c++/macroscopic.hpp"
 #include "../c++/lbm.hpp"
 #include "../c++/component.hpp"
+#include "../c++/collision.hpp"
 
 /**
  */
@@ -106,8 +107,6 @@ public:
 namespace cmpt {
 struct BounceBack{};
 struct MovingWall {};
-struct BGK {};
-struct ConstRhoBGK {};
 }
 
 
@@ -153,23 +152,6 @@ public:
 			dfs({dfi::opposite_index.at(i)}) = dfs_cpy({i}) - 2.0 * dfi::weights[i] * 1.0 * ( lid_vel[0] * dfi::directions[i][0] + lid_vel[1] * dfi::directions[i][1]) * dfi::inv_cs2;
 		}
 		*/
-	}
-};
-
-template<typename Desc>
-class component<sch::T, Desc, cmpt::BGK> {
-public:
-	typename saw::native_data_type<sch::T>::type relaxation_;
-public:
-	void apply(saw::data<sch::DfCell<Desc>>& dfs){
-		typename saw::native_data_type<sch::T>::type rho;
-		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
-		compute_rho_u<sch::T,Desc>(dfs,rho,vel);
-		auto eq = equilibrium<Desc>(rho,vel);
-		
-		for(uint64_t i = 0u; i < Desc::Q; ++i){
-			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
-		}
 	}
 };
 }
@@ -260,8 +242,10 @@ void lbm_step(
 	using namespace kel::lbm;
   using dfi = df_info<sch::T,sch::D2Q9>;
 
-	component<sch::T, sch::D2Q9, cmpt::BGK> coll;
-	coll.relaxation_ = 0.5384;
+  /**
+	* Relaxation parameter \tau
+	*/
+	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;

@@ -13,7 +13,7 @@ dir_path = Dir('.').abspath
 core_env = env.Clone();
 
 core_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
-core_env.headers = sorted(glob.glob(dir_path + "/*.h"));
+core_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
 
 env.sources += core_env.sources;
 env.headers += core_env.headers;
