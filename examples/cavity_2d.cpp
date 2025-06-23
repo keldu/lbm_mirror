@@ -1,6 +1,7 @@
 #include "../c++/descriptor.hpp"
 #include "../c++/macroscopic.hpp"
 #include "../c++/lbm.hpp"
+#include "../c++/component.hpp"
 
 /**
  */
@@ -79,14 +80,6 @@ std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
 	return eq;
 }
 
-/**
- * A reason for why a component based design is really good can be seen in my LR solver example
- *
- * Add Expression Templates and you're golden.
- */
-template<typename Kind, typename Desc>
-class component;
-
 /*
 template<typename T, typename Encode>
 class df_cell_view;
@@ -122,7 +115,7 @@ struct ConstRhoBGK {};
  * Full-Way BounceBack. I suspect that the moving wall requires half-way bounce back.
  */
 template<typename Desc>
-class component<cmpt::BounceBack,Desc> {
+class component<sch::T, Desc, cmpt::BounceBack> {
 public:
 
 	void apply(saw::data<sch::DfCell<Desc>>& dfs){
@@ -142,7 +135,7 @@ public:
  * Technically it should reflect properly.
  */
 template<typename Desc>
-class component<cmpt::MovingWall, Desc> {
+class component<sch::T, Desc, cmpt::MovingWall> {
 public:
 	std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
 	
@@ -164,7 +157,7 @@ public:
 };
 
 template<typename Desc>
-class component<cmpt::BGK, Desc> {
+class component<sch::T, Desc, cmpt::BGK> {
 public:
 	typename saw::native_data_type<sch::T>::type relaxation_;
 public:
@@ -173,23 +166,6 @@ public:
 		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
 		compute_rho_u<sch::T,Desc>(dfs,rho,vel);
 		auto eq = equilibrium<Desc>(rho,vel);
-		
-		for(uint64_t i = 0u; i < Desc::Q; ++i){
-			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
-		}
-	}
-};
-
-template<typename Desc>
-class component<cmpt::ConstRhoBGK, Desc> {
-public:
-	typename saw::native_data_type<sch::T>::type relaxation_;
-	typename saw::native_data_type<sch::T>::type rho_;
-public:
-	void apply(saw::data<sch::DfCell<Desc>>& dfs){
-		std::array<typename saw::native_data_type<sch::T>::type, Desc::D> vel;
-		compute_const_rho_u<Desc>(dfs,rho_,vel);
-		auto eq = equilibrium<Desc>(rho_,vel);
 		
 		for(uint64_t i = 0u; i < Desc::Q; ++i){
 			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
@@ -284,14 +260,11 @@ void lbm_step(
 	using namespace kel::lbm;
   using dfi = df_info<sch::T,sch::D2Q9>;
 
-	component<cmpt::BGK,sch::D2Q9> coll;
+	component<sch::T, sch::D2Q9, cmpt::BGK> coll;
 	coll.relaxation_ = 0.5384;
-	component<cmpt::ConstRhoBGK,sch::D2Q9> rho_coll;
-	rho_coll.relaxation_ = 0.5384;
-	rho_coll.rho_ = 1.0;
 
-	component<cmpt::BounceBack,sch::D2Q9> bb;
-	component<cmpt::MovingWall,sch::D2Q9> bb_lid;
+	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
+	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
 	// Collide
@@ -505,7 +478,7 @@ int main(){
 		
 		lbm_step(lattice, even_step);
 
-		even_step = !even_step;
+		even_step = not even_step;
 	}
 
 	/**

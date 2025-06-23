@@ -6,6 +6,10 @@ namespace kel {
 namespace lbm {
 
 namespace cmpt {
+
+/**
+ * Maybe for the future
+ */
 template<saw::string_literal Name, uint64_t Dist, bool Read, bool Write, bool SkipSync = false>
 class access {
 public:
@@ -16,6 +20,9 @@ public:
 	static constexpr bool skip_sync = SkipSync;
 };
 
+/**
+ * Maybe for the future
+ */
 template<typename... Acc>
 class access_tuple {
 public:
@@ -23,7 +30,7 @@ public:
 }
 
 /**
- * Compponent class which forms the basis of the 
+ * Component class which forms the basis of each processing step
  */
 template<typename T, typename Descriptor, typename Cmpt>
 class component {};

@@ -28,10 +28,16 @@ examples_objects = [];
 examples_env.add_source_files(examples_objects, ['cavity_2d.cpp'], shared=False);
 examples_env.cavity_2d = examples_env.Program('#bin/cavity_2d', [env.library_static, examples_objects]);
 
+# Channel Throat 2D
+#examples_objects = [];
+#examples_env.add_source_files(examples_objects, ['particle_ibm.cpp'], shared=False);
+#examples_env.particle_ibm_2d = examples_env.Program('#bin/particle_ibm_2d', [env.library_static, examples_objects]);
+
 # Set Alias
 env.examples = [
 	examples_env.meta_2d,
-	examples_env.cavity_2d
+	examples_env.cavity_2d,
+#	examples_env.particle_ibm_2d
 ];
 env.Alias('examples', env.examples);
 
