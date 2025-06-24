@@ -72,13 +72,9 @@ int main(int argc, char** argv){
 
 	print_lbm_meta<sch::Float64,sch::Descriptor<2,9>>(conv, {conf.template get<"kinematic_viscosity">()});
 
-
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{128, 128}};
 
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
-
-
-
 
 	return 0;
 }

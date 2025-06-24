@@ -40,18 +40,18 @@ public:
 	template<typename CellFieldSchema>
 	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
 		bool is_even = ((time_step % 2) == 0);
-		auto& cell = field.at(index);
+		auto& cell = field(index);
 
 		auto& dfs_old = is_even ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 		auto& dfs = (!is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
-		typename saw::native_data_type<T>::type rho;
-		std::array<typename saw::native_data_type<T>::type, Descriptor::D> vel;
+		saw::data<T> rho;
+		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
 		compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		auto eq = equilibrium<Descriptor>(rho,vel);
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq[i] - dfs({i}).get()));
+			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs({i}).get()));
 		}
 	}
 

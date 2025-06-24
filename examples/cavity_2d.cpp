@@ -237,7 +237,8 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 void lbm_step(
 	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-	bool even_step
+	bool even_step,
+	uint64_t time_step
 ){
 	using namespace kel::lbm;
   using dfi = df_info<sch::T,sch::D2Q9>;
@@ -251,6 +252,20 @@ void lbm_step(
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
+	auto dim = latt.meta();
+
+	for(saw::data<sch::UInt64> i{0u}; i < dim.at(0u); ++i){
+		for(saw::data<sch::UInt64> j{0u}; j < dim.at(1u); ++j ){
+			auto& cell = latt({{i,j}});
+			auto& info = cell.template get<"info">();
+
+			switch(info({0u}).get()){
+				case 1u: {
+					coll.apply(latt, {{i,j}}, time_step);
+				} break;
+			}
+		}
+	}
 	// Collide
 	apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 		auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
@@ -258,9 +273,6 @@ void lbm_step(
 
 		auto info_val = info({0u}).get();
 		switch(info_val){
-		case 1u:
-			coll.apply(df);
-			break;
 		case 2u:
 			// bb.apply(df);
 			bb_lid.apply(df);
@@ -460,7 +472,7 @@ int main(){
 			++file_no;
 		}
 		
-		lbm_step(lattice, even_step);
+		lbm_step(lattice, even_step, step);
 
 		even_step = not even_step;
 	}
