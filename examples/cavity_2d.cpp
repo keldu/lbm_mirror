@@ -244,7 +244,7 @@ void lbm_step(
   using dfi = df_info<sch::T,sch::D2Q9>;
 
   /**
-	* Relaxation parameter \tau
+	* 1. Relaxation parameter \tau
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 
@@ -261,7 +261,7 @@ void lbm_step(
 
 			switch(info({0u}).get()){
 				case 1u: {
-					coll.apply(latt, {{i,j}}, time_step);
+					coll.apply(latt, {{i,j}}, time_step+1u);
 				} break;
 			}
 		}
