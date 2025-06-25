@@ -9,6 +9,9 @@ namespace cmpt {
 struct BGK {};
 }
 
+/**
+ * Standard BGK collision operator for LBM
+ */
 template<typename T, typename Descriptor>
 class component<T, Descriptor, cmpt::BGK> {
 private:
@@ -42,8 +45,8 @@ public:
 		bool is_even = ((time_step % 2) == 0);
 		auto& cell = field(index);
 
-		auto& dfs_old = is_even ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (!is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
 		saw::data<T> rho;
 		saw::data<sch::FixedArray<T,Descriptor::D>> vel;

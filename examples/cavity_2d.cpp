@@ -105,7 +105,24 @@ public:
 */
 namespace cmpt {
 struct MovingWall {};
+struct BBTwo {};
 }
+
+template<typename Desc>
+class component<sch::T, Desc,cmpt::BBTwo> {
+public:
+
+	void apply(saw::data<sch::DfCell<Desc>>& dfs){
+		using dfi = df_info<sch::T,Desc>;
+
+		// Technically use .copy()
+		auto df_cpy = dfs;
+
+		for(uint64_t i = 1u; i < Desc::Q; ++i){
+			dfs({i}) = df_cpy({dfi::opposite_index.at(i)});
+		}
+	}
+};
 
 /**
  * Full-Way moving wall Bounce back, something is not right here.
@@ -227,6 +244,8 @@ void lbm_step(
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 
+	component<sch::T, sch::D2Q9, cmpt::BBTwo> bb_two;
+
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
@@ -241,21 +260,26 @@ void lbm_step(
 			switch(info({0u}).get()){
 				case 1u: {
 					coll.apply(latt, {{i,j}}, time_step);
-				}; break;
+					break;
+				}
 				case 2u: {
 					auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-					bb_lid.apply(df);
-				}; break;
+					// bb_lid.apply(df);
+					break;
+				}
 				case 3u: {
+					auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+					// bb_two.apply(df);
 					bb.apply(latt, {{i,j}}, time_step);
-				}; break;
+					break;
+				}
 			}
 		}
 	}
 
 	// Stream
-	for(uint64_t i = 1; (i+1) < latt.template get_dim_size<0>().get(); ++i){
-		for(uint64_t j = 1; (j+1) < latt.template get_dim_size<1>().get(); ++j){
+	for(uint64_t i = 1u; (i+1u) < latt.template get_dim_size<0>().get(); ++i){
+		for(uint64_t j = 1u; (j+1u) < latt.template get_dim_size<1>().get(); ++j){
 			auto& cell = latt({{i,j}});
 			auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 			auto& info_new = cell.template get<"info">();
