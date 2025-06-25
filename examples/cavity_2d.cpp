@@ -3,9 +3,8 @@
 #include "../c++/lbm.hpp"
 #include "../c++/component.hpp"
 #include "../c++/collision.hpp"
+#include "../c++/boundary.hpp"
 
-/**
- */
 #include <forstio/codec/data.hpp>
 
 #include <iostream>
@@ -27,14 +26,14 @@ using namespace saw::schema;
  * Q factor
  */
 using T = Float32;
-using D2Q5 = Descriptor<2,5>;
-using D2Q9 = Descriptor<2,9>;
+using D2Q5 = Descriptor<2u,5u>;
+using D2Q9 = Descriptor<2u,9u>;
 
 template<typename Desc>
-using DfCell = Cell<T, Desc, 0, 0, 1>;
+using DfCell = Cell<T, Desc, 0u, 0u, 1u>;
 
 template<typename Desc>
-using CellInfo = Cell<UInt8, D2Q9, 1, 0, 0>;
+using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
 
 /**
  * Basic type for simulation
@@ -67,13 +66,13 @@ std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
 
 	typename std::array<saw::native_data_type<sch::T>::type,Desc::Q> eq;
 
-	for(std::size_t i = 0; i < eq.size(); ++i){
-		auto vel_c = (vel[0]*dfi::directions[i][0] + vel[1]*dfi::directions[i][1]);
+	for(std::size_t i = 0u; i < eq.size(); ++i){
+		auto vel_c = (vel[0u]*dfi::directions[i][0u] + vel[1u]*dfi::directions[i][1u]);
 		auto vel_c_cs2 = vel_c * dfi::inv_cs2;
 		eq[i] = dfi::weights[i] * rho * (
 			1.0
 			+ vel_c_cs2
-			- dfi::inv_cs2 * 0.5 * ( vel[0] * vel[0] + vel[1] * vel[1] )
+			- dfi::inv_cs2 * 0.5 * ( vel[0u] * vel[0u] + vel[1u] * vel[1u] )
 			+ vel_c_cs2 * vel_c_cs2 * 0.5
 		);
 	}
@@ -105,29 +104,8 @@ public:
 };
 */
 namespace cmpt {
-struct BounceBack{};
 struct MovingWall {};
 }
-
-
-/**
- * Full-Way BounceBack. I suspect that the moving wall requires half-way bounce back.
- */
-template<typename Desc>
-class component<sch::T, Desc, cmpt::BounceBack> {
-public:
-
-	void apply(saw::data<sch::DfCell<Desc>>& dfs){
-		using dfi = df_info<sch::T,Desc>;
-
-		// Technically use .copy()
-		auto df_cpy = dfs;
-
-		for(uint64_t i = 1u; i < Desc::Q; ++i){
-			dfs({i}) = df_cpy({dfi::opposite_index.at(i)});
-		}
-	}
-};
 
 /**
  * Full-Way moving wall Bounce back, something is not right here.
@@ -247,41 +225,33 @@ void lbm_step(
 	* 1. Relaxation parameter \tau
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
-
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
+
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
-	auto dim = latt.meta();
+	auto meta = latt.meta();
 
-	for(saw::data<sch::UInt64> i{0u}; i < dim.at(0u); ++i){
-		for(saw::data<sch::UInt64> j{0u}; j < dim.at(1u); ++j ){
+	// Collide
+	for(saw::data<sch::UInt64> i{0u}; i < meta.at(0u); ++i){
+		for(saw::data<sch::UInt64> j{0u}; j < meta.at(1u); ++j ){
 			auto& cell = latt({{i,j}});
 			auto& info = cell.template get<"info">();
 
 			switch(info({0u}).get()){
 				case 1u: {
-					coll.apply(latt, {{i,j}}, time_step+1u);
-				} break;
+					coll.apply(latt, {{i,j}}, time_step);
+				}; break;
+				case 2u: {
+					auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+					bb_lid.apply(df);
+				}; break;
+				case 3u: {
+					bb.apply(latt, {{i,j}}, time_step);
+				}; break;
 			}
 		}
 	}
-	// Collide
-	apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
-		auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& info = cell.template get<"info">();
-
-		auto info_val = info({0u}).get();
-		switch(info_val){
-		case 2u:
-			// bb.apply(df);
-			bb_lid.apply(df);
-			break;
-		case 3u:
-			bb.apply(df);
-			break;
-		}
-	}, latt);
 
 	// Stream
 	for(uint64_t i = 1; (i+1) < latt.template get_dim_size<0>().get(); ++i){

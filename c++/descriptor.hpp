@@ -205,6 +205,10 @@ public:
 	const data<Sch, Encode>& operator()(const data<schema::UInt64>& index)const{
 		return inner_.at(index);
 	}
+
+	const data<kel::lbm::sch::Cell<Sch, Desc, S, D, Q>, Encode> copy() const {
+		return *this;
+	}
 };
 
 template<typename Desc, typename CellT, typename Encode>

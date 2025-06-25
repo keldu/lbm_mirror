@@ -51,7 +51,7 @@ public:
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs({i}).set(dfs({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs({i}).get()));
+			dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
 		}
 	}
 

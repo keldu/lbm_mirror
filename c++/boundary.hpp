@@ -9,14 +9,14 @@ namespace cmpt {
 struct BounceBack {};
 }
 
+/**
+ * Full-Way BounceBack.
+ */
 template<typename T, typename Descriptor>
 class component<T, Descriptor, cmpt::BounceBack> {
 private:
-	typename saw::native_data_type<T>::type relaxation_;
 public:
-	component(typename saw::native_data_type<T>::type relaxation__):
-		relaxation_{relaxation__}
-	{}
+	component() = default;
 
 	using Component = cmpt::BounceBack;
 
@@ -30,7 +30,7 @@ public:
 	/**
 	 * Thoughts regarding automating order setup
 	 */
-	static constexpr saw::string_literal name = "collision";
+	static constexpr saw::string_literal name = "full_way_bounce_back";
 	static constexpr saw::string_literal after = "";
 	static constexpr saw::string_literal before = "streaming";
 
@@ -38,20 +38,22 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
-		bool is_even = ((time_step % 2) == 0);
-		auto& cell = field.at(index);
+	void apply(saw::data<CellFieldSchema>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, uint64_t time_step){
+		bool is_even = ((time_step % 2u) == 0u);
 
-		auto& dfs_old = is_even ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (!is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// This is a ref
+		auto& cell = field(index);
 
-		using dfi = df_info<sch::T,Desc>;
+		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+
+		using dfi = df_info<T,Descriptor>;
 
 		// Technically use .copy()
-		auto df_cpy = dfs;
+		auto df_cpy = dfs_old;
 
-		for(uint64_t i = 1u; i < Desc::Q; ++i){
-			dfs({i}) = df_cpy({dfi::opposite_index.at(i)});
+		for(uint64_t i = 1u; i < Descriptor::Q; ++i){
+			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
 		}
 	}
 };
