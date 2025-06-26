@@ -50,7 +50,7 @@ public:
 
 		saw::data<T> rho;
 		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
-		compute_rho_u<T,Descriptor>(dfs,rho,vel);
+		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){

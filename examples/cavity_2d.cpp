@@ -259,18 +259,16 @@ void lbm_step(
 
 			switch(info({0u}).get()){
 				case 1u: {
-					coll.apply(latt, {{i,j}}, time_step+1u);
+					coll.apply(latt, {{i,j}}, time_step);
 					break;
 				}
 				case 2u: {
 					auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-					// bb_lid.apply(df);
+					bb_lid.apply(df);
 					break;
 				}
 				case 3u: {
-					auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-					// bb_two.apply(df);
-					// bb.apply(latt, {{i,j}}, time_step);
+					bb.apply(latt, {{i,j}}, time_step);
 					break;
 				}
 				default:
@@ -278,21 +276,6 @@ void lbm_step(
 			}
 		}
 	}
-
-	apply_for_cells([&](auto cell, size_t i, size_t j){
-		auto& info = cell.template get<"info">();
-
-		auto info_v = info({0u}).get();
-		switch(info_v){
-			case 3u: {
-				auto& df = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-				bb_two.apply(df);
-				break;
-			}
-			default:
-				break;
-		}
-	},latt);
 
 	// Stream
 	for(uint64_t i = 1u; (i+1u) < latt.template get_dim_size<0>().get(); ++i){
