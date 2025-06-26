@@ -50,7 +50,7 @@ public:
 		using dfi = df_info<T,Descriptor>;
 
 		// Technically use .copy()
-		auto df_cpy = dfs_old;
+		auto df_cpy = dfs_old.copy();
 
 		for(uint64_t i = 1u; i < Descriptor::Q; ++i){
 			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});

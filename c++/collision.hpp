@@ -57,8 +57,6 @@ public:
 			dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
 		}
 	}
-
-
 };
 }
 }
