@@ -105,24 +105,7 @@ public:
 */
 namespace cmpt {
 struct MovingWall {};
-struct BBTwo {};
 }
-
-template<typename Desc>
-class component<sch::T, Desc,cmpt::BBTwo> {
-public:
-
-	void apply(saw::data<sch::DfCell<Desc>>& dfs){
-		using dfi = df_info<sch::T,Desc>;
-
-		// Technically use .copy()
-		auto df_cpy = dfs;
-
-		for(uint64_t i = 1u; i < Desc::Q; ++i){
-			dfs({i}) = df_cpy({dfi::opposite_index.at(i)});
-		}
-	}
-};
 
 /**
  * Full-Way moving wall Bounce back, something is not right here.
@@ -243,8 +226,6 @@ void lbm_step(
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-
-	component<sch::T, sch::D2Q9, cmpt::BBTwo> bb_two;
 
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};

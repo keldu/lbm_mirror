@@ -1,4 +1,6 @@
-#include "../c++/descriptor.hpp"
+#include "../c++/lbm.hpp"
+#include "../c++/collision.hpp"
+#include "../c++/boundary.hpp"
 
 #include <forstio/codec/data.hpp>
 
@@ -17,14 +19,14 @@ using namespace saw::schema;
  * Q factor
  */
 using T = Float32;
-using D2Q5 = Descriptor<2,5>;
-using D2Q9 = Descriptor<2,9>;
+using D2Q5 = Descriptor<2u,5u>;
+using D2Q9 = Descriptor<2u,9u>;
 
 template<typename Desc>
-using DfCell = Cell<T, Desc, 0, 0, 1>;
+using DfCell = Cell<T, Desc, 0u, 0u, 1u>;
 
 template<typename Desc>
-using CellInfo = Cell<UInt8, D2Q9, 1, 0, 0>;
+using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
 
 /**
  * Basic type for simulation
