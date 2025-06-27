@@ -52,33 +52,7 @@ using MacroStruct = Struct<
 >;
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
-}
 
-/**
- * Calculates the equilibrium for each direction
- */
-template<typename Desc>
-std::array<typename saw::native_data_type<sch::T>::type,Desc::Q> equilibrium(
-	typename saw::native_data_type<sch::T>::type rho,
-	const std::array<typename saw::native_data_type<sch::T>::type, Desc::D>& vel
-){
-	using dfi = df_info<sch::T, Desc>;
-
-	typename std::array<saw::native_data_type<sch::T>::type,Desc::Q> eq;
-
-	for(std::size_t i = 0u; i < eq.size(); ++i){
-		auto vel_c = (vel[0u]*dfi::directions[i][0u] + vel[1u]*dfi::directions[i][1u]);
-		auto vel_c_cs2 = vel_c * dfi::inv_cs2;
-		eq[i] = dfi::weights[i] * rho * (
-			1.0
-			+ vel_c_cs2
-			- dfi::inv_cs2 * 0.5 * ( vel[0u] * vel[0u] + vel[1u] * vel[1u] )
-			+ vel_c_cs2 * vel_c_cs2 * 0.5
-		);
-	}
-
-	return eq;
-}
 
 /*
 template<typename T, typename Encode>
