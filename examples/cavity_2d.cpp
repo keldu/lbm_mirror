@@ -90,7 +90,7 @@ template<typename Desc>
 class component<sch::T, Desc, cmpt::MovingWall> {
 public:
 	std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
-	
+
 public:
 	void apply(
 		saw::data<sch::DfCell<Desc>>& dfs

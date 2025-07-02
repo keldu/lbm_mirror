@@ -53,7 +53,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			auto& cell = latt({{i,j}});
 			auto& info = cell.template get<"info">();
 
-
+			// if()
 		}
 	}
 
