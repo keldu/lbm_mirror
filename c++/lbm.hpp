@@ -4,6 +4,7 @@
 #include "converter.hpp"
 #include "config.hpp"
 #include "component.hpp"
+#include "equilibrium.hpp"
 #include "write_vtk.hpp"
 
 #include <forstio/codec/unit/unit_print.hpp>

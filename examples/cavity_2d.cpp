@@ -52,6 +52,7 @@ using MacroStruct = Struct<
 >;
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
+}
 
 
 /*
@@ -149,10 +150,10 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 	
-	typename saw::native_data_type<sch::T>::type rho = 1.0;
+	saw::data<sch::T> rho{1.0};
 	{
-		std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel = {0.0, 0.0};
-		auto eq = equilibrium<sch::D2Q9>(rho, vel);
+		saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
+		auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 		apply_for_cells([&eq](auto& cell, std::size_t i, std::size_t j){
 			(void) i;
@@ -161,15 +162,15 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			auto& dfs_old = cell.template get<"dfs_old">();
 			auto info = cell.template get<"info">()(0u).get();
 			for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
-				dfs(k).set(eq[k]);
-				dfs_old(k).set(eq[k]);
+				dfs(k) = eq.at({k});
+				dfs_old(k) = eq.at({k});
 			}
 		}, latt);
 	}
 	
 	{
-		std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel = {0.1, 0.0};
-		auto eq = equilibrium<sch::D2Q9>(rho, vel);
+		saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.1,0.0}};
+		auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 		apply_for_cells([&eq](auto& cell, std::size_t i, std::size_t j){
 			(void) i;
@@ -179,8 +180,8 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 			auto info = cell.template get<"info">()(0u).get();
 			if(info == 2u){
 				for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
-					dfs(k).set(eq[k]);
-					dfs_old(k).set(eq[k]);
+					dfs(k) = eq.at({k});
+					dfs_old(k) = eq.at({k});
 				}
 			}
 		}, latt);

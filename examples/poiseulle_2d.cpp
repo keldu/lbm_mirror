@@ -126,5 +126,18 @@ int main(int argc, char** argv){
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024, 128}};
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
 
+	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+
+	for(uint64_t i = 0u; i < 256u; ++i){
+
+		{
+			std::string vtk_f_name{"tmp/poiseulle_2d_"};
+			vtk_f_name += std::to_string(i) + ".vtk";
+			write_vtk_file(vtk_f_name, macros);
+		}
+
+		lbm_step(lattice, even_step, step);
+	}
+
 	return 0;
 }
