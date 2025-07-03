@@ -108,7 +108,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 		info({0u}).set(4u);
 
-	}, {{meta.at({0u})-{2u},0u}}, {{meta.at({0u}-{1u}), meta.at({1u})}}, {0u});
+	}, {{meta.at({0u})-2u,0u}}, {{meta.at({0u})-1u, meta.at({1u})}}, {0u});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
