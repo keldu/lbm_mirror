@@ -55,47 +55,67 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 	auto meta = latt.meta();
 
+	/**
+	 * Set ghost
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		info({0u}).set(0u);
+
+	}, {{0u,0u}}, meta);
+
+	/**
+	 * Set wall
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		info({0u}).set(2u);
+
+	}, {{0u,0u}}, meta, {1u});
+
+	/**
+	 * Set fluid
+	 */
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(1u);
 
-	}, {{0u,0u}}, meta, {1u});
+	}, {{0u,0u}}, meta, {2u});
+
+	/**
+	 * Set inflow
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		info({0u}).set(3u);
+
+	}, {{1u,0u}}, {{2u,meta.at({1u})}}, {0u});
+
+	/**
+	 * Set outflow
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		info({0u}).set(4u);
+
+	}, {{meta.at({0u})-{2u},0u}}, {{meta.at({0u}-{1u}), meta.at({1u})}}, {0u});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
-	typename saw::native_data_type<sch::T>::type rho = 1.0;
 	auto meta = latt.meta();
 
-	// Collide
-	for(saw::data<sch::UInt64> i{0u}; i < meta.at(0u); ++i){
-		for(saw::data<sch::UInt64> j{0u}; j < meta.at(1u); ++j ){
-			auto& cell = latt({{i,j}});
-			auto& info = cell.template get<"info">();
-
-		}
-	}
-	/*
-	{
-		std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel = {0.0, 0.0};
-		auto eq = equilibrium<sch::D2Q9>(rho, vel);
-
-		apply_for_cells([&eq](auto& cell, std::size_t i, std::size_t j){
-			(void) i;
-			(void) j;
-			auto& dfs = cell.template get<"dfs">();
-			auto& dfs_old = cell.template get<"dfs_old">();
-			auto info = cell.template get<"info">()(0u).get();
-			for(uint64_t k = 0; k < sch::D2Q9::Q; ++k){
-				dfs(k).set(eq[k]);
-				dfs_old(k).set(eq[k]);
-			}
-		}, latt);
-	}
-	*/
 }
 
 int main(int argc, char** argv){
