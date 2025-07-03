@@ -1,6 +1,7 @@
 #include "../c++/lbm.hpp"
 #include "../c++/collision.hpp"
 #include "../c++/boundary.hpp"
+#include "../c++/iterator.hpp"
 
 #include <forstio/codec/data.hpp>
 
@@ -38,6 +39,11 @@ using CellStruct = Struct<
 	Member<CellInfo<Desc>, "info">
 >;
 
+template<typename T, uint64_t D>
+using MacroStruct = Struct<
+	Member<FixedArray<T,D>, "velocity">,
+	Member<T, "pressure">
+>;
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
@@ -48,15 +54,14 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
 	auto meta = latt.meta();
-	for(saw::data<sch::UInt64> i{0u}; i < meta.at(0u); ++i){
-		for(saw::data<sch::UInt64> j{0u}; j < meta.at(1u); ++j ){
-			auto& cell = latt({{i,j}});
-			auto& info = cell.template get<"info">();
 
-			// if()
-		}
-	}
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
 
+		info({0u}).set(1u);
+
+	}, {{0u,0u}}, meta, {1u});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
@@ -136,7 +141,7 @@ int main(int argc, char** argv){
 			write_vtk_file(vtk_f_name, macros);
 		}
 
-		lbm_step(lattice, even_step, step);
+		// lbm_step(lattice, i);
 	}
 
 	return 0;
