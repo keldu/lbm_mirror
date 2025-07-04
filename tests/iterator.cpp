@@ -28,6 +28,6 @@ SAW_TEST("Iterate with Distance 1"){
 
 	lbm::iterate_over([](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		std::cout<<"Index: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
-	}, start, end, {1u});
+	}, start, end, {{1u,1u}});
 }
 }

@@ -75,7 +75,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 		info({0u}).set(2u);
 
-	}, {{0u,0u}}, meta, {1u});
+	}, {{0u,0u}}, meta, {{1u,1u}});
 
 	/**
 	 * Set fluid
@@ -86,7 +86,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 		info({0u}).set(1u);
 
-	}, {{0u,0u}}, meta, {2u});
+	}, {{0u,0u}}, meta, {{2u,2u}});
 
 	/**
 	 * Set inflow
@@ -97,7 +97,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 		info({0u}).set(3u);
 
-	}, {{1u,0u}}, {{2u,meta.at({1u})}}, {0u});
+	}, {{1u,0u}}, {{2u,meta.at({1u})}}, {{0u,2u}});
 
 	/**
 	 * Set outflow
@@ -108,7 +108,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 		info({0u}).set(4u);
 
-	}, {{meta.at({0u})-2u,0u}}, {{meta.at({0u})-1u, meta.at({1u})}}, {0u});
+	}, {{meta.at({0u})-2u,0u}}, {{meta.at({0u})-1u, meta.at({1u})}}, {{0u,2u}});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
@@ -141,15 +141,34 @@ int main(int argc, char** argv){
 
 	auto& conf = eo_conf.get_value();
 
-	converter<sch::Float64> conv{
+	converter<sch::Float64> conv {
 		{conf.template get<"delta_x">()},
 		{conf.template get<"delta_t">()}
 	};
 
 	print_lbm_meta<sch::Float64,sch::Descriptor<2u,9u>>(conv, {conf.template get<"kinematic_viscosity">()});
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024, 128}};
+	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{32u, 8u}};
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
+
+	set_geometry(lattice);
+
+	/**
+	 * Print basic setup info
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = lattice(index);
+		auto& info = cell.template get<"info">();
+		auto info_v = info({0u}).get();
+		std::cout<<(static_cast<uint32_t>(info_v));
+
+		if( (index.at({1u}).get()+1u) < dim.at({1u}).get()){
+			std::cout<<" ";
+		}else{
+			std::cout<<"\n";
+		}
+
+	}, {{0u,0u}}, dim);
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
