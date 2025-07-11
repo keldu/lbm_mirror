@@ -78,7 +78,7 @@ private:
 public:
 	component(const saw::data<FP>& pressure_setting__):
 		pressure_setting_{pressure_setting__},
-		rho_setting_{pressure_setting__}
+		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
 	{}
 
 	template<typename CellFieldSchema>
@@ -104,7 +104,7 @@ public:
 			}
 		}
 		constexpr int known_dir = East ? 1 : 1;
-		auto sum_unknown_dfs = (pressure_setting_ - sum_df) * saw::data<FP>{known_dir};
+		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
 
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
@@ -118,7 +118,7 @@ public:
 			}
 		}
 
-		auto vel_x = sum_unknown_dfs / pressure_setting_;
+		auto vel_x = sum_unknown_dfs / rho_setting_;
 
 		if constexpr (East) {
 			dfs_old({2u}) = dfs_old({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
@@ -233,8 +233,8 @@ void lbm_step(
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.1};
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{0.9};
+	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.001};
+	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0};
 
 	auto meta = latt.meta();
 
