@@ -202,6 +202,7 @@ public:
 	data<Sch, Encode>& operator()(const data<schema::UInt64>& index){
 		return inner_.at(index);
 	}
+
 	const data<Sch, Encode>& operator()(const data<schema::UInt64>& index)const{
 		return inner_.at(index);
 	}

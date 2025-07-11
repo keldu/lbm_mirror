@@ -62,13 +62,13 @@ struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , 
 		constexpr auto Lit = saw::parameter_key_pack_type<i, StructN...>::literal;
 		using Type = typename saw::parameter_pack_type<i,StructT...>::type;
 
-		if constexpr (Dep == Dim){
+		if constexpr (Dep == 0u){
 			return lbm_vtk_writer<Type>::apply(vtk_file, field.at(index).template get<Lit>());
 		} else {
 			// Dep < Dim // I hope
-			static_assert(Dep < Dim, "Don't fall into this case");
-			for(index.at({Dep}) = 0; index.at({Dep}) < field.get_dims().at({Dep}); ++index.at({Dep})){
-				auto eov = write_i_iterate_d<i,Dep+1>(vtk_file, field, index);
+			static_assert(Dep > 0u, "Don't fall into this case");
+			for(index.at({Dep-1u}) = 0; index.at({Dep-1u}) < field.get_dims().at({Dep-1u}); ++index.at({Dep-1u})){
+				auto eov = write_i_iterate_d<i,Dep-1u>(vtk_file, field, index);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -95,7 +95,7 @@ struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , 
 			}
 
 		}
-		return write_i_iterate_d<i,0u>(vtk_file, field, index);
+		return write_i_iterate_d<i,Dim>(vtk_file, field, index);
 	}
 
 	template<uint64_t i>
