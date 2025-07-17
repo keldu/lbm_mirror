@@ -88,9 +88,16 @@ public:
 		bool is_even = ((time_step % 2) == 0);
 		auto& cell = field(index);
 
+		auto& info = cell.template get<"info">();
+		if(info({0u}).get() == 0u){
+			return;
+		}
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
+		/**
+		 * Sum all known DFs
+		 */
 		saw::data<FP> sum_df{0};
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
@@ -103,7 +110,10 @@ public:
 				sum_df += dfs_old({k_opp});
 			}
 		}
-		constexpr int known_dir = East ? 1 : 1;
+		/**
+		 * Get the sum of the unknown dfs and precalculate the direction
+		 */
+		constexpr int known_dir = East ? 1 : -1;
 		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
 
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
@@ -199,7 +209,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
 	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.01,0.0}};
+	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
 	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 	auto meta = latt.meta();
@@ -233,8 +243,8 @@ void lbm_step(
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.001};
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0};
+	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
+	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
 
 	auto meta = latt.meta();
 
@@ -292,6 +302,7 @@ void lbm_step(
 
 int main(int argc, char** argv){
 	using namespace kel::lbm;
+	using dfi = df_info<sch::T,sch::D2Q9>;
 
 	std::string_view cfg_file_name = "config.json";
 	if(argc > 1){
@@ -351,7 +362,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	for(uint64_t i = 0u; i < 256u; ++i){
+	for(uint64_t i = 0u; i < 4096u*16u; ++i){
 		bool even_step = ((i % 2u) == 0u);
 
 		{
@@ -363,6 +374,7 @@ int main(int argc, char** argv){
 				auto& rho = macros.at(index).template get<"pressure">();
 				auto& vel = macros.at(index).template get<"velocity">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
+				rho = rho * saw::data<sch::T>{dfi::cs2};
 
 			}, {{0u,0u}}, meta);
 			std::string vtk_f_name{"tmp/poiseulle_2d_"};
