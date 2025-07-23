@@ -3,6 +3,8 @@
 #include "../c++/boundary.hpp"
 #include "../c++/iterator.hpp"
 
+#include "../c++/particle/particle.hpp"
+
 #include <forstio/codec/data.hpp>
 
 namespace kel {
@@ -36,7 +38,8 @@ template<typename Desc>
 using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
 	Member<DfCell<Desc>, "dfs_old">,
-	Member<CellInfo<Desc>, "info">
+	Member<CellInfo<Desc>, "info">,
+	Member<Cell<UInt8, D2Q9, 1u, 0u, 0u>, "particle_mask">
 >;
 
 template<typename T, uint64_t D>
@@ -334,6 +337,15 @@ int main(int argc, char** argv){
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
 	auto meta = lattice.meta();
+
+	particle_system<sch::T, sch::D2Q9::D> part_sys;
+	{
+		saw::data<sch::Particle<sch::T, sch::D2Q9::D>> part;
+		auto eov = part_sys.add(std::move(part));
+		if(eov.is_error()){
+			return eov.get_error().get_id();
+		}
+	}
 
 	/**
 	 * Setup geometry
