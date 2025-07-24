@@ -3,8 +3,6 @@
 #include "../c++/boundary.hpp"
 #include "../c++/iterator.hpp"
 
-#include "../c++/particle/particle.hpp"
-
 #include <forstio/codec/data.hpp>
 
 namespace kel {
@@ -38,8 +36,7 @@ template<typename Desc>
 using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
 	Member<DfCell<Desc>, "dfs_old">,
-	Member<CellInfo<Desc>, "info">,
-	Member<Cell<UInt8, D2Q9, 1u, 0u, 0u>, "particle_mask">
+	Member<CellInfo<Desc>, "info">
 >;
 
 template<typename T, uint64_t D>
@@ -206,6 +203,45 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 		info({0u}).set(4u);
 
 	}, {{meta.at({0u})-2u,0u}}, {{meta.at({0u})-1u, meta.at({1u})}}, {{0u,2u}});
+
+	/**
+	 * Set channel wall
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		saw::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-8u, meta.at({1u})-2u}};
+		double safety_start = 0.1*area.at({0u}).get();
+		double safety_width = 0.2*area.at({1u}).get();
+
+
+		double ch_width = (area.at({1u}).get()-safety_width) * 0.5;
+		double ch_length = (area.at({0u}).get()-safety_start) * 0.5;
+
+		saw::data<sch::FixedArray<sch::UInt64,2u>> middle{{meta.at({0u})/2u, meta.at({1u})/2u}};
+
+		// r^2 = (r-w/2)^2 + l^2
+		double r_c = ch_length * ch_length;
+		double r = r_c / (2.0 * ch_width);
+
+		double top_pos = middle.at({1u}).get() + r + safety_width;
+		double bot_pos = middle.at({1u}).get() - r - safety_width;
+		double mid = middle.at({0u}).get();
+
+		double r_2 = r*r;
+		double dist_top = (top_pos - index.at({1u}).get());
+		double dist_bot = (bot_pos - index.at({1u}).get());
+		double dist_mid = (mid - index.at({0u}).get());
+
+		double dist_top_sq = dist_top * dist_top + dist_mid * dist_mid;
+		double dist_bot_sq = dist_bot * dist_bot + dist_mid * dist_mid;
+
+		if(dist_top_sq < r_2 or dist_bot_sq < r_2){
+			info({0u}).set(2u);
+		}
+
+	}, {{0u,0u}}, meta, {{4u,1u}});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
@@ -337,15 +373,6 @@ int main(int argc, char** argv){
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
 	auto meta = lattice.meta();
-
-	particle_system<sch::T, sch::D2Q9::D> part_sys;
-	{
-		saw::data<sch::Particle<sch::T, sch::D2Q9::D>> part;
-		auto eov = part_sys.add(std::move(part));
-		if(eov.is_error()){
-			return eov.get_error().get_id();
-		}
-	}
 
 	/**
 	 * Setup geometry

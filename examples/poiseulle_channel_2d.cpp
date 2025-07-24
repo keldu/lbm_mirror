@@ -212,15 +212,21 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 		auto& info = cell.template get<"info">();
 
 		saw::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-8u, meta.at({1u})-2u}};
-		double ch_width = area.at({1u}).get() * (0.6 * 0.5);
-		double ch_length = area.at({0u}).get() * (0.8 * 0.5);
+		double safety_start = 0.1*area.at({0u}).get();
+		double safety_width = 0.2*area.at({1u}).get();
+
+
+		double ch_width = (area.at({1u}).get()-safety_width) * 0.5;
+		double ch_length = (area.at({0u}).get()-safety_start) * 0.5;
 
 		saw::data<sch::FixedArray<sch::UInt64,2u>> middle{{meta.at({0u})/2u, meta.at({1u})/2u}};
 
-		double r = ch_length + ch_width * ch_width * 0.25 / ch_length;
+		// r^2 = (r-w/2)^2 + l^2
+		double r_c = ch_length * ch_length;
+		double r = r_c / (2.0 * ch_width);
 
-		double top_pos = middle.at({1u}).get() + r;
-		double bot_pos = middle.at({1u}).get() - r;
+		double top_pos = middle.at({1u}).get() + r + safety_width;
+		double bot_pos = middle.at({1u}).get() - r - safety_width;
 		double mid = middle.at({0u}).get();
 
 		double r_2 = r*r;
