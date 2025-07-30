@@ -399,7 +399,7 @@ int main(int argc, char** argv){
 		return -1;
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
-	auto out_dir = lbm_dir / "poiseulle_channel_2d";
+	auto out_dir = lbm_dir / "poiseulle_particles_channel_2d";
 
 	std::string_view cfg_file_name = "config.json";
 	if(argc > 1){
