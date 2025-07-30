@@ -2,8 +2,10 @@
 #include "../c++/collision.hpp"
 #include "../c++/boundary.hpp"
 #include "../c++/iterator.hpp"
+#include "../c++/particle/geometry/circle.hpp"
 
 #include <forstio/codec/data.hpp>
+
 
 namespace kel {
 namespace lbm {
@@ -29,6 +31,12 @@ using DfCell = Cell<T, Desc, 0u, 0u, 1u>;
 template<typename Desc>
 using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
 
+template<typename Desc>
+using CellParticleMask = Cell<UInt16, D2Q9, 1u, 0u, 0u>;
+
+template<typename Desc>
+using CellForceField = Cell<Float64, D2Q9, 0u, 1u, 0u>;
+
 /**
  * Basic type for simulation
  */
@@ -36,13 +44,16 @@ template<typename Desc>
 using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
 	Member<DfCell<Desc>, "dfs_old">,
-	Member<CellInfo<Desc>, "info">
+	Member<CellInfo<Desc>, "info">,
+	Member<CellParticleMask<Desc>, "particle_mask">,
+	Member<CellForceField<Desc>, "forcing">
 >;
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
 	Member<FixedArray<T,D>, "velocity">,
-	Member<T, "pressure">
+	Member<T, "pressure">,
+	Member<UInt16, "particle">
 >;
 
 template<typename T>
@@ -269,6 +280,46 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}, {{0u,0u}}, meta);
 }
 
+void add_particles(kel::lbm::particle_system<sch::T,2u>& part_sys){
+	saw::data<sch::Particle<sch::T,2u>> part;
+
+
+	auto& p_mask = part.template get<"mask">();
+	{
+		particle_circle_geometry<sch::T> geo;
+		p_mask = geo.template generate_mask<sch::T>(16u);
+	}
+	auto& rigid_body = part.template get<"rigid_body">();
+	auto& p_size = part.template get<"size">();
+	{
+		auto& pos = rigid_body.template get<"position">();
+		auto& old_pos = rigid_body.template get<"position">();
+
+		pos = {{32u,64u}};
+		old_pos = {{32u,64u}};
+
+		p_size = {4.0};
+	}
+
+	{
+		auto eov = particle_sys.add(part);
+		if(eov.is_error()){
+			exit(-1);
+		}
+	}
+}
+
+void couple_particles_to_lattice(kel::lbm::particle_system<sch::T,2u>& part_sys, saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+		auto& mask = cell.template get<"particle_mask">();
+
+
+
+	}, {{0u,0u}}, meta);
+}
+
 void lbm_step(
 	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
 	uint64_t time_step
@@ -343,6 +394,13 @@ int main(int argc, char** argv){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
+	auto eo_lbm_dir = output_directory();
+	if(eo_lbm_dir.is_error()){
+		return -1;
+	}
+	auto& lbm_dir = eo_lbm_dir.get_value();
+	auto out_dir = lbm_dir / "poiseulle_channel_2d";
+
 	std::string_view cfg_file_name = "config.json";
 	if(argc > 1){
 		cfg_file_name = argv[1];
@@ -375,6 +433,13 @@ int main(int argc, char** argv){
 	auto meta = lattice.meta();
 
 	/**
+	 * Particle System
+	 */
+	particle_system<sch::T, 2u> particle_sys;
+	add_particles(particle_sys);
+
+
+	/**
 	 * Setup geometry
 	 */
 	set_geometry(lattice);
@@ -390,8 +455,7 @@ int main(int argc, char** argv){
 			geo(index).template get<"info">().set(info({0u}).get());
 		}, {{0u,0u}}, dim);
 
-		std::string vtk_f_name{"tmp/geometry.vtk"};
-		write_vtk_file(vtk_f_name, geo);
+		write_vtk_file(out_dir / "geometry.vtk", geo);
 	}
 
 	/**
@@ -412,15 +476,22 @@ int main(int argc, char** argv){
 
 				auto& rho = macros.at(index).template get<"pressure">();
 				auto& vel = macros.at(index).template get<"velocity">();
+				auto& part_mask = macros.at(index).template get<"particle">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 				rho = rho * saw::data<sch::T>{dfi::cs2};
-
+				part = cell.template get<"particle_mask">()({0u});
 			}, {{0u,0u}}, meta);
-			std::string vtk_f_name{"tmp/poiseulle_2d_"};
-			vtk_f_name += std::to_string(i) + ".vtk";
-			write_vtk_file(vtk_f_name, macros);
+
+
+
+			{
+				std::string vtk_f_name{"macros_"};
+				vtk_f_name += std::to_string(i) + ".vtk";
+				write_vtk_file(out_dir / vtk_f_name, macros);
+			}
 		}
 
+		couple_particles_to_lattice(particle_sys, lattice);
 		lbm_step(lattice, i);
 	}
 

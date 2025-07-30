@@ -26,7 +26,8 @@ using ParticleMask = Struct<
 template<typename T, uint64_t D>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
-	Member<ParticleMask<Float32,D>, "mask">
+	Member<ParticleMask<Float32,D>, "mask">,
+	Member<T, "size">
 >;
 }
 
@@ -69,9 +70,10 @@ public:
 		return size;
 	}
 
+	/*
 	saw::data<sch::Particle<T,D>>& get_particle(saw::data<sch::UInt64> id){
-
 	}
+	*/
 
 	void step(saw::data<T> time_step_delta){
 		for(saw::data<sch::UInt64> i{0u}; i < particles_.size(); ++i){
@@ -82,7 +84,17 @@ public:
 	template<typename LbmLattice>
 	void update_particle_border(saw::data<LbmLattice>& latt){
 		for(auto& iter : particles_){
+			auto& par = iter;
+
+			auto& body = par.template get<"rigid_body">();
+			auto& size = par.template get<"size">();
+
+
 		}
+	}
+
+	saw::data<sch::UInt64> size() const {
+		return particles_.size();
 	}
 
 	/**

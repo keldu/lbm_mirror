@@ -343,6 +343,13 @@ int main(int argc, char** argv){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
+	auto eo_lbm_dir = output_directory();
+	if(eo_lbm_dir.is_error()){
+		return -1;
+	}
+	auto& lbm_dir = eo_lbm_dir.get_value();
+	auto out_dir = lbm_dir / "poiseulle_channel_2d";
+
 	std::string_view cfg_file_name = "config.json";
 	if(argc > 1){
 		cfg_file_name = argv[1];
@@ -390,8 +397,7 @@ int main(int argc, char** argv){
 			geo(index).template get<"info">().set(info({0u}).get());
 		}, {{0u,0u}}, dim);
 
-		std::string vtk_f_name{"tmp/geometry.vtk"};
-		write_vtk_file(vtk_f_name, geo);
+		write_vtk_file(out_dir / "geometry.vtk", geo);
 	}
 
 	/**
@@ -416,9 +422,12 @@ int main(int argc, char** argv){
 				rho = rho * saw::data<sch::T>{dfi::cs2};
 
 			}, {{0u,0u}}, meta);
-			std::string vtk_f_name{"tmp/poiseulle_2d_"};
-			vtk_f_name += std::to_string(i) + ".vtk";
-			write_vtk_file(vtk_f_name, macros);
+
+			{
+				std::string vtk_f_name{"macros_"};
+				vtk_f_name += std::to_string(i) + ".vtk";
+				write_vtk_file(out_dir / vtk_f_name, macros);
+			}
 		}
 
 		lbm_step(lattice, i);

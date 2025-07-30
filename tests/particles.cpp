@@ -16,7 +16,7 @@ SAW_TEST("Minor Test for mask"){
 
 	lbm::particle_circle_geometry<sch::T> geo;
 
-	auto mask = geo.generate_mask<sch::T>(4,2);
+	auto mask = geo.generate_mask<sch::T>(16u,2);
 
 	auto& grid = mask.template get<"grid">();
 
@@ -60,8 +60,8 @@ SAW_TEST("Verlet integration test"){
 		std::cout<<std::endl;
 	}
 
-	for(uint64_t i = 0u; i < 360u; ++i){
-		system.step(saw::data<sch::T>{1e-2});
+	for(uint64_t i = 0u; i < 36u; ++i){
+		system.step(saw::data<sch::T>{1e-1});
 
 		{
 			auto& p = system.at({0u});

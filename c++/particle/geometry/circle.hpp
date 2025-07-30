@@ -12,7 +12,7 @@ public:
 	particle_circle_geometry()
 	{}
 
-	template<typename MT>
+	template<typename MT = T>
 	saw::data<sch::ParticleMask<MT,2>> generate_mask(uint64_t resolution, uint64_t boundary_nodes = 0) const {
 		saw::data<sch::ParticleMask<MT,2>> mask;
 

@@ -7,6 +7,7 @@
 #include "descriptor.hpp"
 
 #include <fstream>
+#include <filesystem>
 
 namespace kel {
 namespace lbm {
@@ -162,10 +163,9 @@ struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , 
 }
 
 template<typename Struct>
-saw::error_or<void> write_vtk_file(const std::string_view file_name, const saw::data<Struct>& field){
+saw::error_or<void> write_vtk_file(const std::filesystem::path& file_name, const saw::data<Struct>& field){
 
-	std::string vtk_file_name{file_name};
-	std::ofstream vtk_file{vtk_file_name};
+	std::ofstream vtk_file{file_name};
 
 	if(!vtk_file.is_open()){
 		return saw::make_error<saw::err::critical>("Could not open file.");

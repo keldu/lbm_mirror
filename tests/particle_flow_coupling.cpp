@@ -15,6 +15,9 @@ SAW_TEST("Particle Coupling"){
 	using namespace kel;
 	lbm::particle_system<sch::T,2,sch::Particle<sch::T,2>> system;
 
+	/// What are the steps?#
+	///
+	/// Collide and Stream
 
 }
 }
