@@ -16,7 +16,7 @@ SAW_TEST("Minor Test for mask"){
 
 	lbm::particle_circle_geometry<sch::T> geo;
 
-	auto mask = geo.generate_mask<sch::T>(16u,2);
+	auto mask = geo.generate_mask<sch::T>(9u,1u);
 
 	auto& grid = mask.template get<"grid">();
 

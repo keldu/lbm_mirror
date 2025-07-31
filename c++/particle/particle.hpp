@@ -11,11 +11,11 @@ template<typename T, uint64_t D>
 using ParticleRigidBody = Struct<
 	Member<FixedArray<T,D>, "position">,
 	Member<FixedArray<T,D>, "position_old">,
-	Member<FixedArray<T,D>, "rotation">,
-	Member<FixedArray<T,D>, "rotation_old">,
+	Member<T, "rotation">,
+	Member<T, "rotation_old">,
 
 	Member<FixedArray<T,D>, "acceleration">,
-	Member<FixedArray<T,D>, "rotational_acceleration">
+	Member<T, "rotational_acceleration">
 >;
 
 template<typename T, uint64_t D>
