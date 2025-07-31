@@ -316,6 +316,9 @@ void couple_particles_to_lattice(
 		saw::data<kel::lbm::sch::T> time_step
 ){
 	using namespace kel::lbm;
+
+	auto meta = latt.meta();
+
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
@@ -557,7 +560,7 @@ int main(int argc, char** argv){
 			}
 		}
 
-		couple_particles_to_lattice(particle_sys, lattice);
+		couple_particles_to_lattice(particle_sys, lattice, macros, {1u});
 		lbm_step(lattice, i);
 	}
 
