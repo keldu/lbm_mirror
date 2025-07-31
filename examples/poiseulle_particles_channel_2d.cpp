@@ -280,9 +280,9 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}, {{0u,0u}}, meta);
 }
 
-void add_particles(kel::lbm::particle_system<sch::T,2u>& part_sys){
+void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
+	using namespace kel::lbm;
 	saw::data<sch::Particle<sch::T,2u>> part;
-
 
 	auto& p_mask = part.template get<"mask">();
 	{
@@ -312,9 +312,10 @@ void add_particles(kel::lbm::particle_system<sch::T,2u>& part_sys){
 void couple_particles_to_lattice(
 		kel::lbm::particle_system<sch::T,2u>& part_sys,
 		saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-		saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>>& macros,
-		saw::data<sch::T> time_step
+		saw::data<kel::lbm::sch::Array<sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
+		saw::data<kel::lbm::sch::T> time_step
 ){
+	using namespace kel::lbm;
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
@@ -464,7 +465,7 @@ int main(int argc, char** argv){
 		return -1;
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
-	auto out_dir = lbm_dir / "poiseulle_channel_2d";
+	auto out_dir = lbm_dir / "poiseulle_particles_channel_2d";
 
 	std::string_view cfg_file_name = "config.json";
 	if(argc > 1){
