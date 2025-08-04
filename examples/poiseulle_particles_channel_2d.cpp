@@ -6,6 +6,8 @@
 
 #include <forstio/codec/data.hpp>
 
+#include <cmath>
+
 
 namespace kel {
 namespace lbm {
@@ -45,7 +47,7 @@ using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
 	Member<DfCell<Desc>, "dfs_old">,
 	Member<CellInfo<Desc>, "info">,
-	Member<CellParticleMask<Desc>, "particle_mask">,
+	// Member<CellParticleMask<Desc>, "particle_mask">,
 	Member<CellForceField<Desc>, "forcing">
 >;
 
@@ -293,7 +295,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& p_size = part.template get<"size">();
 	{
 		auto& pos = rigid_body.template get<"position">();
-		auto& old_pos = rigid_body.template get<"position">();
+		auto& old_pos = rigid_body.template get<"position_old">();
 
 		pos = {{32u,64u}};
 		old_pos = {{32u,64u}};
@@ -302,7 +304,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	}
 
 	{
-		auto eov = particle_sys.add(part);
+		auto eov = part_sys.add_particle(part);
 		if(eov.is_error()){
 			exit(-1);
 		}
@@ -310,9 +312,9 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 }
 
 void couple_particles_to_lattice(
-		kel::lbm::particle_system<sch::T,2u>& part_sys,
+		kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys,
 		saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-		saw::data<kel::lbm::sch::Array<sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
+		saw::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
 		saw::data<kel::lbm::sch::T> time_step
 ){
 	using namespace kel::lbm;
@@ -322,7 +324,7 @@ void couple_particles_to_lattice(
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
-		auto& mask = cell.template get<"particle_mask">();
+		// auto& mask = cell.template get<"particle_mask">();
 
 		for(saw::data<sch::UInt64> i{0u}; i < part_sys.size(); ++i){
 			auto& part = part_sys.at(i);
@@ -350,17 +352,21 @@ void couple_particles_to_lattice(
 			// Spread force to close fluid cells
 			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 				(void)index;
-			}, {{0u,0u}}, p_mask.dims());
+			}, {{0u,0u}}, p_mask.template get<"grid">().dims());
 
 			// Fluid to Particle Coupling
 			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 				saw::data<sch::FixedArray<sch::T,2u>> mask_shift{{
-					index.at({0u}) * x_dir.at({0u}) + index.at({0u}) * y_dir.at({0u}),
-					index.at({1u}) * x_dir.at({1u}) + index.at({1u}) * y_dir.at({1u})
+					index.at({0u}).template cast_to<sch::T>() * x_dir.at({0u}) + index.at({0u}).template cast_to<sch::T>() * y_dir.at({0u}),
+					index.at({1u}).template cast_to<sch::T>() * x_dir.at({1u}) + index.at({1u}).template cast_to<sch::T>() * y_dir.at({1u})
 				}};
 
 				// Lagrange in Euler
-				auto p_pos_lie = p_pos + mask_shift;
+				saw::data<sch::FixedArray<sch::T,2u>> p_pos_lie {{
+					p_pos.at({0u}) + mask_shift.at({0u}),
+					p_pos.at({1u}) + mask_shift.at({1u})
+				}};
+
 				// Cast down to get lower corner.
 				// Before casting shift by 0.5 for closest pick
 				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
@@ -371,11 +377,9 @@ void couple_particles_to_lattice(
 				// For now pick the closest U
 				auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
 				auto p_shift = closest_u;
-				for(saw::data<sch::UInt64> i{0u}; i < 2u; ++i){
-					p_shift.at(i) = p_shift.at(i) * time_step;
+				for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
+					p_pos.at(i) = p_pos.at(i) + p_shift.at(i) * time_step;
 				}
-
-
 
 				// Add forces to put away from walls
 				/// 1. Check if neighbour is wall
@@ -383,7 +387,7 @@ void couple_particles_to_lattice(
 
 				// Add forces to push away from other particles
 
-			}, {{0u,0u}}, p_mask.dims());
+			}, {{0u,0u}}, p_mask.template get<"grid">().dims());
 		}
 
 	}, {{0u,0u}}, meta);
@@ -514,14 +518,14 @@ int main(int argc, char** argv){
 	set_geometry(lattice);
 
 	{
-
 		saw::data<sch::Array<sch::GeometryStruct<sch::T>, sch::D2Q9::D>> geo{dim};
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+
 			auto& cell = lattice(index);
 			auto& info = cell.template get<"info">();
-
 			geo(index).template get<"info">().set(info({0u}).get());
+
 		}, {{0u,0u}}, dim);
 
 		write_vtk_file(out_dir / "geometry.vtk", geo);
@@ -534,7 +538,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	for(uint64_t i = 0u; i < 4096u*16u; ++i){
+	for(uint64_t i = 0u; i < 4096u*4u; ++i){
 		bool even_step = ((i % 2u) == 0u);
 
 		{
@@ -548,10 +552,32 @@ int main(int argc, char** argv){
 				auto& part_mask = macros.at(index).template get<"particle">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 				rho = rho * saw::data<sch::T>{dfi::cs2};
-				part = cell.template get<"particle_mask">()({0u});
+
+				part_mask.set(0u);
 			}, {{0u,0u}}, meta);
 
+			for(saw::data<sch::UInt64> i{0u}; i < particle_sys.size(); ++i){
+				auto& p = particle_sys.at({i});
 
+				auto& p_rb = p.template get<"rigid_body">();
+				auto& p_pos = p_rb.template get<"position">();
+
+				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
+					static_cast<uint64_t>(p_pos.at({0u}).get()+0.5),
+					static_cast<uint64_t>(p_pos.at({1u}).get()+0.5)
+				}};
+
+				std::cout<<"Pos: "<<p_cell_pos.at({0u}).get()<<" "<<p_cell_pos.at({1u}).get()<<std::endl;
+
+				if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
+					p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
+				}
+				if(p_cell_pos.at({1u}) >= dim.at({1u}) ){
+					p_cell_pos.at({1u}).set(dim.at({1u}).get() - 1u );
+				}
+
+				macros(p_cell_pos).template get<"particle">().set(i.get());
+			}
 
 			{
 				std::string vtk_f_name{"macros_"};
@@ -562,6 +588,7 @@ int main(int argc, char** argv){
 
 		couple_particles_to_lattice(particle_sys, lattice, macros, {1u});
 		lbm_step(lattice, i);
+		particle_sys.step({1u});
 	}
 
 	return 0;

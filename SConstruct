@@ -50,8 +50,17 @@ env_vars.Add('build_examples',
 
 env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     CPPDEFINES=['SAW_UNIX'],
-    CXXFLAGS=['-std=c++20','-g','-Wall','-Wextra'],
-    LIBS=['forstio-core','forstio-codec'])
+    CXXFLAGS=[
+        '-std=c++20',
+        '-g',
+        '-Wall',
+        '-Wextra'
+    ],
+    LIBS=[
+        'forstio-core',
+        'forstio-codec'
+    ]
+);
 env.__class__.add_source_files = add_kel_source_files
 env.Tool('compilation_db');
 env.cdb = env.CompilationDatabase('compile_commands.json');

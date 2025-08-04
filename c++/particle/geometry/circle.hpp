@@ -23,15 +23,15 @@ public:
 		uint64_t size = rad_i + 2*boundary_nodes;
 		grid = {{{size,size}}};
 
-		saw::data<T> delta_x{2.0  / rad_i};
+		saw::data<T> delta_x{static_cast<typename saw::native_data_type<T>::type>(2.0  / static_cast<double>(rad_i))};
 		saw::data<T> center = (saw::data<T>{1.0} + saw::data<T>{2.0} * saw::data<T>{static_cast<saw::native_data_type<T>::type>(boundary_nodes)/rad_i});
 
 		for(uint64_t i = 0; i < size; ++i){
 			for(uint64_t j = 0; j < size; ++j){
 				grid.at({{i,j}}).set(0);
 				if(i >= boundary_nodes and j >= boundary_nodes and i < (rad_i + boundary_nodes) and j < (rad_i + boundary_nodes) ){
-					saw::data<T> fi = saw::data<T>{0.5+static_cast<saw::native_data_type<T>::type>(i)} * delta_x - center;
-					saw::data<T> fj = saw::data<T>{0.5+static_cast<saw::native_data_type<T>::type>(j)} * delta_x - center;
+					saw::data<T> fi = saw::data<T>{static_cast<saw::native_data_type<T>::type>(0.5+i)} * delta_x - center;
+					saw::data<T> fj = saw::data<T>{static_cast<saw::native_data_type<T>::type>(0.5+j)} * delta_x - center;
 
 					auto norm_f_ij = fi*fi + fj*fj;
 					if(norm_f_ij.get() <= 1){

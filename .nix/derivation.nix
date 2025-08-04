@@ -27,7 +27,9 @@ stdenv.mkDerivation {
   checkPhase = ''
     scons test
     ./bin/tests
-  '';
+	'';
+
+	preferLocalBuild = true;
 
   outputs = [ "out" "dev" ];
 }
