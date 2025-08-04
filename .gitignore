@@ -5,3 +5,4 @@ result*
 *.so
 log
 tmp
+vgcore.*
