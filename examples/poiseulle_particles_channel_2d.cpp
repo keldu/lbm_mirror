@@ -321,6 +321,8 @@ void couple_particles_to_lattice(
 
 	auto meta = latt.meta();
 
+	using dfi = df_info<sch::T,sch::D2Q9>;
+
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
@@ -355,6 +357,7 @@ void couple_particles_to_lattice(
 			}, {{0u,0u}}, p_mask.template get<"grid">().dims());
 
 			// Fluid to Particle Coupling
+			// Prepare force sum
 			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 				saw::data<sch::FixedArray<sch::T,2u>> mask_shift{{
 					index.at({0u}).template cast_to<sch::T>() * x_dir.at({0u}) + index.at({0u}).template cast_to<sch::T>() * y_dir.at({0u}),
@@ -370,9 +373,23 @@ void couple_particles_to_lattice(
 				// Cast down to get lower corner.
 				// Before casting shift by 0.5 for closest pick
 				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-					static_cast<uint64_t>(mask_shift.at({0u}).get()+0.5),
-					static_cast<uint64_t>(mask_shift.at({1u}).get()+0.5)
+					static_cast<uint64_t>(p_pos_lie.at({0u}).get()+0.5),
+					static_cast<uint64_t>(p_pos_lie.at({1u}).get()+0.5)
 				}};
+
+				p_cell_pos.at({0u}).set(std::max(1ul, std::min(p_cell_pos.at({0u}).get(), meta.at({0u}).get()-2ul)));
+				p_cell_pos.at({1u}).set(std::max(1ul, std::min(p_cell_pos.at({1u}).get(), meta.at({1u}).get()-2ul)));
+
+				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
+
+					saw::data<sch::FixedArray<sch::UInt64,2u>> n_pcell_pos {{
+						p_cell_pos.at({0u}).get() + dfi::directions[k][0],
+						p_cell_pos.at({1u}).get() + dfi::directions[k][1]
+					}};
+
+					//auto n_cell =
+				}
+
 				// Interpolate this from close U cells.
 				// For now pick the closest U
 				auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
@@ -407,7 +424,7 @@ void lbm_step(
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
+	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2 * 2.0 / 3.0};
 
 	auto meta = latt.meta();
 
@@ -576,7 +593,7 @@ int main(int argc, char** argv){
 					p_cell_pos.at({1u}).set(dim.at({1u}).get() - 1u );
 				}
 
-				macros(p_cell_pos).template get<"particle">().set(i.get());
+				macros(p_cell_pos).template get<"particle">().set(i.get() + 1u);
 			}
 
 			{

@@ -7,6 +7,12 @@ namespace kel {
 namespace lbm {
 namespace cmpt {
 struct BounceBack {};
+
+template<bool East>
+struct ZouHeHorizontal{};
+
+template<bool North>
+struct ZouHeVertical{};
 }
 
 /**
@@ -56,6 +62,12 @@ public:
 			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
 		}
 	}
+};
+
+template<typename T, typename Descriptor, bool Dir>
+class component<T, Descriptor, cmpt::ZouHeHorizontal<Dir>> final {
+private:
+public:
 };
 }
 }
