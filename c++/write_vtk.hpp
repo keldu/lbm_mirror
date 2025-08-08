@@ -101,7 +101,7 @@ struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , 
 
 	template<uint64_t i>
 	static saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>, Dim>>& field){
-		constexpr auto Lit = saw::parameter_key_pack_type<i, StructN...>::literal;
+		// constexpr auto Lit = saw::parameter_key_pack_type<i, StructN...>::literal;
 		{
 			auto eov = write_i<i>(vtk_file, field);
 			if(eov.is_error()){

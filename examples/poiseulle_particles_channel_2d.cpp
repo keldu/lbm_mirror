@@ -5,6 +5,7 @@
 #include "../c++/particle/geometry/circle.hpp"
 
 #include <forstio/codec/data.hpp>
+#include <forstio/codec/data_math.hpp>
 
 #include <cmath>
 
@@ -293,17 +294,22 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	}
 	auto& rigid_body = part.template get<"rigid_body">();
 	auto& p_size = part.template get<"size">();
+	auto& pos = rigid_body.template get<"position">();
+	auto& old_pos = rigid_body.template get<"position_old">();
 	{
-		auto& pos = rigid_body.template get<"position">();
-		auto& old_pos = rigid_body.template get<"position_old">();
 
-		pos = {{32u,64u}};
-		old_pos = {{32u,64u}};
+		pos.at({{0u}}) = {32u};
+		pos.at({{1u}}) = {64u};
+		old_pos.at({{0u}}) = {32u};
+		old_pos.at({{1u}}) = {64u};
 
 		p_size = {4.0};
 	}
 
-	{
+	for(uint64_t i = 0; i < 60; ++i){
+		pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(4u + i * 2u)};
+		old_pos.at({{1u}}) = pos.at({{0u}});
+
 		auto eov = part_sys.add_particle(part);
 		if(eov.is_error()){
 			exit(-1);
@@ -323,17 +329,19 @@ void couple_particles_to_lattice(
 
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& cell = latt(index);
-		auto& info = cell.template get<"info">();
-		// auto& mask = cell.template get<"particle_mask">();
-
 		for(saw::data<sch::UInt64> i{0u}; i < part_sys.size(); ++i){
 			auto& part = part_sys.at(i);
 
 			auto& p_rb = part.template get<"rigid_body">();
 			auto& p_pos = p_rb.template get<"position">();
+			auto& p_pos_old = p_rb.template get<"position_old">();
 			auto& p_rot = p_rb.template get<"rotation">();
+
+			auto& p_acc = p_rb.template get<"acceleration">();
+			p_acc.at({{0u}}).set(0.0);
+			p_acc.at({{1u}}).set(0.0);
+
+			auto p_vel = p_pos - p_pos_old;
 
 			auto& p_mask = part.template get<"mask">();
 			auto& p_size = part.template get<"size">();
@@ -358,45 +366,40 @@ void couple_particles_to_lattice(
 
 			// Fluid to Particle Coupling
 			// Prepare force sum
-			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-				saw::data<sch::FixedArray<sch::T,2u>> mask_shift{{
-					index.at({0u}).template cast_to<sch::T>() * x_dir.at({0u}) + index.at({0u}).template cast_to<sch::T>() * y_dir.at({0u}),
-					index.at({1u}).template cast_to<sch::T>() * x_dir.at({1u}) + index.at({1u}).template cast_to<sch::T>() * y_dir.at({1u})
-				}};
+			saw::data<sch::FixedArray<sch::T,2u>> forces;
 
-				// Lagrange in Euler
-				saw::data<sch::FixedArray<sch::T,2u>> p_pos_lie {{
-					p_pos.at({0u}) + mask_shift.at({0u}),
-					p_pos.at({1u}) + mask_shift.at({1u})
-				}};
+			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+				saw::data<sch::Vector<sch::T,2u>> mask_shift;
+				mask_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() * x_dir.at({0u}) + index.at({1u}).template cast_to<sch::T>() * y_dir.at({0u});
+				mask_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() * x_dir.at({1u}) + index.at({1u}).template cast_to<sch::T>() * y_dir.at({1u});
+
+				auto p_pos_lie = p_pos + mask_shift;
 
 				// Cast down to get lower corner.
 				// Before casting shift by 0.5 for closest pick
 				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-					static_cast<uint64_t>(p_pos_lie.at({0u}).get()+0.5),
-					static_cast<uint64_t>(p_pos_lie.at({1u}).get()+0.5)
+					static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
+					static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 				}};
 
-				p_cell_pos.at({0u}).set(std::max(1ul, std::min(p_cell_pos.at({0u}).get(), meta.at({0u}).get()-2ul)));
-				p_cell_pos.at({1u}).set(std::max(1ul, std::min(p_cell_pos.at({1u}).get(), meta.at({1u}).get()-2ul)));
-
-				for(uint64_t k = 0u; k < sch::D2Q9::Q; ++k){
-
-					saw::data<sch::FixedArray<sch::UInt64,2u>> n_pcell_pos {{
-						p_cell_pos.at({0u}).get() + dfi::directions[k][0],
-						p_cell_pos.at({1u}).get() + dfi::directions[k][1]
-					}};
-
-					//auto n_cell =
-				}
+				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
+				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 
 				// Interpolate this from close U cells.
 				// For now pick the closest U
 				auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
-				auto p_shift = closest_u;
+				// auto p_shift = closest_u;
+
+				// p_pos - p_pos_old
+				// auto p_vel_rel = closest_u - p_vel;
+				saw::data<sch::Vector<sch::T, 2u>> p_vel_rel;
+				p_vel_rel.at({{0u}}) = closest_u.at({0u}) - p_vel.at({{0u}});
+				p_vel_rel.at({{1u}}) = closest_u.at({1u}) - p_vel.at({{1u}});
+
 				for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
-					p_pos.at(i) = p_pos.at(i) + p_shift.at(i) * time_step;
+					p_acc.at({{i}}) = p_acc.at({{i}}) + p_vel_rel.at({{i}});
 				}
+
 
 				// Add forces to put away from walls
 				/// 1. Check if neighbour is wall
@@ -405,9 +408,10 @@ void couple_particles_to_lattice(
 				// Add forces to push away from other particles
 
 			}, {{0u,0u}}, p_mask.template get<"grid">().dims());
-		}
 
-	}, {{0u,0u}}, meta);
+			p_acc.at({{0u}}).set(p_acc.at({{0u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
+			p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
+		}
 }
 
 void lbm_step(
@@ -555,7 +559,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	for(uint64_t i = 0u; i < 4096u*4u; ++i){
+	for(uint64_t i = 0u; i < 1024u; ++i){
 		bool even_step = ((i % 2u) == 0u);
 
 		{
@@ -580,11 +584,9 @@ int main(int argc, char** argv){
 				auto& p_pos = p_rb.template get<"position">();
 
 				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-					static_cast<uint64_t>(p_pos.at({0u}).get()+0.5),
-					static_cast<uint64_t>(p_pos.at({1u}).get()+0.5)
+					static_cast<uint64_t>(p_pos.at({{0u}}).get()+0.5),
+					static_cast<uint64_t>(p_pos.at({{1u}}).get()+0.5)
 				}};
-
-				std::cout<<"Pos: "<<p_cell_pos.at({0u}).get()<<" "<<p_cell_pos.at({1u}).get()<<std::endl;
 
 				if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
 					p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
@@ -604,8 +606,8 @@ int main(int argc, char** argv){
 		}
 
 		couple_particles_to_lattice(particle_sys, lattice, macros, {1u});
-		lbm_step(lattice, i);
 		particle_sys.step({1u});
+		lbm_step(lattice, i);
 	}
 
 	return 0;

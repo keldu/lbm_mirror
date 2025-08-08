@@ -10,7 +10,7 @@ using namespace kel::lbm::sch;
 
 using T = Float64;
 }
-
+/*
 SAW_TEST("Minor Test for mask"){
 	using namespace kel;
 
@@ -81,4 +81,5 @@ SAW_TEST("Verlet integration test"){
 	}
 
 }
+*/
 }

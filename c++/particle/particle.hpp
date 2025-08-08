@@ -1,6 +1,7 @@
 #pragma once
 
 #include <forstio/codec/data.hpp>
+#include <forstio/codec/data_math.hpp>
 
 namespace kel {
 namespace lbm {
@@ -9,12 +10,12 @@ using namespace saw::schema;
 
 template<typename T, uint64_t D>
 using ParticleRigidBody = Struct<
-	Member<FixedArray<T,D>, "position">,
-	Member<FixedArray<T,D>, "position_old">,
+	Member<Vector<T,D>, "position">,
+	Member<Vector<T,D>, "position_old">,
 	Member<T, "rotation">,
 	Member<T, "rotation_old">,
 
-	Member<FixedArray<T,D>, "acceleration">,
+	Member<Vector<T,D>, "acceleration">,
 	Member<T, "rotational_acceleration">
 >;
 
@@ -47,10 +48,10 @@ private:
 
 		auto tsd_squared = time_step_delta * time_step_delta;
 
-		saw::data<sch::FixedArray<T,D>> pos_new;
+		saw::data<sch::Vector<T,D>> pos_new;
 		// Actual step
 		for(uint64_t i = 0u; i < D; ++i){
-			pos_new.at({i}) = saw::data<T>{2.0} * pos.at({i}) - pos_old.at({i}) + acc.at({i}) * tsd_squared;
+			pos_new.at({{i}}) = saw::data<T>{2.0} * pos.at({{i}}) - pos_old.at({{i}}) + acc.at({{i}}) * tsd_squared;
 		}
 
 		pos_old = pos;
