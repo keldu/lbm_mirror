@@ -256,6 +256,28 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 		}
 
 	}, {{0u,0u}}, meta, {{4u,1u}});
+
+	/**
+	 * Set channel circular obstacle
+	 */
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		auto& cell = latt(index);
+		auto& info = cell.template get<"info">();
+
+		saw::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-4u, meta.at({1u})-4u}};
+		double pos_x = 0.8 * area.at({0u}).get();
+		double pos_y = 0.5 * area.at({1u}).get();
+
+		double dist_x = pos_x - index.at({0u}).get();
+		double dist_y = pos_y - index.at({1u}).get();
+
+		double r = 16.0;
+		double dist_sq = dist_x * dist_x + dist_y * dist_y;
+		if(dist_sq < r*r){
+			info({0u}).set(2u);
+		}
+
+	}, {{0u,0u}}, meta, {{2u,2u}});
 }
 
 void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
@@ -290,7 +312,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& p_mask = part.template get<"mask">();
 	{
 		particle_circle_geometry<sch::T> geo;
-		p_mask = geo.template generate_mask<sch::T>(16u);
+		p_mask = geo.template generate_mask<sch::T>(2u,1u);
 	}
 	auto& rigid_body = part.template get<"rigid_body">();
 	auto& p_size = part.template get<"size">();
@@ -417,6 +439,23 @@ void couple_particles_to_lattice(
 
 				// Add forces to put away from walls
 				/// 1. Check if neighbour is wall
+				for(saw::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
+					auto n_p_cell_pos = saw::data<sch::FixedArray<sch::UInt64,2u>> {{
+						p_cell_pos.at({{0u}}) + dfi::directions[k.get()][0u],
+						p_cell_pos.at({{1u}}) + dfi::directions[k.get()][1u]
+					}};
+
+					auto& n_cell = latt(n_p_cell_pos);
+					auto& n_info = n_cell.template get<"info">()({0u});
+
+					// If neighbour is wall, then add force pushing the particle away
+					if(n_info.get() <= 1u){
+						// add to p_acc
+						p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+						p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+						;
+					}
+				}
 				/// 2. Add force pushing away from wall
 
 				// Add forces to push away from other particles

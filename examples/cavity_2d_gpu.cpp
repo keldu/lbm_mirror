@@ -197,7 +197,7 @@ void lbm_step(
   /**
 	* 1. Relaxation parameter \tau
 	*/
-	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
+	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.59};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
