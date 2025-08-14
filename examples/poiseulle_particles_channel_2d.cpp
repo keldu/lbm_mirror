@@ -451,9 +451,8 @@ void couple_particles_to_lattice(
 					// If neighbour is wall, then add force pushing the particle away
 					if(n_info.get() <= 1u){
 						// add to p_acc
-						p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-						p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
-						;
+						p_acc.at({{0u}}) = p_acc.at({{0u}}) - saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+						p_acc.at({{1u}}) = p_acc.at({{1u}}) - saw::data<sch::Int32>{10 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
 					}
 				}
 				/// 2. Add force pushing away from wall
