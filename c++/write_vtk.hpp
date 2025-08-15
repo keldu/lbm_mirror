@@ -174,17 +174,6 @@ saw::error_or<void> write_vtk_file(const std::filesystem::path& file_name, const
 
 	auto eov = impl::lbm_vtk_writer<Struct>::apply(vtk_file, field);
 	return eov;
-	/*
-	vtk_file <<"# vtk DataFile Version 3.0\n";
-	vtk_file <<"Velocity Cavity2D example\n";
-	vtk_file <<"ASCII\n";
-	vtk_file <<"DATASET STRUCTURED_POINTS\n";
-	vtk_file <<"DIMENSIONS "<< dim_x <<" "<<dim_y<<" 1\n";
-	vtk_file <<"SPACING 1.0 1.0 1.0\n";
-	vtk_file <<"ORIGIN 0.0 0.0 0.0\n";
-	vtk_file <<"POINT_DATA "<<(dim_x*dim_y)<<"\n";
-	vtk_file <<"VECTORS Velocity float\n";
-	*/
 }
 }
 }
