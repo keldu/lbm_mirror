@@ -6,3 +6,4 @@ result*
 log
 tmp
 vgcore.*
+*.kate-swp
