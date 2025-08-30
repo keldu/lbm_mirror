@@ -9,7 +9,6 @@
 
 #include <cmath>
 
-
 namespace kel {
 namespace lbm {
 namespace sch {
@@ -619,7 +618,7 @@ int main(int argc, char** argv){
 
 	uint64_t lbm_steps = 4096u * 4u;
 	for(uint64_t i = 0u; i < lbm_steps; ++i){
-		print_progress_bar(i+1u,lbm_steps);
+		print_progress_bar(i,lbm_steps-1u);
 		bool even_step = ((i % 2u) == 0u);
 
 		{
@@ -642,20 +641,39 @@ int main(int argc, char** argv){
 
 				auto& p_rb = p.template get<"rigid_body">();
 				auto& p_pos = p_rb.template get<"position">();
+				auto& p_mask = p_rb.template get<"mask">();
+				auto& p_mask_grid = p_mask.template get<"grid">();
+				auto p_mask_grid_dims = p_mask_grid.dims();
 
+				saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
+				p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
+				p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
+
+				auto p_pos_lie = p_pos + mask_shift;
+
+				// Cast down to get lower corner.
+				// Before casting shift by 0.5 for closest pick
 				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-					static_cast<uint64_t>(p_pos.at({{0u}}).get()+0.5),
-					static_cast<uint64_t>(p_pos.at({{1u}}).get()+0.5)
+					static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
+					static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 				}};
 
-				if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
-					p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
-				}
-				if(p_cell_pos.at({1u}) >= dim.at({1u}) ){
-					p_cell_pos.at({1u}).set(dim.at({1u}).get() - 1u );
-				}
+				// Iterate
+				iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
-				macros(p_cell_pos).template get<"particle">().set(i.get() + 1u);
+					saw::data<sch::Vector<sch::T,2u>> index_shift;
+					index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
+					index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+
+					if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
+						p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
+					}
+					if(p_cell_pos.at({1u}) >= dim.at({1u}) ){
+						p_cell_pos.at({1u}).set(dim.at({1u}).get() - 1u );
+					}
+
+					macros(p_cell_pos).template get<"particle">().set(i.get() + 1u);
+				}, {{0u,0u}}, p_mask_grid_dims);
 			}
 
 			{

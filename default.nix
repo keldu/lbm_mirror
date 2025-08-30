@@ -1,6 +1,6 @@
 { pkgs ? import <nixpkgs> {}
 , stdenv ? pkgs.llvmPackages_19.stdenv
-, clang-tools ? pkgs.clang-tools_16
+, clang-tools ? pkgs.clang-tools_19
 }:
 
 let

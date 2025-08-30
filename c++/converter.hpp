@@ -1,10 +1,18 @@
 #pragma once
 
 #include "lbm_unit.hpp"
+#include "descriptor.hpp"
 
 namespace kel {
 namespace lbm {
 
+namespace sch {
+using namespace saw::schema;
+}
+
+/**
+ * Helps converting from SI types to LBM types
+ */
 template<typename T>
 class converter {
 private:
@@ -59,9 +67,13 @@ public:
 	}
 
 	saw::data<sch::LbmKinematicViscosity<T>> kinematic_viscosity_si_to_lbm (const saw::data<sch::SiKinematicViscosity<T>>& kin_si) const {
-		return kin_si / (meter_conv_ * meter_conv_) * second_conv_;
+		return (kin_si / (meter_conv_ * meter_conv_)) * second_conv_;
+	}
+
+	template<typename Desc>
+	saw::data<sch::Pure<T>> kinematic_viscosity_si_to_tau(const saw::data<sch::SiKinematicViscosity<T>>& kin_si) const {
+		return saw::data<sch::Pure<T>>{saw::data<typename saw::unit_division<sch::Pure<T>, sch::LbmKinematicViscosity<T>>::Schema >{df_info<T,Desc>::inv_cs2} * kinematic_viscosity_si_to_lbm(kin_si) + saw::data<sch::Pure<T>>{0.5}};
 	}
 };
-
 }
 }

@@ -21,7 +21,6 @@ SAW_TEST("Si Meter to Lbm Meter"){
 	saw::data<sch::SiMeter<sch::T>> si_m{1.0};
 
 	auto lbm_m = converter.meter_si_to_lbm(si_m);
-
 	SAW_EXPECT(lbm_m.handle().get() == 10.0, "Correct si to lbm conversion");
 }
 }
