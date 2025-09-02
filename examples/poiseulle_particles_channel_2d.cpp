@@ -311,7 +311,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& p_mask = part.template get<"mask">();
 	{
 		particle_circle_geometry<sch::T> geo;
-		p_mask = geo.template generate_mask<sch::T>(2u,1u);
+		p_mask = geo.template generate_mask<sch::T>(40u,0u);
 	}
 	auto& rigid_body = part.template get<"rigid_body">();
 	auto& p_size = part.template get<"size">();
@@ -327,10 +327,10 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 		p_size = {1.0};
 	}
 
-	for(uint64_t i = 0; i < 60; ++i){
-		for(uint64_t j = 0; j < 4; ++j){
-			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(32u + j * 2u)};
-			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(4u + i * 2u)};
+	for(uint64_t i = 0; i < 1; ++i){
+		for(uint64_t j = 0; j < 1; ++j){
+			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(32u + j * 8u)};
+			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(64u + i * 8u)};
 			old_pos.at({{1u}}) = pos.at({{0u}});
 
 			auto eov = part_sys.add_particle(part);
@@ -401,6 +401,10 @@ void couple_particles_to_lattice(
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
+			if(p_mask_grid.at(index).get() == 0){
+				return;
+			}
+
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
 			index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
 			index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
@@ -436,7 +440,6 @@ void couple_particles_to_lattice(
 			for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
 				p_acc.at({{i}}) = p_acc.at({{i}}) + p_vel_rel.at({{i}});
 			}
-
 
 			// Add forces to put away from walls
 			/// 1. Check if neighbour is wall
@@ -641,7 +644,8 @@ int main(int argc, char** argv){
 
 				auto& p_rb = p.template get<"rigid_body">();
 				auto& p_pos = p_rb.template get<"position">();
-				auto& p_mask = p_rb.template get<"mask">();
+
+				auto& p_mask = p.template get<"mask">();
 				auto& p_mask_grid = p_mask.template get<"grid">();
 				auto p_mask_grid_dims = p_mask_grid.dims();
 
@@ -649,21 +653,32 @@ int main(int argc, char** argv){
 				p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
 				p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
 
-				auto p_pos_lie = p_pos + mask_shift;
 
-				// Cast down to get lower corner.
-				// Before casting shift by 0.5 for closest pick
-				saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-					static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
-					static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
-				}};
 
 				// Iterate
 				iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
+					if(p_mask_grid.at(index).get() == 0){
+						return;
+					}
+
 					saw::data<sch::Vector<sch::T,2u>> index_shift;
 					index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-					index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+					index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+
+					saw::data<sch::Vector<sch::T,2u>> mask_shift;
+					mask_shift.at({{0u}}) = index_shift.at({{0u}});
+					mask_shift.at({{1u}}) = index_shift.at({{1u}});
+
+					auto p_pos_lie = p_pos + mask_shift;
+
+					// Cast down to get lower corner.
+					// Before casting shift by 0.5 for closest pick
+					saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
+						static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
+						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
+					}};
+
 
 					if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
 						p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
