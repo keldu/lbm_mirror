@@ -37,7 +37,7 @@ template<typename Desc>
 using CellParticleMask = Cell<UInt16, D2Q9, 1u, 0u, 0u>;
 
 template<typename Desc>
-using CellForceField = Cell<Float64, D2Q9, 0u, 1u, 0u>;
+using CellForceField = Cell<T, D2Q9, 0u, 1u, 0u>;
 
 /**
  * Basic type for simulation
@@ -48,14 +48,15 @@ using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs_old">,
 	Member<CellInfo<Desc>, "info">,
 	// Member<CellParticleMask<Desc>, "particle_mask">,
-	Member<CellForceField<Desc>, "forcing">
+	Member<CellForceField<Desc>, "force">
 >;
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
 	Member<FixedArray<T,D>, "velocity">,
 	Member<T, "pressure">,
-	Member<UInt16, "particle">
+	Member<UInt16, "particle">,
+	Member<FixedArray<T,D>, "force">
 >;
 
 template<typename T>
@@ -451,13 +452,15 @@ void couple_particles_to_lattice(
 
 				auto& n_cell = latt(n_p_cell_pos);
 				auto& n_info = n_cell.template get<"info">()({0u});
-				auto& n_macro_cell = macros.at(n_p_cell_pos).template get<"particle">();
+				auto& n_macro_cell_particle = macros.at(n_p_cell_pos).template get<"particle">();
 
 				// If neighbour is wall, then add force pushing the particle away
-				if(n_info.get() <= 1u or (n_macro_cell.get() != i.get() and n_macro_cell.get() > 0u) ) {
+				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != i.get() and n_macro_cell_particle.get() > 0u) ) {
 					// add to p_acc
-					p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{1 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-					p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{1 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+
+					// TODO add if particle is close
+					p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{2 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+					p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{2 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
 				}
 			}
 			/// 2. Add force pushing away from wall
@@ -483,7 +486,7 @@ void lbm_step(
   /**
 	* 1. Relaxation parameter \tau
 	*/
-	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
+	component<sch::T, sch::D2Q9, cmpt::BGKGuo> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.1 * dfi::cs2 * 2.0 / 3.0};
 	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2 * 2.0 / 3.0};
@@ -630,11 +633,17 @@ int main(int argc, char** argv){
 				auto& cell = lattice(index);
 				auto& dfs = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 
-				auto& rho = macros.at(index).template get<"pressure">();
-				auto& vel = macros.at(index).template get<"velocity">();
-				auto& part_mask = macros.at(index).template get<"particle">();
+				auto& macro_cell = macros.at(index);
+
+				auto& rho = macro_cell.template get<"pressure">();
+				auto& vel = macro_cell.template get<"velocity">();
+				auto& force = macro_cell.template get<"force">();
+
+				auto& part_mask = macro_cell.template get<"particle">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 				rho = rho * saw::data<sch::T>{dfi::cs2};
+
+				force =
 
 				part_mask.set(0u);
 			}, {{0u,0u}}, meta);
@@ -652,7 +661,6 @@ int main(int argc, char** argv){
 				saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
 				p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
 				p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
-
 
 
 				// Iterate
@@ -675,7 +683,7 @@ int main(int argc, char** argv){
 					// Cast down to get lower corner.
 					// Before casting shift by 0.5 for closest pick
 					saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-						static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
+						static_cast<uint64_t>(p_pos_lie.at(saw::data<T>{{0u}}).get()+0.5),
 						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 					}};
 
