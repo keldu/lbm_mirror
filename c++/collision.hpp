@@ -7,6 +7,7 @@ namespace kel {
 namespace lbm {
 namespace cmpt {
 struct BGK {};
+struct BGKGuo {};
 }
 
 /**
@@ -16,9 +17,11 @@ template<typename T, typename Descriptor>
 class component<T, Descriptor, cmpt::BGK> {
 private:
 	typename saw::native_data_type<T>::type relaxation_;
+	typename saw::native_data_type<T>::type frequency_;
 public:
 	component(typename saw::native_data_type<T>::type relaxation__):
-		relaxation_{relaxation__}
+		relaxation_{relaxation__},
+		frequency_{1 / relaxation_}
 	{}
 
 	using Component = cmpt::BGK;
@@ -46,7 +49,7 @@ public:
 		auto& cell = field(index);
 
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
 		saw::data<T> rho;
 		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
@@ -55,6 +58,69 @@ public:
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
+		}
+	}
+};
+
+template<typename T, typename Descriptor>
+class component<T, Descriptor, cmpt::BGKGuo> {
+private:
+	typename saw::native_data_type<T>::type relaxation_;
+	typename saw::native_data_type<T>::type frequency_;
+public:
+	component(typename saw::native_data_type<T>::type relaxation__):
+		relaxation_{relaxation__},
+		frequency_{1 / relaxation_}
+	{}
+
+	using Component = cmpt::BGKGuo;
+
+	using access = cmpt::access_tuple<
+		cmpt::access<"dfs", 1, true, true, true>,
+		cmpt::access<"force", 0, true, false>
+	>;
+
+	/**
+	 * Thoughts regarding automating order setup
+	 */
+	static constexpr saw::string_literal name = "collision";
+	static constexpr saw::string_literal after = "";
+	static constexpr saw::string_literal before = "streaming";
+
+	template<typename CellFieldSchema>
+	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, uint64_t time_step){
+		bool is_even = ((time_step & 2) == 0);
+		auto& cell = field(index);
+
+		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+
+		saw::data<T> rho;
+		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
+		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
+
+		using dfi = df_info<T,Descriptor>;
+
+		auto& force = cell.template get<"force">();
+
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			saw::data<T> ci_dot_u{0};
+			saw::data<T> ci_dot_F{0};
+			saw::data<T> u_dot_F{0};
+			for(uint64_t d = 0u; d < Descriptor::D; ++d){
+				ci_dot_u = ci_dot_u + vel.at({d}) * dfi::directions[i][d];
+				ci_dot_F = ci_dot_F + force({d}) * dfi::directions[i][d];
+				u_dot_F = u_dot_F + vel.at({d}) * force({d});
+			}
+
+			// auto df_old = dfs_old({i});
+			saw::data<T> F_i = saw::data<T>{dfi::weights[i]} * (ci_dot_F / dfi::cs2 + ci_dot_u * ci_dot_F / (dfi::cs2 * dfi::cs2));
+			if(F_i.get() != 0){
+				std::cerr<<"AAAH";
+			}
+
+			dfs_old({i}) = dfs_old({i}) + saw::data<T>{frequency_} * (eq.at(i) - dfs_old({i}) ) - F_i * saw::data<T>{1.0f - 0.5f * frequency_};
 		}
 	}
 };

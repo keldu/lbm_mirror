@@ -643,7 +643,9 @@ int main(int argc, char** argv){
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 				rho = rho * saw::data<sch::T>{dfi::cs2};
 
-				force =
+				for(uint64_t d = 0u; d < sch::D2Q9::D; ++d){
+					force.at({d}) = cell.template get<"force">()({d});
+				}
 
 				part_mask.set(0u);
 			}, {{0u,0u}}, meta);
@@ -683,7 +685,7 @@ int main(int argc, char** argv){
 					// Cast down to get lower corner.
 					// Before casting shift by 0.5 for closest pick
 					saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-						static_cast<uint64_t>(p_pos_lie.at(saw::data<T>{{0u}}).get()+0.5),
+						static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
 						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 					}};
 

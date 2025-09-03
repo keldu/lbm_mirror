@@ -199,7 +199,6 @@ void lbm_step(
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.59};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-
 	component<sch::T, sch::D2Q9, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1,0.0};
 
