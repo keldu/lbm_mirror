@@ -189,7 +189,8 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 void lbm_step(
 	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-	uint64_t time_step
+	uint64_t time_step,
+	sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
@@ -260,8 +261,6 @@ void lbm_step(
 int main(){
 	using namespace kel::lbm;
 
-	saw::remote<saw::rmt::Sycl> sycl_rmt;
-
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
 
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
@@ -272,6 +271,13 @@ int main(){
 	};
 
 	print_lbm_meta<sch::T, sch::D2Q9>(conv, {1e-3});
+
+	auto eo_lbm_dir = output_directory();
+	if(eo_lbm_dir.is_error()){
+		return -1;
+	}
+	auto& lbm_dir = eo_lbm_dir.get_value();
+	auto out_dir = lbm_dir / "cavity_gpu_2d";
 
 	//auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
@@ -287,6 +293,8 @@ int main(){
 	 *
 	 */
 	set_initial_conditions(lattice);
+
+	sycl::queue sycl_q{sycl::default_selector_v, sycl::property::queue::in_order{}};
 
 	/**
 	 * Timeloop
@@ -307,7 +315,7 @@ int main(){
 			write_vtk_file(vtk_f_name, macros);
 		}
 
-		// lbm_step(lattice, i);
+		lbm_step(lattice, i, sycl_q);
 	}
 	return 0;
 }

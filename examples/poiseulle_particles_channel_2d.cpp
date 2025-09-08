@@ -24,6 +24,7 @@ using namespace saw::schema;
  * Q factor
  */
 using T = Float32;
+// using T = MixedPrecision<Float64, Float32>;
 using D2Q5 = Descriptor<2u,5u>;
 using D2Q9 = Descriptor<2u,9u>;
 
@@ -349,6 +350,7 @@ void couple_particles_to_lattice(
 		saw::data<kel::lbm::sch::T> time_step
 ){
 	using namespace kel::lbm;
+	(void) time_step;
 
 	auto meta = latt.meta();
 	using dfi = df_info<sch::T,sch::D2Q9>;
@@ -398,7 +400,7 @@ void couple_particles_to_lattice(
 
 		// Fluid to Particle Coupling
 		// Prepare force sum
-		saw::data<sch::FixedArray<sch::T,2u>> forces;
+		saw::data<sch::Vector<sch::T,2u>> forces;
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
@@ -500,8 +502,8 @@ void lbm_step(
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
-		auto& dfs = cell.template get<"dfs">();
-		auto& dfs_old = cell.template get<"dfs_old">();
+		//auto& dfs = cell.template get<"dfs">();
+		//auto& dfs_old = cell.template get<"dfs_old">();
 
 		switch(info({0u}).get()){
 			case 1u: {
@@ -594,7 +596,6 @@ int main(int argc, char** argv){
 	 */
 	particle_system<sch::T, 2u> particle_sys;
 	add_particles(particle_sys);
-
 
 	/**
 	 * Setup geometry

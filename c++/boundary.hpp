@@ -51,7 +51,7 @@ public:
 		auto& cell = field(index);
 
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
 		using dfi = df_info<T,Descriptor>;
 

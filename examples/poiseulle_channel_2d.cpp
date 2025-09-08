@@ -93,7 +93,7 @@ public:
 			return;
 		}
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		//auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
 		/**
 		 * Sum all known DFs
@@ -121,7 +121,7 @@ public:
 			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
 			auto& info_n = cell_n.template get<"info">();
 			auto info_n_val = info_n({0u});
-			auto k_opp = dfi::opposite_index[k.get()];
+			//auto k_opp = dfi::opposite_index[k.get()];
 
 			if(info_n_val.get() > 0u){
 				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
@@ -294,8 +294,8 @@ void lbm_step(
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
-		auto& dfs = cell.template get<"dfs">();
-		auto& dfs_old = cell.template get<"dfs_old">();
+		//auto& dfs = cell.template get<"dfs">();
+		//auto& dfs_old = cell.template get<"dfs_old">();
 
 		switch(info({0u}).get()){
 			case 1u: {

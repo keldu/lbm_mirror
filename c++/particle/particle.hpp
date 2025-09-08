@@ -27,7 +27,7 @@ using ParticleMask = Struct<
 template<typename T, uint64_t D>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
-	Member<ParticleMask<Float32,D>, "mask">,
+	Member<ParticleMask<T,D>, "mask">,
 	Member<T, "size">
 >;
 }
@@ -84,6 +84,7 @@ public:
 
 	template<typename LbmLattice>
 	void update_particle_border(saw::data<LbmLattice>& latt){
+		(void) latt;
 		for(auto& iter : particles_){
 			auto& par = iter;
 

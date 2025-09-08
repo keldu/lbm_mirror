@@ -81,7 +81,7 @@ struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , 
 	template<uint64_t i>
 	static saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>,Dim>>& field){
 
-		auto meta = field.get_dims();
+		// auto meta = field.get_dims();
 		saw::data<sch::FixedArray<sch::UInt64,Dim>> index;
 		for(saw::data<sch::UInt64> it{0}; it.get() < Dim; ++it){
 			index.at({0u}).set(0u);
