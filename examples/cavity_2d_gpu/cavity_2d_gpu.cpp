@@ -279,11 +279,6 @@ int main(){
 	auto& lbm_dir = eo_lbm_dir.get_value();
 	auto out_dir = lbm_dir / "cavity_gpu_2d";
 
-	//auto& df_field = lattices.at(0).template get<"dfs">();
-	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
-	//	lattices.at(i) = {dim_x, dim_y};
-	//}
-
 	/**
 	 * Set meta information describing what this cell is
 	 */
