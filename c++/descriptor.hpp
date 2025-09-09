@@ -153,6 +153,55 @@ public:
 	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
 	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
+/*
+template<typename T>
+class df_info<T,sch::Descriptor<3, 27>> {
+public:
+	using Descriptor = sch::Descriptor<3,27>;
+
+	static constexpr uint64_t D = 3u;
+	static constexpr uint64_t Q = 27u;
+
+	static constexpr std::array<std::array<int32_t, D>, Q> directions = {{
+		{ 0, 0, 0},
+		{-1, 0, 0},
+		{ 1, 0, 0},
+		{ 0,-1, 0},
+		{ 0, 1, 0},
+		{-1,-1, 0},
+		{ 1, 1, 0},
+		{-1, 1, 0},
+		{ 1,-1, 0}
+	}};
+
+	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
+		4./9.,
+		1./9.,
+		1./9.,
+		1./9.,
+		1./9.,
+		1./36.,
+		1./36.,
+		1./36.,
+		1./36.
+	};
+
+	static constexpr std::array<uint64_t,Q> opposite_index = {
+		0,
+		2,
+		1,
+		4,
+		3,
+		6,
+		5,
+		8,
+		7
+	};
+
+	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
+	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
+};
+*/
 
 template<typename Schema>
 class cell_schema_builder {

@@ -106,7 +106,7 @@ public:
 		auto& force = cell.template get<"force">();
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			saw::data<T> ci_min_u{0};
+			// saw::data<T> ci_min_u{0};
 			saw::data<T> ci_dot_u{0};
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){
 				ci_dot_u = ci_dot_u + vel.at({d}) * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])};

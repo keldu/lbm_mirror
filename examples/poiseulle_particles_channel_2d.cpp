@@ -68,94 +68,6 @@ using GeometryStruct = Struct<
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
 
-namespace cmpt {
-template<bool East>
-struct PressureBoundaryRestrictedVelocityTo {};
-}
-
-/**
- * This is massively hacky and expects a lot of conditions
- * Either this or mirrored along the horizontal line works
- *
- * 0 - 2 - 2
- * 0 - 3 - 1
- * 0 - 3 - 1
- * .........
- * 0 - 3 - 1
- * 0 - 2 - 2
- *
- */
-template<typename FP,typename Descriptor, bool East>
-struct component<FP,Descriptor, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
-private:
-	saw::data<FP> pressure_setting_;
-	saw::data<FP> rho_setting_;
-public:
-	component(const saw::data<FP>& pressure_setting__):
-		pressure_setting_{pressure_setting__},
-		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
-	{}
-
-	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
-		using dfi = df_info<FP,Descriptor>;
-
-		bool is_even = ((time_step % 2) == 0);
-		auto& cell = field(index);
-
-		auto& info = cell.template get<"info">();
-		if(info({0u}).get() == 0u){
-			return;
-		}
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-
-		/**
-		 * Sum all known DFs
-		 */
-		saw::data<FP> sum_df{0};
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-			auto k_opp = dfi::opposite_index[k.get()];
-
-			if(info_n_val.get() > 0u){
-				sum_df += dfs_old({k_opp});
-			}
-		}
-		/**
-		 * Get the sum of the unknown dfs and precalculate the direction
-		 */
-		constexpr int known_dir = East ? 1 : -1;
-		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
-
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-			auto k_opp = dfi::opposite_index[k.get()];
-
-			if(info_n_val.get() > 0u){
-				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
-			}
-		}
-
-		auto vel_x = sum_unknown_dfs / rho_setting_;
-
-		if constexpr (East) {
-			dfs_old({2u}) = dfs_old({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({6u}) = dfs_old({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-			dfs_old({8u}) = dfs_old({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-		}else if constexpr (not East){
-			dfs_old({1u}) = dfs_old({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({5u}) = dfs_old({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-			dfs_old({7u}) = dfs_old({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-		}
-	}
-};
 }
 }
 
@@ -400,7 +312,7 @@ void couple_particles_to_lattice(
 
 		// Fluid to Particle Coupling
 		// Prepare force sum
-		saw::data<sch::Vector<sch::T,2u>> forces;
+		// saw::data<sch::Vector<sch::T,2u>> forces;
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
@@ -484,14 +396,16 @@ void lbm_step(
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
+	(void) macros;
+
 	bool even_step = ((time_step % 2u) == 0u);
   /**
 	* 1. Relaxation parameter \tau
 	*/
 	component<sch::T, sch::D2Q9, cmpt::BGKGuo> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.1 * dfi::cs2 * 2.0 / 3.0};
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2 * 2.0 / 3.0};
+	component<sch::T, sch::D2Q9, cmpt::ZouHeHorizontal<true>> inlet{1.1 * dfi::cs2 * 2.0 / 3.0};
+	component<sch::T, sch::D2Q9, cmpt::ZouHeHorizontal<false>> outlet{1.0 * dfi::cs2 * 2.0 / 3.0};
 
 	auto meta = latt.meta();
 

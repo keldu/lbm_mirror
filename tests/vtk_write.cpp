@@ -48,7 +48,7 @@ SAW_TEST("VTK Write test example"){
 
 	auto& cell_0 = cells.at({{{0,0}}});
 	cell_0.template get<"velocity">()= {{0.5,-0.1}};
-	cell_0.template get<"pressure">().set({1.1});
+	cell_0.template get<"pressure">().set(1.1);
 
 	auto eov = lbm::impl::lbm_vtk_writer<sch::Array<sch::MacroStruct<sch::T,2>, 2>>::apply(sstream, cells);
 	SAW_EXPECT(eov.is_value(), "vtk writer failed to write");

@@ -43,7 +43,7 @@ private:
 		auto& pos = body.template get<"position">();
 		auto& pos_old = body.template get<"position_old">();
 
-		auto& rot = body.template get<"rotation">();
+		// auto& rot = body.template get<"rotation">();
 		auto& acc = body.template get<"acceleration">();
 
 		auto tsd_squared = time_step_delta * time_step_delta;
