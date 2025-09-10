@@ -1,9 +1,4 @@
-#include "../c++/descriptor.hpp"
-#include "../c++/macroscopic.hpp"
-#include "../c++/lbm.hpp"
-#include "../c++/component.hpp"
-#include "../c++/collision.hpp"
-#include "../c++/boundary.hpp"
+#include <kel/lbm/lbm.hpp>
 
 #include <forstio/codec/data.hpp>
 // #include <forstio/remote/
@@ -27,14 +22,13 @@ using namespace saw::schema;
  * Q factor
  */
 using T = Float32;
-using D2Q5 = Descriptor<2u,5u>;
 using D2Q9 = Descriptor<2u,9u>;
 
 template<typename Desc>
 using DfCell = Cell<T, Desc, 0u, 0u, 1u>;
 
 template<typename Desc>
-using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
+using CellInfo = Cell<UInt8, Desc, 1u, 0u, 0u>;
 
 /**
  * Basic type for simulation
@@ -217,11 +211,11 @@ void lbm_step(
 
 		switch(info({0u}).get()){
 			case 1u: {
-				coll.apply(latt, index, time_step);
+				bb.apply(latt, index, time_step);
 				break;
 			}
 			case 2u: {
-				bb.apply(latt, index, time_step);
+				coll.apply(latt, index, time_step);
 				break;
 			}
 			default:

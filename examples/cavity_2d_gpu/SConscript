@@ -10,7 +10,7 @@ Import('env')
 dir_path = Dir('.').abspath
 
 # Environment for base library
-cavity2d_env = examples_env.Clone();
+examples_env = env.Clone();
 
 examples_env.sources = sorted(glob.glob(dir_path + "/*.cpp"))
 examples_env.headers = sorted(glob.glob(dir_path + "/*.hpp"))
@@ -20,22 +20,13 @@ env.headers += examples_env.headers;
 
 # Cavity2D
 examples_objects = [];
-examples_env.add_source_files(examples_objects, ['cavity_2d.cpp'], shared=False);
-examples_env.cavity_2d = examples_env.Program('#bin/cavity_2d', [env.library_static, examples_objects]);
+examples_env.add_source_files(examples_objects, ['cavity_2d_gpu.cpp'], shared=False);
+examples_env.cavity_2d_gpu = examples_env.Program('#bin/cavity_2d_gpu', [examples_objects]);
 
 # Set Alias
 env.examples = [
-	examples_env.meta_2d,
-#	examples_env.cavity_2d,
-#	examples_env.cavity_3d,
-#	examples_env.particle_ibm_2d
-	examples_env.poiseulle_2d,
-	examples_env.poiseulle_channel_2d,
-	examples_env.poiseulle_particles_channel_2d
+	examples_env.cavity_2d_gpu
 ];
 env.Alias('examples', env.examples);
-
-if env["build_examples"]:
-	env.targets += ['examples'];
-	env.Install('$prefix/bin/', env.examples);
-#endif
+env.targets += ['examples'];
+env.Install('$prefix/bin/', env.examples);

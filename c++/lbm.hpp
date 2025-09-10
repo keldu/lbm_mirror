@@ -1,8 +1,10 @@
 #pragma once
 
 #include "descriptor.hpp"
+#include "boundary.hpp"
 #include "converter.hpp"
 #include "config.hpp"
+#include "collision.hpp"
 #include "component.hpp"
 #include "environment.hpp"
 #include "equilibrium.hpp"

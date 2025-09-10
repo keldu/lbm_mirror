@@ -1,0 +1,50 @@
+{ lib
+, stdenv
+, fetchFromGitHub
+, cmake
+, makeWrapper
+, boost
+, llvmPackages
+, lld
+}:
+
+let
+	version = "25.02.0";
+in stdenv.mkDerivation {
+	pname = "adaptive-cpp-kel-custom";
+	inherit version;
+
+	src = fetchFromGitHub {
+		owner = "AdaptiveCpp";
+		repo = "AdaptiveCpp";
+		tag = "v${version}";
+		sha256 = "sha256-vXfw8+xn3/DYxUKp3QGdQ8sEbDwyk+8jDCyuvQOXigc=";
+	};
+
+	nativeBuildInputs = [
+    cmake
+    makeWrapper
+	];
+
+	buildInputs = [
+		boost
+		llvmPackages.openmp
+		llvmPackages.libclang
+		llvmPackages.llvm
+	];
+
+  cmakeFlags = [
+    "-DCLANG_INCLUDE_PATH=${llvmPackages.libclang.dev}/include"
+  ];
+
+  postFixup = ''
+    wrapProgram $out/bin/syclcc-clang \
+      --prefix PATH : ${lib.makeBinPath [ lld ]} \
+      --add-flags "-L${llvmPackages.openmp}/lib" \
+      --add-flags "-I${llvmPackages.openmp.dev}/include" \
+  '';
+
+  postPatch = ''
+    patchShebangs .
+  '';
+}

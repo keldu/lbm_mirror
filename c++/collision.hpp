@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macroscopic.hpp"
 #include "component.hpp"
 #include "equilibrium.hpp"
 

@@ -23,3 +23,6 @@ env.headers += core_env.headers;
 objects = []
 core_env.add_source_files(objects, core_env.sources, shared=False);
 env.library_static = core_env.StaticLibrary('#build/kel-lbm', [objects]);
+
+env.Install('$prefix/lib/', env.library_static);
+env.Install('$prefix/include/kel/lbm/', env.headers);

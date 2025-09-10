@@ -3,12 +3,15 @@
 , scons
 , clang-tools
 , forstio
+, adaptive-cpp
 , pname
 , version
+, kel-lbm
 }:
 
 stdenv.mkDerivation {
-	inherit pname version;
+	pname = pname + "-examples-" + "cavity_2d_gpu";
+	inherit version;
   src = ./..;
 
   nativeBuildInputs = [
@@ -21,7 +24,9 @@ stdenv.mkDerivation {
     forstio.async
     forstio.codec
     forstio.codec-unit
-    forstio.codec-json
+		forstio.codec-json
+		adaptive-cpp
+		kel-lbm
   ];
 
   doCheck = true;

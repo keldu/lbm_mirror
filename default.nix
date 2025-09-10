@@ -10,10 +10,27 @@ let
   }).outPath + "/default.nix"){
     inherit stdenv;
     inherit clang-tools;
-  }).forstio;
+	}).forstio;
 
-in pkgs.callPackage ./.nix/derivation.nix {
-  inherit forstio;
-  inherit stdenv;
-  inherit clang-tools;
+	adaptive-cpp = pkgs.callPackage ./.nix/adaptive-cpp.nix {
+			inherit stdenv;
+			llvmPackages = pkgs.llvmPackages_19;
+			lld = pkgs.lld_19;
+	};
+
+	pname = "kel-lbm";
+	version = "0.0.2";
+in rec {
+	lbm = pkgs.callPackage ./.nix/derivation.nix {
+		inherit forstio;
+		inherit stdenv;
+		inherit clang-tools;
+	};
+
+	examples = {
+		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			kel-lbm = lbm;
+		};
+	};
 }
