@@ -54,11 +54,13 @@ env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
         '-std=c++20',
         '-g',
         '-Wall',
-        '-Wextra'
+        '-Wextra',
+        '-isystem', 'AdaptiveCpp'
     ],
     LIBS=[
         'forstio-core',
-        'forstio-codec'
+        'forstio-codec',
+        'acpp-rt'
     ]
 );
 env.__class__.add_source_files = add_kel_source_files

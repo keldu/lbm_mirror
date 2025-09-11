@@ -8,6 +8,7 @@
 #include "component.hpp"
 #include "environment.hpp"
 #include "equilibrium.hpp"
+#include "iterator.hpp"
 #include "macroscopic.hpp"
 #include "write_vtk.hpp"
 #include "util.hpp"

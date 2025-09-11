@@ -37,6 +37,14 @@ in stdenv.mkDerivation {
     "-DCLANG_INCLUDE_PATH=${llvmPackages.libclang.dev}/include"
   ];
 
+  postInstall = ''
+    if [ -d "$out/include/AdaptiveCpp" ]; then
+      mv $out/include/AdaptiveCpp .hidden-fake
+      mv .hidden-fake/* $out/include/
+      rmdir .hidden-fake
+    fi
+  '';
+
   postFixup = ''
     wrapProgram $out/bin/syclcc-clang \
       --prefix PATH : ${lib.makeBinPath [ lld ]} \

@@ -3,6 +3,8 @@
 #include <forstio/codec/data.hpp>
 // #include <forstio/remote/
 
+#include <AdaptiveCpp/sycl/sycl.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -111,6 +113,7 @@ constexpr size_t dim_y = 128;
 
 void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
+	auto meta = latt.meta();
 	/**
 	 * Set ghost
 	 */
@@ -183,8 +186,9 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 void lbm_step(
 	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	bool even_step,
 	uint64_t time_step,
-	sycl::queue& sycl_q
+	acpp::sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
@@ -283,7 +287,8 @@ int main(){
 	 */
 	set_initial_conditions(lattice);
 
-	sycl::queue sycl_q{sycl::default_selector_v, sycl::property::queue::in_order{}};
+	acpp::sycl::queue sycl_q{acpp::sycl::default_selector_v, acpp::sycl::property::queue::in_order{}};
+	acpp::sycl::buffer<saw::data<sch::CavityFieldD2Q9>> df_sycl{&lattice, 1u};
 
 	/**
 	 * Timeloop
@@ -297,6 +302,7 @@ int main(){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
+
 	for(uint64_t i = 0u; i < 256u; ++i){
 		{
 			std::string vtk_f_name{"tmp/poiseulle_2d_"};
@@ -304,7 +310,7 @@ int main(){
 			write_vtk_file(vtk_f_name, macros);
 		}
 
-		lbm_step(lattice, i, sycl_q);
+		lbm_step(lattice, (i%2u == 0u), i, sycl_q);
 	}
 	return 0;
 }

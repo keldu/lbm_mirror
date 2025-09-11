@@ -33,4 +33,8 @@ in rec {
 			kel-lbm = lbm;
 		};
 	};
+
+	debug = {
+		inherit adaptive-cpp;
+	};
 }

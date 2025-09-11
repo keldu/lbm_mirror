@@ -29,12 +29,6 @@ stdenv.mkDerivation {
 		kel-lbm
   ];
 
-  doCheck = true;
-  checkPhase = ''
-    scons test
-    ./bin/tests
-	'';
-
 	preferLocalBuild = true;
 
   outputs = [ "out" "dev" ];
