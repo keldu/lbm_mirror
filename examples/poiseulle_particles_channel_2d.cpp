@@ -245,7 +245,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 		for(uint64_t j = 0; j < 1; ++j){
 			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(32u + j * 8u)};
 			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(64u + i * 8u)};
-			old_pos.at({{1u}}) = pos.at({{0u}});
+			old_pos = pos;
 
 			auto eov = part_sys.add_particle(part);
 			if(eov.is_error()){
@@ -372,9 +372,16 @@ void couple_particles_to_lattice(
 				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != i.get() and n_macro_cell_particle.get() > 0u) ) {
 					// add to p_acc
 
-					// TODO add if particle is close
-					p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{2 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-					p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{2 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+					saw::data<sch::T> dist_dot{
+						(p_pos.at({{0u}})-n_p_cell_pos.at({{0u}}).template cast_to<sch::T>()) * dfi::directions[dfi::opposite_index[k.get()]][0u]+
+						(p_pos.at({{1u}})-n_p_cell_pos.at({{1u}}).template cast_to<sch::T>()) * dfi::directions[dfi::opposite_index[k.get()]][1u]
+					};
+
+					if(dist_dot.get() > 0){
+						// TODO add if particle is close
+						p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{100 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+						p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{100 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+					}
 				}
 			}
 			/// 2. Add force pushing away from wall
@@ -402,7 +409,7 @@ void lbm_step(
   /**
 	* 1. Relaxation parameter \tau
 	*/
-	component<sch::T, sch::D2Q9, cmpt::BGKGuo> coll{0.5384};
+	component<sch::T, sch::D2Q9, cmpt::BGKGuo> coll{0.59};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	component<sch::T, sch::D2Q9, cmpt::ZouHeHorizontal<true>> inlet{1.1 * dfi::cs2 * 2.0 / 3.0};
 	component<sch::T, sch::D2Q9, cmpt::ZouHeHorizontal<false>> outlet{1.0 * dfi::cs2 * 2.0 / 3.0};
@@ -537,7 +544,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	uint64_t lbm_steps = 4096u * 4u;
+	uint64_t lbm_steps = 10000u;
 	for(uint64_t i = 0u; i < lbm_steps; ++i){
 		print_progress_bar(i,lbm_steps-1u);
 		bool even_step = ((i % 2u) == 0u);
