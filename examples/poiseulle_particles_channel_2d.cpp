@@ -54,10 +54,11 @@ using CellStruct = Struct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "velocity">,
+	Member<Vector<T,D>, "velocity">,
 	Member<T, "pressure">,
 	Member<UInt16, "particle">,
 	Member<FixedArray<T,D>, "force">
+	//Member<Vector<T,D>, "debug_acceleration">
 >;
 
 template<typename T>
@@ -348,13 +349,16 @@ void couple_particles_to_lattice(
 
 			// p_pos - p_pos_old
 			// auto p_vel_rel = closest_u - p_vel;
-			saw::data<sch::Vector<sch::T, 2u>> p_vel_rel;
-			p_vel_rel.at({{0u}}) = closest_u.at({0u}) - p_vel.at({{0u}});
-			p_vel_rel.at({{1u}}) = closest_u.at({1u}) - p_vel.at({{1u}});
+			saw::data<sch::Vector<sch::T, 2u>> p_vel_rel = closest_u - p_vel;
 
+			// Add relative velocity to particle acceleration (Since our timestep is 1 we don't need to do anything else)
+			p_acc = p_acc + p_vel_rel;
+
+			/*
 			for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
 				p_acc.at({{i}}) = p_acc.at({{i}}) + p_vel_rel.at({{i}});
 			}
+			*/
 
 			// Add forces to put away from walls
 			/// 1. Check if neighbour is wall
@@ -366,10 +370,11 @@ void couple_particles_to_lattice(
 
 				auto& n_cell = latt(n_p_cell_pos);
 				auto& n_info = n_cell.template get<"info">()({0u});
-				auto& n_macro_cell_particle = macros.at(n_p_cell_pos).template get<"particle">();
+				auto& n_macro_cell = macros.at(n_p_cell_pos);
+				auto& n_macro_cell_particle = n_macro_cell.template get<"particle">();
 
 				// If neighbour is wall, then add force pushing the particle away
-				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != i.get() and n_macro_cell_particle.get() > 0u) ) {
+				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != (i.get()+1u) and n_macro_cell_particle.get() > 0u) ) {
 					// add to p_acc
 
 					saw::data<sch::T> dist_dot{
@@ -379,8 +384,16 @@ void couple_particles_to_lattice(
 
 					if(dist_dot.get() > 0){
 						// TODO add if particle is close
-						p_acc.at({{0u}}) = p_acc.at({{0u}}) + saw::data<sch::Int32>{100 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-						p_acc.at({{1u}}) = p_acc.at({{1u}}) + saw::data<sch::Int32>{100 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+						//auto& n_debug_acc = n_macro_cell.template get<"debug_acceleration">();
+
+						saw::data<sch::Vector<sch::T,sch::D2Q9::D>> push_force;
+						{
+							push_force.at({{0u}}) = saw::data<sch::Int32>{1000 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+							push_force.at({{1u}}) = saw::data<sch::Int32>{1000 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+						}
+
+						//n_debug_acc = n_debug_acc + push_force;
+						p_acc = p_acc + push_force;
 					}
 				}
 			}

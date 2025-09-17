@@ -59,5 +59,34 @@ void compute_rho_u (
 		vel().at({i}) = vel().at({i}) / rho();
 	}
 }
+
+/**
+ * Calculate the macroscopic variables rho and u in Lattice Units.
+ */
+template<typename T, typename Desc>
+void compute_rho_u (
+		const saw::data<sch::Cell<T, Desc, 0, 0, 1>>& dfs,
+		saw::ref<saw::data<T>> rho,
+		saw::ref<saw::data<sch::Vector<T,Desc::D>>> vel
+	)
+{
+	using dfi = df_info<T, Desc>;
+
+	rho().set(0);
+	for(uint64_t i = 0; i < Desc::D; ++i){
+		vel().at({{i}}).set(0);
+	}
+
+	for(size_t j = 0; j < Desc::Q; ++j){
+		rho() = rho() + dfs(j);
+		for(size_t i = 0; i < Desc::D; ++i){
+			vel().at({{i}}) = vel().at({{i}}) + saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[j][i])} * dfs(j);
+		}
+	}
+
+	for(size_t i = 0; i < Desc::D; ++i){
+		vel().at({{i}}) = vel().at({{i}}) / rho();
+	}
+}
 }
 }

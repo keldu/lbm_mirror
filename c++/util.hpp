@@ -4,6 +4,8 @@
 #include <forstio/codec/data.hpp>
 
 #include <iostream>
+#include <iomanip>
+#include <sys/ioctl.h>
 
 namespace kel {
 namespace lbm {
@@ -46,18 +48,37 @@ public:
 };
 */
 
-void print_progress_bar(uint32_t progress, uint32_t progress_target){
-	std::cout
-		<<"\r"
-		<<"Progress: "
-		<<((100 * progress) / progress_target)
-		<<"% [";
+void print_progress_bar(const uint32_t progress, const uint32_t progress_target){
+	std::cout<<"\r";
+	//	<<"Progress: "
+	//	<<((100 * progress) / progress_target)
+	//	<<"% [";
 
-	uint64_t i{0u};
+	uint64_t perc_prog = (100ul*progress) / progress_target;
+	constexpr uint64_t max_perc_progress = 100u;
+	perc_prog = std::min(perc_prog, max_perc_progress);
 
-	uint64_t max_display = 64u;
+	std::string_view prog_str{"Progress: "};
+	// Progress string + (100 width and perc char) + ([] brackets) + space + pointer
+	uint64_t i{prog_str.size() + 4u + 2u + 1u + 1u};
+
+	std::cout<<prog_str;
+	std::cout<<std::setw(3u)<<perc_prog<<"%";
+	std::cout<<" ";
+	std::cout<<"[";
+
+	uint64_t max_display = []() -> uint64_t{
+		struct winsize w;
+		if(ioctl(STDOUT_FILENO, TIOCGWINSZ,&w) == -1){
+			// Standardized Terminal size
+			return 80u;
+		}
+		return w.ws_col;
+	}();
+	max_display = std::max(max_display,i) - i;
 	uint64_t progress_display = (max_display * progress) / progress_target;
-	for(; i < progress_display; ++i){
+
+	for(i = 0u; i < progress_display; ++i){
 		std::cout<<"#";
 	}
 	for(; i < max_display; ++i){
@@ -65,6 +86,7 @@ void print_progress_bar(uint32_t progress, uint32_t progress_target){
 	}
 
 	std::cout<<"]";
+
 	std::cout<<std::flush;
 }
 }

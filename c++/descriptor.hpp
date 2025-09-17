@@ -1,6 +1,7 @@
 #pragma once
 
 #include <forstio/codec/data.hpp>
+#include <forstio/codec/data_math.hpp>
 #include <forstio/codec/schema_factory.hpp>
 
 namespace kel {
