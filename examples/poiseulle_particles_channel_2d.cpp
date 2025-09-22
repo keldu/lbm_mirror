@@ -5,7 +5,7 @@
 #include "../c++/particle/geometry/circle.hpp"
 
 #include <forstio/codec/data.hpp>
-#include <forstio/codec/data_math.hpp>
+#include <forstio/codec/math.hpp>
 
 #include <cmath>
 
@@ -347,6 +347,10 @@ void couple_particles_to_lattice(
 			p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
 			p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 
+			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
+			p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
+			p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
+
 			// Interpolate this from close U cells.
 			// For now pick the closest U
 			auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
@@ -372,7 +376,7 @@ void couple_particles_to_lattice(
 			auto& p_info = cell.template get<"info">()({0u});
 			if(p_info.get() <= 1u){
 				// Fake solid normal
-				auto solid_normal = p_pos - p_cell_pos;
+				auto solid_normal = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
 				solid_normal = saw::math::normalize(solid_normal);
 				auto v_n = saw::math::dot(solid_normal,p_vel);
 
