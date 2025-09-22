@@ -315,6 +315,9 @@ void couple_particles_to_lattice(
 		// Prepare force sum
 		// saw::data<sch::Vector<sch::T,2u>> forces;
 
+		// Maybe in the future?
+		// bool collision_happened = false;
+
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			if(p_mask_grid.at(index).get() == 0){
@@ -334,10 +337,12 @@ void couple_particles_to_lattice(
 
 			// Cast down to get lower corner.
 			// Before casting shift by 0.5 for closest pick
-			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
-				static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
-				static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
-			}};
+			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
+
+			{
+				p_cell_pos.at({{0u}}) = {static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5)};
+				p_cell_pos.at({{1u}}) = {static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)};
+			}
 
 			p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
 			p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
@@ -362,6 +367,27 @@ void couple_particles_to_lattice(
 
 			// Add forces to put away from walls
 			/// 1. Check if neighbour is wall
+
+			auto& cell = latt(p_cell_pos);
+			auto& p_info = cell.template get<"info">()({0u});
+			if(p_info.get() <= 1u){
+				// Fake solid normal
+				auto solid_normal = p_pos - p_cell_pos;
+				solid_normal = saw::math::normalize(solid_normal);
+				auto v_n = saw::math::dot(solid_normal,p_vel);
+
+
+				{
+					saw::data<sch::Scalar<sch::T>> one;
+					one.at({}) = {1.0};
+					auto vn_plus_one = one + v_n;
+					solid_normal.at({{0u}}) = solid_normal.at({{0u}}) + vn_plus_one.at({});
+					solid_normal.at({{1u}}) = solid_normal.at({{1u}}) + vn_plus_one.at({});
+				}
+				auto force_normal = solid_normal;
+				p_acc = p_acc + force_normal;
+			}
+			/*
 			for(saw::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
 				auto n_p_cell_pos = saw::data<sch::FixedArray<sch::UInt64,2u>> {{
 					p_cell_pos.at({{0u}}) + dfi::directions[k.get()][0u],
@@ -388,8 +414,8 @@ void couple_particles_to_lattice(
 
 						saw::data<sch::Vector<sch::T,sch::D2Q9::D>> push_force;
 						{
-							push_force.at({{0u}}) = saw::data<sch::Int32>{1000 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-							push_force.at({{1u}}) = saw::data<sch::Int32>{1000 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+							push_force.at({{0u}}) = saw::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+							push_force.at({{1u}}) = saw::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
 						}
 
 						//n_debug_acc = n_debug_acc + push_force;
@@ -397,14 +423,16 @@ void couple_particles_to_lattice(
 					}
 				}
 			}
+			*/
 			/// 2. Add force pushing away from wall
 
 			// Add forces to push away from other particles
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
-		p_acc.at({{0u}}).set(p_acc.at({{0u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
-		p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
+
+		//p_acc.at({{0u}}).set(p_acc.at({{0u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
+		// p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
 	}
 }
 
