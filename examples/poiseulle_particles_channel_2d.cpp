@@ -4,6 +4,7 @@
 #include "../c++/iterator.hpp"
 #include "../c++/particle/geometry/circle.hpp"
 
+#include <forstio/codec/args.hpp>
 #include <forstio/codec/data.hpp>
 #include <forstio/codec/math.hpp>
 
@@ -13,6 +14,15 @@ namespace kel {
 namespace lbm {
 namespace sch {
 using namespace saw::schema;
+
+using LbmArgsStruct = Struct<
+	Member<String, "name">
+>;
+
+using LbmArgs = Args<
+	LbmArgsStruct,
+	sch::Tuple<>
+>;
 
 /**
  * Basic distribution function
@@ -293,6 +303,7 @@ void couple_particles_to_lattice(
 		auto& p_size = part.template get<"size">();
 		auto& p_mass = part.template get<"mass">();
 
+		// Temporary unused due to me trying to debug freaking particle wall phasing
 		// Rotated x-dir
 		saw::data<sch::FixedArray<sch::T,2u>> x_dir{{
 			p_size * saw::data<sch::T>{std::cos(p_rot.get())},
@@ -357,12 +368,6 @@ void couple_particles_to_lattice(
 				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 			}
 
-			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
-			{
-				p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
-				p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
-			}
-
 			// Interpolate this from close U cells.
 			// For now pick the closest U
 			auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
@@ -386,6 +391,50 @@ void couple_particles_to_lattice(
 			}
 			*/
 
+		}, {{0u,0u}}, p_mask_grid.dims());
+
+		saw::data<sch::Vector<sch::T,2u>> solid_normal;
+
+		////////////
+
+		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+
+			if(p_mask_grid.at(index).get() == 0){
+				return;
+			}
+
+			saw::data<sch::Vector<sch::T,2u>> index_shift;
+			{
+				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
+				index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+			}
+
+			saw::data<sch::Vector<sch::T,2u>> mask_shift;
+			{
+				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
+				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+			}
+
+			auto p_pos_lie = p_pos + mask_shift;
+
+			// Cast down to get lower corner.
+			// Before casting shift by 0.5 for closest pick
+			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
+			{
+				p_cell_pos.at({{0u}}) = {static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5)};
+				p_cell_pos.at({{1u}}) = {static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)};
+			}
+			{
+				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
+				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
+			}
+
+			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
+			{
+				p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
+				p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
+			}
+
 			// Add forces to put away from walls
 			/// 1. Check if neighbour is wall
 
@@ -393,20 +442,23 @@ void couple_particles_to_lattice(
 			auto& p_info = cell.template get<"info">()({0u});
 			if((p_info.get() <= 1u)){
 				// Fake solid normal
-				auto solid_normal = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
-				solid_normal = saw::math::normalize(solid_normal);
-				auto v_n = saw::math::dot(solid_normal,p_vel);
+
+				auto p_pos_rel_vec = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
+				solid_normal = solid_normal + p_pos_rel_vec;
+				p_pos_rel_vec = saw::math::normalize(p_pos_rel_vec);
+
+				// solid_normal = saw::math::normalize(solid_normal);
+				// auto v_n = saw::math::dot(solid_normal,p_vel + p_acc);
 
 				{
 					saw::data<sch::Scalar<sch::T>> one;
-					one.at({}) = {1.0};
-					auto vn_plus_one = one + v_n;
-					solid_normal.at({{0u}}) = solid_normal.at({{0u}}) + vn_plus_one.at({});
-					solid_normal.at({{1u}}) = solid_normal.at({{1u}}) + vn_plus_one.at({});
+					one.at({}) = {10.0f};
+
+					p_pos_rel_vec.at({{0u}}) = p_pos_rel_vec.at({{0u}}) * one.at({});
+					p_pos_rel_vec.at({{1u}}) = p_pos_rel_vec.at({{1u}}) * one.at({});
 				}
 
-				auto force_normal = solid_normal;
-				p_acc = p_acc + force_normal;
+				p_acc = p_acc + p_pos_rel_vec;
 			}
 
 			/*
@@ -452,6 +504,13 @@ void couple_particles_to_lattice(
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
+		solid_normal = saw::math::normalize(solid_normal);
+		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
+		if(v_n.at({}).get() <= 0.0){
+			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*v_n.at({});
+			solid_normal.at({{1u}}) = solid_normal.at({{1u}})*v_n.at({});
+			p_acc = p_acc - solid_normal;
+		}
 
 		//p_acc.at({{0u}}).set(p_acc.at({{0u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
 		//p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
@@ -542,6 +601,13 @@ int main(int argc, char** argv){
 		return -1;
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
+
+	saw::data<sch::LbmArgs> args;
+	{
+
+	}
+
+
 	auto out_dir = lbm_dir / "poiseulle_particles_channel_2d";
 
 	std::string_view cfg_file_name = "config.json";
