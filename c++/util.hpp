@@ -54,9 +54,9 @@ void print_progress_bar(const uint32_t progress, const uint32_t progress_target)
 	//	<<((100 * progress) / progress_target)
 	//	<<"% [";
 
-	uint64_t perc_prog = (100ul*progress) / progress_target;
+	const uint32_t progress_min = std::min(progress,progress_target);
 	constexpr uint64_t max_perc_progress = 100u;
-	perc_prog = std::min(perc_prog, max_perc_progress);
+	uint64_t perc_prog = (max_perc_progress*progress_min) / progress_target;
 
 	std::string_view prog_str{"Progress: "};
 	// Progress string + (100 width and perc char) + ([] brackets) + space + pointer
@@ -76,7 +76,7 @@ void print_progress_bar(const uint32_t progress, const uint32_t progress_target)
 		return w.ws_col;
 	}();
 	max_display = std::max(max_display,i) - i;
-	uint64_t progress_display = (max_display * progress) / progress_target;
+	uint64_t progress_display = (max_display * progress_min) / progress_target;
 
 	for(i = 0u; i < progress_display; ++i){
 		std::cout<<"#";

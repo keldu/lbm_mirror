@@ -28,6 +28,7 @@ template<typename T, uint64_t D>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
 	Member<ParticleMask<T,D>, "mask">,
+	Member<T, "mass">,
 	Member<T, "size">
 >;
 }

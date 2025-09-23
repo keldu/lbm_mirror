@@ -224,9 +224,16 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	saw::data<sch::Particle<sch::T,2u>> part;
 
 	auto& p_mask = part.template get<"mask">();
+	auto& p_mass = part.template get<"mass">();
 	{
 		particle_circle_geometry<sch::T> geo;
 		p_mask = geo.template generate_mask<sch::T>(40u,0u);
+		auto& p_grid = p_mask.template get<"grid">();
+
+		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+			auto& p_grid_cell = p_grid.at(index);
+			p_mass = p_mass + p_grid_cell;
+		}, {{0u,0u}}, p_grid.dims());
 	}
 	auto& rigid_body = part.template get<"rigid_body">();
 	auto& p_size = part.template get<"size">();
@@ -284,6 +291,7 @@ void couple_particles_to_lattice(
 
 		auto& p_mask = part.template get<"mask">();
 		auto& p_size = part.template get<"size">();
+		auto& p_mass = part.template get<"mass">();
 
 		// Rotated x-dir
 		saw::data<sch::FixedArray<sch::T,2u>> x_dir{{
@@ -302,8 +310,10 @@ void couple_particles_to_lattice(
 		auto p_mask_grid_dims = p_mask_grid.dims();
 
 		saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
-		p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
-		p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
+		{
+			p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
+			p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
+		}
 
 		// Particle to Fluid Coupling
 		// Spread force to close fluid cells
@@ -315,9 +325,6 @@ void couple_particles_to_lattice(
 		// Prepare force sum
 		// saw::data<sch::Vector<sch::T,2u>> forces;
 
-		// Maybe in the future?
-		// bool collision_happened = false;
-
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			if(p_mask_grid.at(index).get() == 0){
@@ -325,31 +332,36 @@ void couple_particles_to_lattice(
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
-			index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-			index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
-
+			{
+				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
+				index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
-			mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
-			mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+			{
+				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
+				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+			}
 
 			auto p_pos_lie = p_pos + mask_shift;
 
 			// Cast down to get lower corner.
 			// Before casting shift by 0.5 for closest pick
 			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
-
 			{
 				p_cell_pos.at({{0u}}) = {static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5)};
 				p_cell_pos.at({{1u}}) = {static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)};
 			}
-
-			p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
-			p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
+			{
+				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
+				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
+			}
 
 			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
-			p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
-			p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
+			{
+				p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
+				p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
+			}
 
 			// Interpolate this from close U cells.
 			// For now pick the closest U
@@ -359,8 +371,13 @@ void couple_particles_to_lattice(
 			// p_pos - p_pos_old
 			// auto p_vel_rel = closest_u - p_vel;
 			saw::data<sch::Vector<sch::T, 2u>> p_vel_rel = closest_u - p_vel;
+			{
+				p_vel_rel.at({{0u}}) = p_vel_rel.at({{0u}}) / p_mass;
+				p_vel_rel.at({{1u}}) = p_vel_rel.at({{1u}}) / p_mass;
+			}
 
 			// Add relative velocity to particle acceleration (Since our timestep is 1 we don't need to do anything else)
+
 			p_acc = p_acc + p_vel_rel;
 
 			/*
@@ -374,12 +391,11 @@ void couple_particles_to_lattice(
 
 			auto& cell = latt(p_cell_pos);
 			auto& p_info = cell.template get<"info">()({0u});
-			if(p_info.get() <= 1u){
+			if((p_info.get() <= 1u)){
 				// Fake solid normal
 				auto solid_normal = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
 				solid_normal = saw::math::normalize(solid_normal);
 				auto v_n = saw::math::dot(solid_normal,p_vel);
-
 
 				{
 					saw::data<sch::Scalar<sch::T>> one;
@@ -388,9 +404,11 @@ void couple_particles_to_lattice(
 					solid_normal.at({{0u}}) = solid_normal.at({{0u}}) + vn_plus_one.at({});
 					solid_normal.at({{1u}}) = solid_normal.at({{1u}}) + vn_plus_one.at({});
 				}
+
 				auto force_normal = solid_normal;
 				p_acc = p_acc + force_normal;
 			}
+
 			/*
 			for(saw::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
 				auto n_p_cell_pos = saw::data<sch::FixedArray<sch::UInt64,2u>> {{
@@ -436,7 +454,7 @@ void couple_particles_to_lattice(
 
 
 		//p_acc.at({{0u}}).set(p_acc.at({{0u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
-		// p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
+		//p_acc.at({{1u}}).set(p_acc.at({{1u}}).get() / (p_mask.template get<"grid">().dims().at({{0u}}).get() *p_mask.template get<"grid">().dims().at({{1u}}).get() ));
 	}
 }
 
