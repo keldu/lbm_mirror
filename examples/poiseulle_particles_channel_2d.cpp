@@ -294,8 +294,8 @@ void couple_particles_to_lattice(
 		auto& p_rot = p_rb.template get<"rotation">();
 
 		auto& p_acc = p_rb.template get<"acceleration">();
-		p_acc.at({{0u}}).set(0.0);
-		p_acc.at({{1u}}).set(0.0);
+		p_acc.at({{0u}}).set(0);
+		p_acc.at({{1u}}).set(0);
 
 		auto p_vel = p_pos - p_pos_old;
 
@@ -320,6 +320,7 @@ void couple_particles_to_lattice(
 		// Get grid so we don't pull all the time
 		auto p_mask_grid_dims = p_mask_grid.dims();
 
+		// "Grid shift". I basically shift so the index maps into the center of mass properly.
 		saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
 		{
 			p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
@@ -350,8 +351,9 @@ void couple_particles_to_lattice(
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
 			{
-				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
-				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+				// Technically rotate and adjust here
+				mask_shift.at({{0u}}) = index_shift.at({{0u}});
+				mask_shift.at({{1u}}) = index_shift.at({{1u}});
 			}
 
 			auto p_pos_lie = p_pos + mask_shift;
@@ -394,6 +396,9 @@ void couple_particles_to_lattice(
 		}, {{0u,0u}}, p_mask_grid.dims());
 
 		saw::data<sch::Vector<sch::T,2u>> solid_normal;
+		{
+			solid_normal.at({{0u}}).set(1e-3);
+		}
 
 		////////////
 
@@ -504,9 +509,17 @@ void couple_particles_to_lattice(
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
+		std::cout<<"\nReachable check: "<<solid_normal.at({{0u}}).get()<<std::endl;
 		solid_normal = saw::math::normalize(solid_normal);
+
 		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
-		if(v_n.at({}).get() <= 0.0){
+		std::cout<<"ACC: "<<p_acc.at({{0u}}).get()<<" "<<p_acc.at({{1u}}).get()<<std::endl;
+		std::cout<<"VEL: "<<p_vel.at({{0u}}).get()<<" "<<p_vel.at({{1u}}).get()<<std::endl;
+		std::cout<<"POS: "<<p_pos.at({{0u}}).get()<<" "<<p_pos.at({{1u}}).get()<<std::endl;
+		std::cout<<"Normal: "<<solid_normal.at({{0u}}).get()<<" "<<solid_normal.at({{1u}}).get()<<std::endl;
+		std::cout<<"V_N: "<<v_n.at({}).get()<<std::endl;
+		if(v_n.at({}).get() < 0.0){
+			std::cout<<"Solid 0: "<<solid_normal.at({{0u}}).get()<<std::endl;
 			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*v_n.at({});
 			solid_normal.at({{1u}}) = solid_normal.at({{1u}})*v_n.at({});
 			p_acc = p_acc - solid_normal;
@@ -673,7 +686,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	uint64_t lbm_steps = 10000u;
+	uint64_t lbm_steps = 8000u;
 	for(uint64_t i = 0u; i < lbm_steps; ++i){
 		print_progress_bar(i,lbm_steps-1u);
 		bool even_step = ((i % 2u) == 0u);
@@ -740,12 +753,9 @@ int main(int argc, char** argv){
 						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 					}};
 
-
-					if(p_cell_pos.at({0u}) >= dim.at({0u}) ){
-						p_cell_pos.at({0u}).set(dim.at({0u}).get() - 1u );
-					}
-					if(p_cell_pos.at({1u}) >= dim.at({1u}) ){
-						p_cell_pos.at({1u}).set(dim.at({1u}).get() - 1u );
+					{
+						p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
+						p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 					}
 
 					macros(p_cell_pos).template get<"particle">().set(i.get() + 1u);
