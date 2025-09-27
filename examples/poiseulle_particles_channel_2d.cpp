@@ -277,7 +277,7 @@ void couple_particles_to_lattice(
 		kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys,
 		saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
 		saw::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
-		saw::data<kel::lbm::sch::T> time_step
+		saw::data<kel::lbm::sch::UInt64> time_step
 ){
 	using namespace kel::lbm;
 	(void) time_step;
@@ -346,7 +346,7 @@ void couple_particles_to_lattice(
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
 			{
 				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-				index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+				index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
@@ -396,11 +396,14 @@ void couple_particles_to_lattice(
 		}, {{0u,0u}}, p_mask_grid.dims());
 
 		saw::data<sch::Vector<sch::T,2u>> solid_normal;
-		{
-			solid_normal.at({{0u}}).set(1e-3);
-		}
 
 		////////////
+		bool coll = false;
+		saw::data<sch::FixedArray<sch::UInt64,2u>> first_index;
+		saw::data<sch::FixedArray<sch::UInt64,2u>> first_pos;
+		saw::data<sch::Array<sch::FixedArray<sch::UInt64,2u>>> first_indices;
+		saw::data<sch::Array<sch::FixedArray<sch::UInt64,2u>>> first_poses;
+
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
@@ -411,13 +414,13 @@ void couple_particles_to_lattice(
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
 			{
 				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-				index_shift.at({{1u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+				index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
 			{
 				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
-				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+				mask_shift.at({{1u}}) = index_shift.at({{1u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
 			}
 
 			auto p_pos_lie = p_pos + mask_shift;
@@ -433,6 +436,8 @@ void couple_particles_to_lattice(
 				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
 				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 			}
+			first_indices.add(index);
+			first_poses.add(p_cell_pos);
 
 			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
 			{
@@ -446,6 +451,12 @@ void couple_particles_to_lattice(
 			auto& cell = latt(p_cell_pos);
 			auto& p_info = cell.template get<"info">()({0u});
 			if((p_info.get() <= 1u)){
+				if(not coll){
+					first_index = index;
+					first_pos = p_cell_pos;
+				}
+				coll = true;
+
 				// Fake solid normal
 
 				auto p_pos_rel_vec = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
@@ -457,7 +468,7 @@ void couple_particles_to_lattice(
 
 				{
 					saw::data<sch::Scalar<sch::T>> one;
-					one.at({}) = {10.0f};
+					one.at({}) = {1.0f};
 
 					p_pos_rel_vec.at({{0u}}) = p_pos_rel_vec.at({{0u}}) * one.at({});
 					p_pos_rel_vec.at({{1u}}) = p_pos_rel_vec.at({{1u}}) * one.at({});
@@ -518,6 +529,13 @@ void couple_particles_to_lattice(
 		std::cout<<"POS: "<<p_pos.at({{0u}}).get()<<" "<<p_pos.at({{1u}}).get()<<std::endl;
 		std::cout<<"Normal: "<<solid_normal.at({{0u}}).get()<<" "<<solid_normal.at({{1u}}).get()<<std::endl;
 		std::cout<<"V_N: "<<v_n.at({}).get()<<std::endl;
+		std::cout<<"Timestep: "<<time_step.get()<<std::endl;
+		if(coll){
+			std::cout<<"Collision happened at "<<first_index.at({0u}).get()<<" "<<first_index.at({1u}).get()<<" and at "<<first_pos.at({0u}).get()<<" "<<first_pos.at({1u}).get()<<std::endl;
+			for(saw::data<sch::UInt64> i{0u}; i < first_indices.size(); ++i){
+				std::cout<<"Index: "<<first_indices.at(i).at({0u}).get()<<" "<<first_indices.at(i).at({1u}).get()<<" "<<first_poses.at(i).at({0u}).get()<<" "<<first_poses.at(i).at({1u}).get()<<std::endl;
+			}
+		}
 		if(v_n.at({}).get() < 0.0){
 			std::cout<<"Solid 0: "<<solid_normal.at({{0u}}).get()<<std::endl;
 			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*v_n.at({});
@@ -686,7 +704,7 @@ int main(int argc, char** argv){
 
 	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
-	uint64_t lbm_steps = 8000u;
+	uint64_t lbm_steps = 10000u;
 	for(uint64_t i = 0u; i < lbm_steps; ++i){
 		print_progress_bar(i,lbm_steps-1u);
 		bool even_step = ((i % 2u) == 0u);
@@ -769,7 +787,7 @@ int main(int argc, char** argv){
 			}
 		}
 
-		couple_particles_to_lattice(particle_sys, lattice, macros, {1u});
+		couple_particles_to_lattice(particle_sys, lattice, macros, {i});
 		particle_sys.step({1u});
 		lbm_step(lattice, macros, i);
 	}
