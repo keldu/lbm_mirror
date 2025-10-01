@@ -1,8 +1,8 @@
-#include "../c++/lbm.hpp"
-#include "../c++/collision.hpp"
-#include "../c++/boundary.hpp"
-#include "../c++/iterator.hpp"
-#include "../c++/particle/geometry/circle.hpp"
+#include <kel/lbm/lbm.hpp>
+#include <kel/lbm/collision.hpp>
+#include <kel/lbm/boundary.hpp>
+#include <kel/lbm/iterator.hpp>
+#include <kel/lbm/particle/geometry/circle.hpp>
 
 #include <forstio/codec/args.hpp>
 #include <forstio/codec/data.hpp>
@@ -58,7 +58,6 @@ using CellStruct = Struct<
 	Member<DfCell<Desc>, "dfs">,
 	Member<DfCell<Desc>, "dfs_old">,
 	Member<CellInfo<Desc>, "info">,
-	// Member<CellParticleMask<Desc>, "particle_mask">,
 	Member<CellForceField<Desc>, "force">
 >;
 
@@ -68,7 +67,6 @@ using MacroStruct = Struct<
 	Member<T, "pressure">,
 	Member<UInt16, "particle">,
 	Member<FixedArray<T,D>, "force">
-	//Member<Vector<T,D>, "debug_acceleration">
 >;
 
 template<typename T>
@@ -397,14 +395,6 @@ void couple_particles_to_lattice(
 
 		saw::data<sch::Vector<sch::T,2u>> solid_normal;
 
-		////////////
-		bool coll = false;
-		saw::data<sch::FixedArray<sch::UInt64,2u>> first_index;
-		saw::data<sch::FixedArray<sch::UInt64,2u>> first_pos;
-		saw::data<sch::Array<sch::FixedArray<sch::UInt64,2u>>> first_indices;
-		saw::data<sch::Array<sch::FixedArray<sch::UInt64,2u>>> first_poses;
-
-
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			if(p_mask_grid.at(index).get() == 0){
@@ -418,9 +408,16 @@ void couple_particles_to_lattice(
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
+			/*
 			{
 				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
-				mask_shift.at({{1u}}) = index_shift.at({{1u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
+			}
+			*/
+			{
+				// Technically rotate and adjust here
+				mask_shift.at({{0u}}) = index_shift.at({{0u}});
+				mask_shift.at({{1u}}) = index_shift.at({{1u}});
 			}
 
 			auto p_pos_lie = p_pos + mask_shift;
@@ -436,8 +433,6 @@ void couple_particles_to_lattice(
 				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
 				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 			}
-			first_indices.add(index);
-			first_poses.add(p_cell_pos);
 
 			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
 			{
@@ -451,12 +446,6 @@ void couple_particles_to_lattice(
 			auto& cell = latt(p_cell_pos);
 			auto& p_info = cell.template get<"info">()({0u});
 			if((p_info.get() <= 1u)){
-				if(not coll){
-					first_index = index;
-					first_pos = p_cell_pos;
-				}
-				coll = true;
-
 				// Fake solid normal
 
 				auto p_pos_rel_vec = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
@@ -468,7 +457,7 @@ void couple_particles_to_lattice(
 
 				{
 					saw::data<sch::Scalar<sch::T>> one;
-					one.at({}) = {1.0f};
+					one.at({}) = {0.1f};
 
 					p_pos_rel_vec.at({{0u}}) = p_pos_rel_vec.at({{0u}}) * one.at({});
 					p_pos_rel_vec.at({{1u}}) = p_pos_rel_vec.at({{1u}}) * one.at({});
@@ -520,24 +509,12 @@ void couple_particles_to_lattice(
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
-		std::cout<<"\nReachable check: "<<solid_normal.at({{0u}}).get()<<std::endl;
 		solid_normal = saw::math::normalize(solid_normal);
 
+		// Calculate orientation (Leaving wall "< 0" or not "> 0")
 		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
-		std::cout<<"ACC: "<<p_acc.at({{0u}}).get()<<" "<<p_acc.at({{1u}}).get()<<std::endl;
-		std::cout<<"VEL: "<<p_vel.at({{0u}}).get()<<" "<<p_vel.at({{1u}}).get()<<std::endl;
-		std::cout<<"POS: "<<p_pos.at({{0u}}).get()<<" "<<p_pos.at({{1u}}).get()<<std::endl;
-		std::cout<<"Normal: "<<solid_normal.at({{0u}}).get()<<" "<<solid_normal.at({{1u}}).get()<<std::endl;
-		std::cout<<"V_N: "<<v_n.at({}).get()<<std::endl;
-		std::cout<<"Timestep: "<<time_step.get()<<std::endl;
-		if(coll){
-			std::cout<<"Collision happened at "<<first_index.at({0u}).get()<<" "<<first_index.at({1u}).get()<<" and at "<<first_pos.at({0u}).get()<<" "<<first_pos.at({1u}).get()<<std::endl;
-			for(saw::data<sch::UInt64> i{0u}; i < first_indices.size(); ++i){
-				std::cout<<"Index: "<<first_indices.at(i).at({0u}).get()<<" "<<first_indices.at(i).at({1u}).get()<<" "<<first_poses.at(i).at({0u}).get()<<" "<<first_poses.at(i).at({1u}).get()<<std::endl;
-			}
-		}
+
 		if(v_n.at({}).get() < 0.0){
-			std::cout<<"Solid 0: "<<solid_normal.at({{0u}}).get()<<std::endl;
 			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*v_n.at({});
 			solid_normal.at({{1u}}) = solid_normal.at({{1u}})*v_n.at({});
 			p_acc = p_acc - solid_normal;

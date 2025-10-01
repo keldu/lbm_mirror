@@ -32,6 +32,11 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			kel-lbm = lbm;
 		};
+
+		poiseulle_particles_channel_2d = pkgs.callPackage ./examples/poiseulle_particles_channel_2d/.nix/derivation.nix {
+			inherit pname version stdenv forstio;
+			kel-lbm = lbm;
+		};
 	};
 
 	debug = {
