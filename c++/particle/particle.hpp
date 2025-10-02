@@ -21,7 +21,8 @@ using ParticleRigidBody = Struct<
 
 template<typename T, uint64_t D>
 using ParticleMask = Struct<
-	Member<Array<T,D>, "grid">
+	Member<Array<T,D>, "grid">,
+	Member<Vector<T,D>, "center_of_mass">
 >;
 
 template<typename T, uint64_t D>

@@ -42,13 +42,13 @@ template<typename Desc>
 using DfCell = Cell<T, Desc, 0u, 0u, 1u>;
 
 template<typename Desc>
-using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
+using CellInfo = Cell<UInt8, Desc, 1u, 0u, 0u>;
 
 template<typename Desc>
-using CellParticleMask = Cell<UInt16, D2Q9, 1u, 0u, 0u>;
+using CellParticleMask = Cell<UInt16, Desc, 1u, 0u, 0u>;
 
 template<typename Desc>
-using CellForceField = Cell<T, D2Q9, 0u, 1u, 0u>;
+using CellForceField = Cell<T, Desc, 0u, 1u, 0u>;
 
 /**
  * Basic type for simulation
@@ -235,7 +235,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& p_mass = part.template get<"mass">();
 	{
 		particle_circle_geometry<sch::T> geo;
-		p_mask = geo.template generate_mask<sch::T>(40u,0u);
+		p_mask = geo.template generate_mask<sch::T>(8u,0u);
 		auto& p_grid = p_mask.template get<"grid">();
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
@@ -257,8 +257,8 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 		p_size = {1.0};
 	}
 
-	for(uint64_t i = 0; i < 1; ++i){
-		for(uint64_t j = 0; j < 1; ++j){
+	for(uint64_t i = 0; i < 8; ++i){
+		for(uint64_t j = 0; j < 16; ++j){
 			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(32u + j * 8u)};
 			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(64u + i * 8u)};
 			old_pos = pos;
@@ -342,9 +342,8 @@ void couple_particles_to_lattice(
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
-			{
-				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-				index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+			for(uint64_t i = 0u; i < sch::D2Q9::D; ++i){
+				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - p_mask_grid_shift.at({{i}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
@@ -387,6 +386,7 @@ void couple_particles_to_lattice(
 
 			/*
 			for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
+				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 				p_acc.at({{i}}) = p_acc.at({{i}}) + p_vel_rel.at({{i}});
 			}
 			*/
@@ -402,9 +402,8 @@ void couple_particles_to_lattice(
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
-			{
-				index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
-				index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
+			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - p_mask_grid_shift.at({{i}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
@@ -414,10 +413,9 @@ void couple_particles_to_lattice(
 				mask_shift.at({{1u}}) = index_shift.at({{0u}}) * x_dir.at({1u}) + index_shift.at({{1u}}) * y_dir.at({1u});
 			}
 			*/
-			{
+			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
 				// Technically rotate and adjust here
-				mask_shift.at({{0u}}) = index_shift.at({{0u}});
-				mask_shift.at({{1u}}) = index_shift.at({{1u}});
+				mask_shift.at({{i}}) = index_shift.at({{i}});
 			}
 
 			auto p_pos_lie = p_pos + mask_shift;
@@ -425,19 +423,16 @@ void couple_particles_to_lattice(
 			// Cast down to get lower corner.
 			// Before casting shift by 0.5 for closest pick
 			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
-			{
-				p_cell_pos.at({{0u}}) = {static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5)};
-				p_cell_pos.at({{1u}}) = {static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)};
+			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+				p_cell_pos.at({{i}}) = {static_cast<uint64_t>(p_pos_lie.at({{i}}).get()+0.5)};
 			}
-			{
-				p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
-				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
+			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+				p_cell_pos.at({{i}}).set(std::max(1ul, std::min(p_cell_pos.at({{i}}).get(), meta.at({i}).get()-2ul)));
 			}
 
 			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
-			{
-				p_vec_cell_pos.at({{0u}}) = p_cell_pos.at({0u});
-				p_vec_cell_pos.at({{1u}}) = p_cell_pos.at({1u});
+			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+				p_vec_cell_pos.at({{i}}) = p_cell_pos.at({i});
 			}
 
 			// Add forces to put away from walls
