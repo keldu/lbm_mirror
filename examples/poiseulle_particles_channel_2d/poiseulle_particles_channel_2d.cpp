@@ -347,10 +347,9 @@ void couple_particles_to_lattice(
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
-			{
+			for(uint64_t i = 0u; i < sch::D2Q9::D; ++i){
 				// Technically rotate and adjust here
-				mask_shift.at({{0u}}) = index_shift.at({{0u}});
-				mask_shift.at({{1u}}) = index_shift.at({{1u}});
+				mask_shift.at({{i}}) = index_shift.at({{i}});
 			}
 
 			auto p_pos_lie = p_pos + mask_shift;

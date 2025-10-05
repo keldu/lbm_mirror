@@ -17,6 +17,7 @@ public:
 		saw::data<sch::ParticleMask<MT,2>> mask;
 
 		auto& grid = mask.template get<"grid">();
+		auto& com = mask.template get<"center_of_mass">();
 
 		//uint64_t rad_i = static_cast<uint64_t>(resolution * radius_.get())+1u;
 		uint64_t rad_i = resolution;
@@ -40,6 +41,11 @@ public:
 				}
 			}
 		}
+
+		saw::data<sch::Vector<T,2u>> com{{0,0}};
+		iterate_over([&](saw::data<saw::FixedArray<sch::UInt64,2u>>& index){
+
+		},{{0u,0u}}, grid.meta());
 
 		return mask;
 	}
