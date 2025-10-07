@@ -185,7 +185,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	acpp::sycl::buffer<saw::data<sch::CavityFieldD2Q9>>& latt,
 	bool even_step,
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
@@ -310,7 +310,7 @@ int main(){
 			write_vtk_file(vtk_f_name, macros);
 		}
 
-		lbm_step(lattice, (i%2u == 0u), i, sycl_q);
+		lbm_step(df_sycl, (i%2u == 0u), i, sycl_q);
 	}
 	return 0;
 }

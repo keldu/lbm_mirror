@@ -2,6 +2,7 @@
 
 #include <forstio/codec/data.hpp>
 #include <forstio/codec/data_math.hpp>
+#include <forstio/codec/math.hpp>
 
 namespace kel {
 namespace lbm {

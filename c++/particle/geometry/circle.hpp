@@ -18,19 +18,20 @@ public:
 
 		auto& grid = mask.template get<"grid">();
 		auto& com = mask.template get<"center_of_mass">();
+		com = {};
 
 		//uint64_t rad_i = static_cast<uint64_t>(resolution * radius_.get())+1u;
-		uint64_t rad_i = resolution;
-		uint64_t size = rad_i + 2*boundary_nodes;
+		uint64_t diameter_i = resolution;
+		uint64_t size = diameter_i + 2*boundary_nodes;
 		grid = {{{size,size}}};
 
-		saw::data<T> delta_x{static_cast<typename saw::native_data_type<T>::type>(2.0  / static_cast<double>(rad_i))};
-		saw::data<T> center = (saw::data<T>{1.0} + saw::data<T>{2.0} * saw::data<T>{static_cast<saw::native_data_type<T>::type>(boundary_nodes)/rad_i});
+		saw::data<T> delta_x{static_cast<typename saw::native_data_type<T>::type>(2.0  / static_cast<double>(diameter_i))};
+		saw::data<T> center = (saw::data<T>{1.0} + saw::data<T>{2.0} * saw::data<T>{static_cast<saw::native_data_type<T>::type>(boundary_nodes)/diameter_i});
 
 		for(uint64_t i = 0; i < size; ++i){
 			for(uint64_t j = 0; j < size; ++j){
 				grid.at({{i,j}}).set(0);
-				if(i >= boundary_nodes and j >= boundary_nodes and i < (rad_i + boundary_nodes) and j < (rad_i + boundary_nodes) ){
+				if(i >= boundary_nodes and j >= boundary_nodes and i < (diameter_i + boundary_nodes) and j < (diameter_i + boundary_nodes) ){
 					saw::data<T> fi = saw::data<T>{static_cast<saw::native_data_type<T>::type>(0.5+i)} * delta_x - center;
 					saw::data<T> fj = saw::data<T>{static_cast<saw::native_data_type<T>::type>(0.5+j)} * delta_x - center;
 
@@ -42,10 +43,20 @@ public:
 			}
 		}
 
-		saw::data<sch::Vector<T,2u>> com{{0,0}};
-		iterate_over([&](saw::data<saw::FixedArray<sch::UInt64,2u>>& index){
+		saw::data<T> total_mass{};
+		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+			auto ind_vec = saw::math::vectorize_data(index).template cast_to<T>();
+			for(uint64_t i{0u}; i < 2u; ++i){
+				ind_vec.at({{i}}) = ind_vec.at({{i}}) * grid.at(index);
+			}
+			com = com + ind_vec;
 
-		},{{0u,0u}}, grid.meta());
+			total_mass = total_mass + grid.at(index);
+		},{{0u,0u}}, grid.dims());
+
+		for(uint64_t i{0u}; i < 2u; ++i){
+			com.at({{i}}) = com.at({{i}}) / total_mass;
+		}
 
 		return mask;
 	}

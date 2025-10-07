@@ -15,12 +15,18 @@ namespace lbm {
 namespace sch {
 using namespace saw::schema;
 
-using LbmArgsStruct = Struct<
-	Member<String, "name">
+using T = Float32;
+
+template<typename Sch = T>
+using LbmConfigStruct = Struct<
+    Member<T, "kinematic_viscosity">,
+    Member<T, "delta_x">,
+    Member<T, "delta_t">
 >;
 
+template<typename Sch = T>
 using LbmArgs = Args<
-	LbmArgsStruct,
+	LbmConfigStruct<Sch>,
 	sch::Tuple<>
 >;
 
@@ -33,7 +39,6 @@ using LbmArgs = Args<
  * D factor
  * Q factor
  */
-using T = Float32;
 // using T = MixedPrecision<Float64, Float32>;
 using D2Q5 = Descriptor<2u,5u>;
 using D2Q9 = Descriptor<2u,9u>;
@@ -235,7 +240,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& p_mass = part.template get<"mass">();
 	{
 		particle_circle_geometry<sch::T> geo;
-		p_mask = geo.template generate_mask<sch::T>(8u,0u);
+		p_mask = geo.template generate_mask<sch::T>(10u,0u);
 		auto& p_grid = p_mask.template get<"grid">();
 
 		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
@@ -249,18 +254,17 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	auto& old_pos = rigid_body.template get<"position_old">();
 	{
 
-		pos.at({{0u}}) = {32u};
-		pos.at({{1u}}) = {64u};
-		old_pos.at({{0u}}) = {32u};
-		old_pos.at({{1u}}) = {64u};
+		pos.at({{0u}}) = {16u};
+		pos.at({{1u}}) = {16u};
+		old_pos = pos;
 
 		p_size = {1.0};
 	}
 
-	for(uint64_t i = 0; i < 8; ++i){
-		for(uint64_t j = 0; j < 16; ++j){
-			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(32u + j * 8u)};
-			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(64u + i * 8u)};
+	for(uint64_t i = 0; i < 10; ++i){
+		for(uint64_t j = 0; j < 15; ++j){
+			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(16u + j * 11u)};
+			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(16u + i * 11u)};
 			old_pos = pos;
 
 			auto eov = part_sys.add_particle(part);
@@ -319,11 +323,8 @@ void couple_particles_to_lattice(
 		auto p_mask_grid_dims = p_mask_grid.dims();
 
 		// "Grid shift". I basically shift so the index maps into the center of mass properly.
-		saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
-		{
-			p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
-			p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
-		}
+		// Change to use center of mass in mask
+		auto& center_of_mass = p_mask.template get<"center_of_mass">();
 
 		// Particle to Fluid Coupling
 		// Spread force to close fluid cells
@@ -343,7 +344,7 @@ void couple_particles_to_lattice(
 
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
 			for(uint64_t i = 0u; i < sch::D2Q9::D; ++i){
-				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - p_mask_grid_shift.at({{i}});
+				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - center_of_mass.at({{i}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
@@ -402,7 +403,7 @@ void couple_particles_to_lattice(
 
 			saw::data<sch::Vector<sch::T,2u>> index_shift;
 			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
-				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - p_mask_grid_shift.at({{i}});
+				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - center_of_mass.at({{i}});
 			}
 
 			saw::data<sch::Vector<sch::T,2u>> mask_shift;
@@ -434,12 +435,13 @@ void couple_particles_to_lattice(
 				p_vec_cell_pos.at({{i}}) = p_cell_pos.at({i});
 			}
 
-			// Add forces to put away from walls
+			// Add forces to push out of walls and particles
+			auto& n_macro_cell_particle = macros.at(p_cell_pos).template get<"particle">();
 			/// 1. Check if neighbour is wall
 
 			auto& cell = latt(p_cell_pos);
 			auto& p_info = cell.template get<"info">()({0u});
-			if((p_info.get() <= 1u)){
+			if((p_info.get() <= 1u) or (n_macro_cell_particle.get() != (i.get() + 1u) and n_macro_cell_particle.get() > 0u)){
 				// Fake solid normal
 
 				auto p_pos_rel_vec = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
@@ -451,7 +453,7 @@ void couple_particles_to_lattice(
 
 				{
 					saw::data<sch::Scalar<sch::T>> one;
-					one.at({}) = {0.1f};
+					one.at({}) = {0.05f};
 
 					p_pos_rel_vec.at({{0u}}) = p_pos_rel_vec.at({{0u}}) * one.at({});
 					p_pos_rel_vec.at({{1u}}) = p_pos_rel_vec.at({{1u}}) * one.at({});
@@ -459,6 +461,11 @@ void couple_particles_to_lattice(
 
 				p_acc = p_acc + p_pos_rel_vec;
 			}
+			/* So I want to include the relative velocity from both particles, but this is a bit hard considering I just assumed 0 velocity from the other party
+			else if(n_macro_cell_particle.get() != (i.get() + 1u) and n_macro_cell_particle.get() > 0u){
+				// Generally compare
+			}
+			*/
 
 			/*
 			for(saw::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
@@ -505,7 +512,7 @@ void couple_particles_to_lattice(
 
 		solid_normal = saw::math::normalize(solid_normal);
 
-		// Calculate orientation (Leaving wall "< 0" or not "> 0")
+		// Calculate orientation (Leaving wall or particle "< 0" or not "> 0")
 		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
 
 		if(v_n.at({}).get() < 0.0){
@@ -594,21 +601,55 @@ void lbm_step(
 	}, {{0u,0u}}, meta);
 }
 
-int main(int argc, char** argv){
+/**
+ * 2-Way coupling through trinlinearity
+ * o -- o
+ * |    |
+ * |    |
+ * o -- o
+ *
+ * 1. Transform from lagrangian to euler grid
+ * 2. Cast down to index (x,y).
+ * 3. calculate distance to each neighbour node. (x,y),(x+1,y),(x,y+1),(x+1,y+1)
+ * 4. Write calculated forces. Atomicly of course.
+ */
+
+
+saw::error_or<void> real_main(int argc, char** argv){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
 	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
-		return -1;
+		return std::move(eo_lbm_dir.get_error());
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	saw::data<sch::LbmArgs> args;
+
+
+	saw::data<sch::LbmArgs<sch::T>> args;
+	auto& conf = args.template get<"args">();
 	{
-
+		conf.template get<"delta_x">() = 1.0f;
+		conf.template get<"delta_t">() = 1.0f;
+		conf.template get<"kinematic_viscosity">() = 3e-2f;
 	}
-
+	{
+		/*
+		auto eo_conf = load_lbm_config<sch::Float64,sch::Descriptor<2u,9u>>(cfg_file_name);
+		if(eo_conf.is_value()){
+			conf = eo_conf.get_value();
+		}
+		*/
+	}
+	{
+		saw::data<sch::LbmArgs<sch::T>, saw::encode::Args> args_enc{argc,argv};
+		saw::codec<sch::LbmArgs<sch::T>, saw::encode::Args> args_codec;
+		auto eov = args_codec.decode(args_enc, args);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 
 	auto out_dir = lbm_dir / "poiseulle_particles_channel_2d";
 
@@ -617,27 +658,13 @@ int main(int argc, char** argv){
 		cfg_file_name = argv[1];
 	}
 
-	auto eo_conf = load_lbm_config<sch::Float64,sch::Descriptor<2u,9u>>(cfg_file_name);
-	if(eo_conf.is_error()){
-		auto& err = eo_conf.get_error();
-		std::cerr<<"[Error]: "<<err.get_category();
-		auto err_msg = err.get_message();
-		if(!err_msg.empty()){
-			std::cerr<<" - "<<err_msg;
-		}
-		std::cerr<<std::endl;
 
-		return err.get_id();
-	}
-
-	auto& conf = eo_conf.get_value();
-
-	converter<sch::Float64> conv {
+	converter<sch::T> conv {
 		{conf.template get<"delta_x">()},
 		{conf.template get<"delta_t">()}
 	};
 
-	print_lbm_meta<sch::Float64,sch::Descriptor<2u,9u>>(conv, {conf.template get<"kinematic_viscosity">()});
+	print_lbm_meta<sch::T,sch::Descriptor<2u,9u>>(conv, {conf.template get<"kinematic_viscosity">()});
 
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
 	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
@@ -713,6 +740,7 @@ int main(int argc, char** argv){
 				auto& p_mask_grid = p_mask.template get<"grid">();
 				auto p_mask_grid_dims = p_mask_grid.dims();
 
+
 				saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
 				p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
 				p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
@@ -730,8 +758,10 @@ int main(int argc, char** argv){
 					index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
 
 					saw::data<sch::Vector<sch::T,2u>> mask_shift;
-					mask_shift.at({{0u}}) = index_shift.at({{0u}});
-					mask_shift.at({{1u}}) = index_shift.at({{1u}});
+					for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+						// Technically rotate and adjust here
+						mask_shift.at({{i}}) = index_shift.at({{i}});
+					}
 
 					auto p_pos_lie = p_pos + mask_shift;
 
@@ -742,9 +772,8 @@ int main(int argc, char** argv){
 						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 					}};
 
-					{
-						p_cell_pos.at({{0u}}).set(std::max(1ul, std::min(p_cell_pos.at({{0u}}).get(), meta.at({0u}).get()-2ul)));
-						p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
+					for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
+						p_cell_pos.at({{i}}).set(std::max(1ul, std::min(p_cell_pos.at({{i}}).get(), meta.at({i}).get()-2ul)));
 					}
 
 					macros(p_cell_pos).template get<"particle">().set(i.get() + 1u);
@@ -756,11 +785,33 @@ int main(int argc, char** argv){
 				vtk_f_name += std::to_string(i) + ".vtk";
 				write_vtk_file(out_dir / vtk_f_name, macros);
 			}
+			{
+				std::string json_p_f_name{"particles_"};
+				json_p_f_name +=  std::to_string(i) + ".json";
+			}
 		}
 
 		couple_particles_to_lattice(particle_sys, lattice, macros, {i});
 		particle_sys.step({1u});
 		lbm_step(lattice, macros, i);
+	}
+
+	return saw::make_void();
+}
+
+int main(int argc, char** argv){
+	auto eov = real_main(argc,argv);
+	if(eov.is_error()){
+		auto& err = eov.get_error();
+		auto err_msg = err.get_message();
+		std::cerr<<"[Error]: "<<err.get_category();
+
+		if(not err_msg.empty()){
+			std::cerr<<" - "<<err_msg;
+		}
+		std::cerr<<std::endl;
+
+		return err.get_id();
 	}
 
 	return 0;
