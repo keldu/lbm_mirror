@@ -611,7 +611,8 @@ void lbm_step(
  * 1. Transform from lagrangian to euler grid
  * 2. Cast down to index (x,y).
  * 3. calculate distance to each neighbour node. (x,y),(x+1,y),(x,y+1),(x+1,y+1)
- * 4. Write calculated forces. Atomicly of course.
+ * 4. Trilinear interpolation
+ * 5. Write calculated forces. Atomicly of course.
  */
 
 
