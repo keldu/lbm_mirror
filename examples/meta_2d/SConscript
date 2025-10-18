@@ -1,0 +1,32 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+examples_env = env.Clone();
+
+examples_env.sources = sorted(glob.glob(dir_path + "/*.cpp"))
+examples_env.headers = sorted(glob.glob(dir_path + "/*.hpp"))
+
+env.sources += examples_env.sources;
+env.headers += examples_env.headers;
+
+# Cavity2D
+examples_objects = [];
+examples_env.add_source_files(examples_objects, ['meta_2d.cpp'], shared=False);
+examples_env.meta_2d = examples_env.Program('#bin/meta_2d', [examples_objects]);
+
+# Set Alias
+env.examples = [
+	examples_env.meta_2d
+];
+env.Alias('examples', env.examples);
+env.targets += ['examples'];
+env.Install('$prefix/bin/', env.examples);

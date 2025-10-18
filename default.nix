@@ -37,6 +37,11 @@ in rec {
 			inherit pname version stdenv forstio;
 			kel-lbm = lbm;
 		};
+
+		meta_2d = pkgs.callPackage ./examples/meta_2d/.nix/derivation.nix {
+			inherit pname version stdenv forstio;
+			kel-lbm = lbm;
+		};
 	};
 
 	debug = {

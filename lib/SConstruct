@@ -43,11 +43,6 @@ env_vars.Add('prefix',
 	validator=isAbsolutePath
 )
 
-env_vars.Add('build_examples',
-	help='If examples should be built',
-	default="true"
-)
-
 env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     CPPDEFINES=['SAW_UNIX'],
     CXXFLAGS=[
@@ -57,8 +52,7 @@ env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
         '-Wextra'
     ],
     LIBS=[
-        'forstio-core',
-        'forstio-codec'
+        'forstio-core'
     ]
 );
 env.__class__.add_source_files = add_kel_source_files
@@ -72,7 +66,6 @@ env.targets = [];
 
 Export('env')
 SConscript('c++/SConscript')
-SConscript('examples/SConscript')
 SConscript('tests/SConscript')
 
 env.Alias('cdb', env.cdb);

@@ -7,8 +7,8 @@
 
 stdenv.mkDerivation {
   pname = "kel-lbm";
-  version = "0.0.1";
-  src = ./..;
+  version = "0.0.2";
+  src = ../lib;
 
   nativeBuildInputs = [
     scons

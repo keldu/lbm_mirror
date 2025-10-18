@@ -18,8 +18,8 @@ struct ZouHeVertical{};
 /**
  * Full-Way BounceBack.
  */
-template<typename T, typename Descriptor>
-class component<T, Descriptor, cmpt::BounceBack> {
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::BounceBack, Encode> {
 private:
 public:
 	component() = default;
@@ -44,7 +44,7 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, uint64_t time_step){
+	void apply(saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, uint64_t time_step){
 		bool is_even = ((time_step % 2u) == 0u);
 
 		// This is a ref
@@ -76,8 +76,8 @@ public:
  * 0 - 2 - 2
  *
  */
-template<typename FP, typename Descriptor, bool Dir>
-class component<FP, Descriptor, cmpt::ZouHeHorizontal<Dir>> final {
+template<typename FP, typename Descriptor, bool Dir, typename Encode>
+class component<FP, Descriptor, cmpt::ZouHeHorizontal<Dir>, Encode> final {
 private:
 	saw::data<FP> pressure_setting_;
 	saw::data<FP> rho_setting_;
@@ -88,7 +88,7 @@ public:
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
 		using dfi = df_info<FP,Descriptor>;
 
 		bool is_even = ((time_step % 2) == 0);

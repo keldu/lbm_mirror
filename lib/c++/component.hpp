@@ -32,7 +32,7 @@ public:
 /**
  * Component class which forms the basis of each processing step
  */
-template<typename T, typename Descriptor, typename Cmpt>
+template<typename T, typename Descriptor, typename Cmpt, typename Encode = saw::encode::Native>
 class component {};
 }
 }

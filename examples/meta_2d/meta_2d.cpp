@@ -1,4 +1,4 @@
-#include "../c++/lbm.hpp"
+#include <kel/lbm/lbm.hpp>
 
 #include <iostream>
 

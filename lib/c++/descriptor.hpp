@@ -25,7 +25,9 @@ struct Cell {
 };
 
 template<typename Desc, typename Cell>
-struct CellField;
+struct CellField{
+	using Descriptor = Desc;
+};
 
 template<typename Desc, typename... CellFieldTypes, saw::string_literal... CellFieldNames>
 struct CellField<
@@ -33,7 +35,16 @@ struct CellField<
 	Struct<
 		Member<CellFieldTypes, CellFieldNames>...
 	>
->;
+> {
+	using Descriptor = Desc;
+};
+
+template<typename Desc, typename... CellFieldMembers>
+struct CellFieldStruct {
+	using Schema = CellFieldStruct<Desc, Struct<CellFieldMembers...>>;
+	using InnerSchema = Struct<CellFieldMembers...>;
+	using MetaSchema = FixedArray<UInt64, Desc::D>;
+};
 
 }
 
@@ -292,5 +303,63 @@ public:
 	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
 		return inner_.at(index);
 	}
+
+	const data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
+		return inner_.at(index);
+	}
+
+	data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
+		return inner_.at(index);
+	}
 };
+
+/**
+ * Is basically a struct, but additionally has members for meta() calls. It technically is a Field of a struct, but organized through a struct of fields.
+ */
+template<typename Desc, typename... CellFieldsT, typename Encode>
+class data<kel::lbm::sch::CellFieldStruct<Desc, schema::Struct<CellFieldsT...>>, Encode> final {
+public:
+	using Schema = kel::lbm::sch::CellFieldStruct<Desc,schema::Struct<CellFieldsT...>>;
+	/// @TODO Add MetaSchema to Schema
+	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
+private:
+	static_assert(sizeof...(CellFieldsT) > 0u, "");
+	data<schema::Struct<CellFieldsT...>, Encode> inner_;
+
+	template<uint64_t i>
+	saw::error_or<void> helper_constructor(const data<schema::FixedArray<schema::UInt64,Desc::D>>& grid_size){
+		using MemT = saw::parameter_pack_type<i,CellFieldsT...>::type;
+		{
+			inner_.template get<MemT::Name>() = {grid_size};
+		}
+		if constexpr (sizeof...(CellFieldsT) > (i+1u)){
+			return helper_constructor<i+1u>(grid_size);
+		}
+		return saw::make_void();
+	}
+public:
+	data() = delete;
+
+	data(const data<schema::FixedArray<schema::UInt64,Desc::D>>& grid_size__){
+		auto eov = helper_constructor<0u>(grid_size__);
+		(void)eov;
+	}
+
+	const data<MetaSchema, Encode> meta() const {
+		using MemT = saw::parameter_pack_type<0u,CellFieldsT...>::type;
+		return inner_.template get<MemT::Name>().dims();
+	}
+
+	template<saw::string_literal Key>
+	auto& get() {
+		return inner_.template get<Key>();
+	}
+
+	template<saw::string_literal Key>
+	const auto& get() const {
+		return inner_.template get<Key>();
+	}
+};
+
+
 }

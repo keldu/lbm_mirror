@@ -14,8 +14,8 @@ struct BGKGuo {};
 /**
  * Standard BGK collision operator for LBM
  */
-template<typename T, typename Descriptor>
-class component<T, Descriptor, cmpt::BGK> {
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::BGK, Encode> {
 private:
 	typename saw::native_data_type<T>::type relaxation_;
 	saw::data<T> frequency_;
@@ -45,7 +45,7 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
 		bool is_even = ((time_step % 2) == 0);
 		auto& cell = field(index);
 
@@ -64,8 +64,8 @@ public:
 	}
 };
 
-template<typename T, typename Descriptor>
-class component<T, Descriptor, cmpt::BGKGuo> {
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::BGKGuo, Encode> {
 private:
 	typename saw::native_data_type<T>::type relaxation_;
 	saw::data<T> frequency_;
@@ -90,7 +90,7 @@ public:
 	static constexpr saw::string_literal before = "streaming";
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, uint64_t time_step){
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, uint64_t time_step){
 		bool is_even = ((time_step % 2) == 0);
 		auto& cell = field(index);
 

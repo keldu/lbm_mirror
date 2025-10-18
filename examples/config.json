@@ -1,5 +1,5 @@
 {
-	"delta_x" : 1.0,
-	"delta_t" : 1.0,
-	"kinematic_viscosity" : 3e-2
+	"delta_x" : 10.0,
+	"delta_t" : 1e5,
+	"kinematic_viscosity" : 1.5e-5
 }

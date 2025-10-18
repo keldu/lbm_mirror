@@ -516,8 +516,9 @@ void couple_particles_to_lattice(
 		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
 
 		if(v_n.at({}).get() < 0.0){
-			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*v_n.at({});
-			solid_normal.at({{1u}}) = solid_normal.at({{1u}})*v_n.at({});
+			auto v_n_2 = v_n + v_n;
+			solid_normal.at({{0u}}) = solid_normal.at({{0u}})*(v_n_2.at({}));
+			solid_normal.at({{1u}}) = solid_normal.at({{1u}})*(v_n_2.at({}));
 			p_acc = p_acc - solid_normal;
 		}
 
