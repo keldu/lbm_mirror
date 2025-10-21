@@ -3,9 +3,10 @@
 , scons
 , clang-tools
 , forstio
-, adaptive-cpp
+, keldu
 , pname
 , version
+, adaptive-cpp-dev
 , kel-lbm
 }:
 
@@ -20,14 +21,13 @@ stdenv.mkDerivation {
   ];
 
   buildInputs = [
-    forstio.core
-    forstio.async
-    forstio.codec
-    forstio.codec-unit
-    forstio.remote
-    forstio.remote-sycl
+		forstio.core
+		forstio.async
+		forstio.codec
+		forstio.codec-unit
+		forstio.remote
 		forstio.codec-json
-		adaptive-cpp
+		adaptive-cpp-dev
 		kel-lbm
   ];
 

@@ -12,10 +12,10 @@ let
     inherit clang-tools;
 	}).forstio;
 
-	adaptive-cpp = pkgs.callPackage ./.nix/adaptive-cpp.nix {
-			inherit stdenv;
-			llvmPackages = pkgs.llvmPackages_19;
-			lld = pkgs.lld_19;
+	adaptive-cpp-dev = pkgs.callPackage .nix/adaptive-cpp.nix {
+		inherit stdenv;
+		llvmPackages = pkgs.llvmPackages_19;
+		lld = pkgs.lld_19;
 	};
 
 	pname = "kel-lbm";
@@ -29,7 +29,7 @@ in rec {
 
 	examples = {
 		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp;
+			inherit pname version stdenv forstio adaptive-cpp-dev;
 			kel-lbm = lbm;
 		};
 
@@ -45,6 +45,6 @@ in rec {
 	};
 
 	debug = {
-		inherit adaptive-cpp;
+		# inherit foo;
 	};
 }
