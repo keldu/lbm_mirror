@@ -37,6 +37,8 @@ struct CellField<
 	>
 > {
 	using Descriptor = Desc;
+	using Schema = CellField<Desc,Struct<Member<CellFieldTypes,CellFieldNames>...>>;
+	using MetaSchema = FixedArray<schema::UInt64,Desc::D>;
 };
 
 template<typename Desc, typename... CellFieldMembers>
@@ -287,7 +289,7 @@ public:
 	{}
 
 	const data<MetaSchema, Encode> meta() const {
-		return inner_.get_dims();
+		return inner_.dims();
 	}
 
 	template<uint64_t i>
@@ -311,6 +313,14 @@ public:
 	data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
 		return inner_.at(index);
 	}
+
+	data<schema::UInt64,Encode> internal_size() const {
+		return inner_.internal_size();
+	}
+
+	data<CellT,Encode>* internal_data() {
+		return inner_.internal_data();
+	}
 };
 
 /**
@@ -330,7 +340,7 @@ private:
 	saw::error_or<void> helper_constructor(const data<schema::FixedArray<schema::UInt64,Desc::D>>& grid_size){
 		using MemT = saw::parameter_pack_type<i,CellFieldsT...>::type;
 		{
-			inner_.template get<MemT::Name>() = {grid_size};
+			inner_.template get<MemT::KeyLiteral>() = {grid_size};
 		}
 		if constexpr (sizeof...(CellFieldsT) > (i+1u)){
 			return helper_constructor<i+1u>(grid_size);
@@ -347,7 +357,7 @@ public:
 
 	const data<MetaSchema, Encode> meta() const {
 		using MemT = saw::parameter_pack_type<0u,CellFieldsT...>::type;
-		return inner_.template get<MemT::Name>().dims();
+		return inner_.template get<MemT::KeyLiteral>().meta();
 	}
 
 	template<saw::string_literal Key>

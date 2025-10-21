@@ -258,10 +258,6 @@ void set_initial_conditions(
 	}, {{0u,0u}}, meta);
 }
 
-struct sycl_component_context {
-	acpp::sycl::handler* handler = nullptr;
-};
-
 template<typename T, typename Desc>
 void lbm_step(
 	acpp::sycl::buffer<saw::data<sch::CellInfo<Desc>>>& info,
@@ -277,6 +273,7 @@ void lbm_step(
   using dfi = df_info<T,Desc>;
 
   //component<T, Desc, cmpt::BGK> coll{0.59};
+  constexpr saw::data<T> frequency{1.0 / 0.59};
   //component<T, Desc, cmpt::BounceBack> bb;
   component<T, Desc, cmpt::MovingWall> bb_lid;
   bb_lid.lid_vel = {0.1, 0.0};
@@ -298,7 +295,7 @@ void lbm_step(
         size_t i = idx[0];
         size_t j = idx[1];
 
-		  size_t acc_id = i * dim_x + j;
+		  	size_t acc_id = i * dim_x + j;
 
         // Read cell info
         auto& info = info_acc[acc_id];
@@ -328,7 +325,7 @@ void lbm_step(
 						auto eq = equilibrium<T,Desc>(rho,vel);
 
 						for(uint64_t i = 0u; i < Desc::Q; ++i){
-							dfs_old({i}) = dfs_old({i}) + frequency_ * (eq.at(i) - dfs_old({i}));
+							dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
 							// dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
 						}
 						break;
@@ -343,28 +340,34 @@ void lbm_step(
   // Submit streaming kernel
   sycl_q.submit([&](sycl::handler& cgh) {
     auto info_acc = info.template get_access<sycl::access::mode::read_write>(cgh);
+    auto dfs_new_acc = is_even ? dfs.template get_access<sycl::access::mode::write>(cgh) : dfs_old.template get_access<sycl::access::mode::write>(cgh);
+    auto dfs_old_acc = is_even ? dfs_old.template get_access<sycl::access::mode::read>(cgh) : dfs.template get_access<sycl::access::mode::read>(cgh);
 
     cgh.parallel_for(
-      sycl::range<2>{Nx - 2, Ny - 2}, [=](sycl::id<2> idx) {
+      sycl::range<2>{dim_x - 2, dim_y - 2}, [=](sycl::id<2> idx) {
         size_t i = idx[0] + 1; // avoid boundary
         size_t j = idx[1] + 1;
 
-        auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
-        auto& info_new = cell.template get<"info">();
+        size_t acc_id = i * dim_x + j;
 
-        if (info_new({0u}).get() > 0u && info_new({0u}).get() != 3u) {
+        auto dfs_new = dfs_new_acc[acc_id];
+        auto& info = info_acc[acc_id];
+
+        if (info({0u}).get() > 0u && info({0u}).get() != 3u) {
           for (uint64_t k = 0u; k < Desc::Q; ++k) {
             auto dir = dfi::directions[dfi::opposite_index[k]];
-            auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
+            // auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
+            //
+            size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
 
-            auto& df_old = even_step ? cell_dir_old.template get<"dfs_old">() : cell_dir_old.template get<"dfs">();
-            auto& info_old = cell_dir_old.template get<"info">();
+            auto& dfs_old = dfs_old_acc[acc_old_id];
+            auto& info_old = info_acc[acc_old_id];
 
             if (info_old({0}).get() == 3u) {
-              auto& df_old_loc = even_step ? latt_acc({i, j}).template get<"dfs_old">() : latt_acc({i, j}).template get<"dfs">();
-              df_new({k}) = df_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
+              auto& dfs_old_loc = dfs_old_acc[acc_old_id];
+              dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
             } else {
-              df_new({k}) = df_old({k});
+              dfs_new({k}) = dfs_old({k});
             }
           }
         }
@@ -382,7 +385,7 @@ int main(){
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
 	constexpr size_t dim_size = dim_x * dim_y;
 
-	saw::data<sch::CavityFieldD2Q9>> lattice{dim};
+	saw::data<sch::CavityFieldD2Q9> lattice{dim};
 
 	converter<sch::T> conv{
 		{0.1},
@@ -413,9 +416,9 @@ int main(){
 	auto& dfs_old_field = lattice.template get<"dfs_old">();
 
 	acpp::sycl::queue sycl_q{acpp::sycl::default_selector_v, acpp::sycl::property::queue::in_order{}};
-	acpp::sycl::buffer<saw::data<sch::CellInfo<sch::D2Q9>>> info_sycl{info_field.internal_data(), info_field.internal_size()};
-	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_sycl{dfs_field.internal_data(), dfs_field.internal_size()};
-	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_old_sycl{dfs_old_field.internal_data(), dfs_old_field.internal_size()};
+	acpp::sycl::buffer<saw::data<sch::CellInfo<sch::D2Q9>>> info_sycl{info_field.internal_data(), info_field.internal_size().get()};
+	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_sycl{dfs_field.internal_data(), dfs_field.internal_size().get()};
+	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_old_sycl{dfs_old_field.internal_data(), dfs_old_field.internal_size().get()};
 
 	/**
 	 * Timeloop
