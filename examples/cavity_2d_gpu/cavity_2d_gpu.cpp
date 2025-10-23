@@ -13,6 +13,7 @@ template<typename InnerEnc>
 struct Sycl {
 };
 }
+
 template<typename Schema>
 class data<Schema, encode::Sycl<encode::Native>> {
 private:
@@ -267,42 +268,42 @@ void lbm_step(
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
 ){
-  using namespace kel::lbm;
-  using namespace acpp;
+	using namespace kel::lbm;
+	using namespace acpp;
 
-  using dfi = df_info<T,Desc>;
+	using dfi = df_info<T,Desc>;
 
-  //component<T, Desc, cmpt::BGK> coll{0.59};
-  constexpr saw::data<T> frequency{1.0 / 0.59};
-  //component<T, Desc, cmpt::BounceBack> bb;
-  component<T, Desc, cmpt::MovingWall> bb_lid;
-  bb_lid.lid_vel = {0.1, 0.0};
+	//component<T, Desc, cmpt::BGK> coll{0.59};
+	constexpr saw::data<T> frequency{1.0 / 0.59};
+	//component<T, Desc, cmpt::BounceBack> bb;
+	component<T, Desc, cmpt::MovingWall> bb_lid;
+	bb_lid.lid_vel = {0.1, 0.0};
 
-  /*
-  const size_t Nx = latt.template get_dim_size<0>().get();
-  const size_t Ny = latt.template get_dim_size<1>().get();
-  */
+	/*
+	const size_t Nx = latt.template get_dim_size<0>().get();
+	const size_t Ny = latt.template get_dim_size<1>().get();
+	*/
 
-  // Submit collision kernel
-  sycl_q.submit([&](sycl::handler& cgh) {
-    // Accessor for latt with read/write
-    auto info_acc = info.template get_access<sycl::access::mode::read>(cgh);
-    auto dfs_acc = dfs.template get_access<sycl::access::mode::read_write>(cgh);
-    auto dfs_old_acc = dfs_old.template get_access<sycl::access::mode::read_write>(cgh);
+	// Submit collision kernel
+	sycl_q.submit([&](sycl::handler& cgh) {
+	 // Accessor for latt with read/write
+	 auto info_acc = info.template get_access<sycl::access::mode::read>(cgh);
+	 auto dfs_acc = dfs.template get_access<sycl::access::mode::read_write>(cgh);
+	 auto dfs_old_acc = dfs_old.template get_access<sycl::access::mode::read_write>(cgh);
 
-    cgh.parallel_for(
-      sycl::range<2>{dim_x, dim_y}, [=](sycl::id<2> idx) {
-        size_t i = idx[0];
-        size_t j = idx[1];
+	 cgh.parallel_for(
+		sycl::range<2>{dim_x, dim_y}, [=](sycl::id<2> idx) {
+			size_t i = idx[0];
+			size_t j = idx[1];
 
-		  	size_t acc_id = i * dim_x + j;
+			size_t acc_id = i * dim_x + j;
 
-        // Read cell info
-        auto& info = info_acc[acc_id];
+			// Read cell info
+			auto& info = info_acc[acc_id];
 
-        switch (info({0u}).get()) {
-          case 1u: {
-            // bb.apply(latt_acc, {i, j}, time_step);
+			switch (info({0u}).get()) {
+			 case 1u: {
+				// bb.apply(latt_acc, {i, j}, time_step);
 
 						auto& dfs_old = (is_even) ? dfs_old_acc[acc_id] : dfs_acc[acc_id];
 						// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
@@ -312,10 +313,10 @@ void lbm_step(
 							dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
 						}
 
-            break;
-          }
-          case 2u: {
-            // coll.apply(latt_acc, {i, j}, time_step);
+				break;
+			 }
+			 case 2u: {
+				// coll.apply(latt_acc, {i, j}, time_step);
 
 						auto& dfs_old = (is_even) ? dfs_old_acc[acc_id] : dfs_acc[acc_id];
 
@@ -330,51 +331,51 @@ void lbm_step(
 						}
 						break;
 					}
-          default:
-            // Do nothing
-            break;
-        }
-      });
-  });
+			 default:
+				// Do nothing
+				break;
+			}
+		});
+	});
 
-  // Submit streaming kernel
-  sycl_q.submit([&](sycl::handler& cgh) {
-    auto info_acc = info.template get_access<sycl::access::mode::read_write>(cgh);
-    auto dfs_new_acc = is_even ? dfs.template get_access<sycl::access::mode::write>(cgh) : dfs_old.template get_access<sycl::access::mode::write>(cgh);
-    auto dfs_old_acc = is_even ? dfs_old.template get_access<sycl::access::mode::read>(cgh) : dfs.template get_access<sycl::access::mode::read>(cgh);
+	// Submit streaming kernel
+	sycl_q.submit([&](sycl::handler& cgh) {
+	 auto info_acc = info.template get_access<sycl::access::mode::read_write>(cgh);
+	 auto dfs_new_acc = is_even ? dfs.template get_access<sycl::access::mode::write>(cgh) : dfs_old.template get_access<sycl::access::mode::write>(cgh);
+	 auto dfs_old_acc = is_even ? dfs_old.template get_access<sycl::access::mode::read>(cgh) : dfs.template get_access<sycl::access::mode::read>(cgh);
 
-    cgh.parallel_for(
-      sycl::range<2>{dim_x - 2, dim_y - 2}, [=](sycl::id<2> idx) {
-        size_t i = idx[0] + 1; // avoid boundary
-        size_t j = idx[1] + 1;
+	 cgh.parallel_for(
+		sycl::range<2>{dim_x - 2, dim_y - 2}, [=](sycl::id<2> idx) {
+			size_t i = idx[0] + 1; // avoid boundary
+			size_t j = idx[1] + 1;
 
-        size_t acc_id = i * dim_x + j;
+			size_t acc_id = i * dim_x + j;
 
-        auto dfs_new = dfs_new_acc[acc_id];
-        auto& info = info_acc[acc_id];
+			auto dfs_new = dfs_new_acc[acc_id];
+			auto& info = info_acc[acc_id];
 
-        if (info({0u}).get() > 0u && info({0u}).get() != 3u) {
-          for (uint64_t k = 0u; k < Desc::Q; ++k) {
-            auto dir = dfi::directions[dfi::opposite_index[k]];
-            // auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
-            //
-            size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
+			if (info({0u}).get() > 0u && info({0u}).get() != 3u) {
+			 for (uint64_t k = 0u; k < Desc::Q; ++k) {
+				auto dir = dfi::directions[dfi::opposite_index[k]];
+				// auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
+				//
+				size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
 
-            auto& dfs_old = dfs_old_acc[acc_old_id];
-            auto& info_old = info_acc[acc_old_id];
+				auto& dfs_old = dfs_old_acc[acc_old_id];
+				auto& info_old = info_acc[acc_old_id];
 
-            if (info_old({0}).get() == 3u) {
-              auto& dfs_old_loc = dfs_old_acc[acc_old_id];
-              dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
-            } else {
-              dfs_new({k}) = dfs_old({k});
-            }
-          }
-        }
-      });
-  });
+				if (info_old({0}).get() == 3u) {
+					auto& dfs_old_loc = dfs_old_acc[acc_old_id];
+					dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
+				} else {
+					dfs_new({k}) = dfs_old({k});
+				}
+			 }
+			}
+		});
+	});
 
-  sycl_q.wait();
+	sycl_q.wait();
 }
 }
 }

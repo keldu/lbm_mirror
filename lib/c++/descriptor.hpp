@@ -38,14 +38,15 @@ struct CellField<
 > {
 	using Descriptor = Desc;
 	using Schema = CellField<Desc,Struct<Member<CellFieldTypes,CellFieldNames>...>>;
-	using MetaSchema = FixedArray<schema::UInt64,Desc::D>;
+	using MetaSchema = FixedArray<UInt64,Desc::D>;
 };
 
 template<typename Desc, typename... CellFieldMembers>
 struct CellFieldStruct {
 	using Schema = CellFieldStruct<Desc, Struct<CellFieldMembers...>>;
 	using InnerSchema = Struct<CellFieldMembers...>;
-	using MetaSchema = FixedArray<UInt64, Desc::D>;
+	using MetaSchema = typename InnerSchema::MetaSchema;
+	// using MetaSchema = FixedArray<UInt64, Desc::D>;
 };
 
 }
