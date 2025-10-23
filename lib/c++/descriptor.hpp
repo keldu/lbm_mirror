@@ -37,15 +37,11 @@ struct CellField<
 	>
 > {
 	using Descriptor = Desc;
-	using Schema = CellField<Desc,Struct<Member<CellFieldTypes,CellFieldNames>...>>;
-	using MetaSchema = FixedArray<UInt64,Desc::D>;
 };
 
 template<typename Desc, typename... CellFieldMembers>
 struct CellFieldStruct {
-	using Schema = CellFieldStruct<Desc, Struct<CellFieldMembers...>>;
-	using InnerSchema = Struct<CellFieldMembers...>;
-	using MetaSchema = typename InnerSchema::MetaSchema;
+	using Descriptor = Desc;
 	// using MetaSchema = FixedArray<UInt64, Desc::D>;
 };
 
@@ -243,14 +239,20 @@ public:
 namespace saw {
 template<typename T, typename Desc, uint64_t S, uint64_t D, uint64_t Q>
 struct meta_schema<kel::lbm::sch::Cell<T,Desc,S,D,Q>> {
-  using MetaSchema = schema::Void;
+	using MetaSchema = schema::Void;
 	using Schema = kel::lbm::sch::Cell<T,Desc,S,D,Q>;
 };
 
 template<typename Desc, typename CellT>
 struct meta_schema<kel::lbm::sch::CellField<Desc, CellT>> {
-  using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
+	using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
 	using Schema = kel::lbm::sch::CellField<Desc, CellT>;
+};
+
+template<typename Desc, typename... CellFieldsT>
+struct meta_schema<kel::lbm::sch::CellFieldStruct<Desc,schema::Struct<CellFieldsT...>>> {
+	using MetaSchema = schema::FixedArray<schema::UInt64,Desc::D>;
+	using Schema = kel::lbm::sch::CellFieldStruct<Desc,schema::Struct<CellFieldsT...>>;
 };
 
 template<typename Sch, typename Desc, uint64_t S, uint64_t D, uint64_t Q, typename Encode>
