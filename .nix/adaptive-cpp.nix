@@ -6,6 +6,7 @@
 , boost
 , llvmPackages
 , lld
+, python3
 }:
 
 let
@@ -31,6 +32,7 @@ in stdenv.mkDerivation {
 		llvmPackages.openmp
 		llvmPackages.libclang
 		llvmPackages.llvm
+		python3
 	];
 
   cmakeFlags = [
@@ -47,7 +49,7 @@ in stdenv.mkDerivation {
 
   postFixup = ''
     wrapProgram $out/bin/syclcc-clang \
-      --prefix PATH : ${lib.makeBinPath [ lld ]} \
+      --prefix PATH : ${lib.makeBinPath [ lld python3 ]} \
       --add-flags "-L${llvmPackages.openmp}/lib" \
       --add-flags "-I${llvmPackages.openmp.dev}/include" \
   '';

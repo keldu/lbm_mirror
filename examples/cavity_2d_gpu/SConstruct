@@ -59,8 +59,8 @@ env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     ],
     LIBS=[
         'forstio-core',
-        'forstio-codec',
-        'acpp-rt'
+        'acpp-rt',
+        'omp'
     ]
 );
 env.__class__.add_source_files = add_kel_source_files

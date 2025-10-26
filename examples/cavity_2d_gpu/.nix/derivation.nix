@@ -4,6 +4,7 @@
 , clang-tools
 , forstio
 , keldu
+, python3
 , pname
 , version
 , adaptive-cpp-dev
@@ -13,14 +14,15 @@
 stdenv.mkDerivation {
 	pname = pname + "-examples-" + "cavity_2d_gpu";
 	inherit version;
-  src = ./..;
+	src = ./..;
 
-  nativeBuildInputs = [
-    scons
-    clang-tools
-  ];
+	nativeBuildInputs = [
+		scons
+		clang-tools
+		python3
+	];
 
-  buildInputs = [
+	buildInputs = [
 		forstio.core
 		forstio.async
 		forstio.codec
@@ -29,9 +31,9 @@ stdenv.mkDerivation {
 		forstio.codec-json
 		adaptive-cpp-dev
 		kel-lbm
-  ];
+	];
 
 	preferLocalBuild = true;
 
-  outputs = [ "out" "dev" ];
+	outputs = [ "out" "dev" ];
 }

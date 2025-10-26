@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <cmath>
 
 namespace saw {
@@ -14,46 +15,13 @@ struct Sycl {
 };
 }
 
-template<typename Schema>
-class data<Schema, encode::Sycl<encode::Native>> {
-private:
-	acpp::sycl::buffer<data<Schema, encode::Native>> data_;
-	data<schema::UInt64, encode::Native> size_;
-public:
-	data(const data<Schema, encode::Native>& data__):
-		data_{&data__, 1u},
-		size_{data__.size()}
-	{}
-
-	auto& get_handle() {
-		return data_;
-	}
-
-	const auto& get_handle() const {
-		return data_;
-	}
-
-	data<schema::UInt64, encode::Native> size() const {
-		return size_;
-	}
-
-	template<acpp::sycl::access::mode AccessMode>
-	auto access(acpp::sycl::handler& h){
-		return data_.template get_access<AccessMode>(h);
-	}
-
-	template<acpp::sycl::access::mode AccessMode>
-	auto access(acpp::sycl::handler& h) const {
-		return data_.template get_access<AccessMode>(h);
-	}
-};
-
 template<typename Sch, uint64_t Dim>
 class data<schema::Array<Sch, Dim>, encode::Sycl<encode::Native>> {
 public:
 	using Schema = schema::Array<Sch,Dim>;
 private:
-	acpp::sycl::buffer<data<Sch, encode::Native>> data_;
+	using SyclKelAllocator = acpp::sycl::usm_allocator<data<Sch, encode::Native>, acpp::sycl::usm::alloc::shared>;
+	std::vector<data<Sch, encode::Native>, SyclKelAllocator> data_;
 	data<schema::UInt64, encode::Native> size_;
 public:
 	data(const data<Schema, encode::Native>& host_data__):
@@ -69,18 +37,16 @@ public:
 		return data_;
 	}
 
-	data<schema::UInt64, encode::Native> size() const {
+	data<schema::UInt64, encode::Native> internal_size() const {
 		return size_;
 	}
 
-	template<acpp::sycl::access::mode AccessMode>
-	auto access(acpp::sycl::handler& h){
-		return data_.template get_access<AccessMode>(h);
+	data<Sch, encode::Native>* internal_data() {
+		return &data_[0u];
 	}
 
-	template<acpp::sycl::access::mode AccessMode>
-	auto access(acpp::sycl::handler& h) const {
-		return data_.template get_access<AccessMode>(h);
+	const data<Sch, encode::Native>* internal_data() const {
+		return data_.data();
 	}
 };
 }
@@ -187,10 +153,13 @@ public:
 constexpr size_t dim_x = 128;
 constexpr size_t dim_y = 128;
 
-void set_geometry(saw::data<sch::CavityFieldD2Q9>& lattice){
+void set_geometry(
+	saw::data<sch::CellInfo<Desc>>& info_field
+){
 	using namespace kel::lbm;
+	using namespace acpp;
+
 	auto meta = lattice.meta();
-	auto& info_field = lattice.template get<"info">();
 	/**
 	 * Set ghost
 	 */
@@ -232,24 +201,25 @@ void set_geometry(saw::data<sch::CavityFieldD2Q9>& lattice){
 }
 
 void set_initial_conditions(
-	saw::data<sch::CavityFieldD2Q9>& lattice
+	saw::data<sch::CellInfo<Desc>>* info_field,
+	saw::data<sch::DfCell<Desc>>* dfs_field,
+	saw::data<sch::DfCell<Desc>>* dfs_old_field
 ){
 	using namespace kel::lbm;
+	using namespace acpp;
 
 	saw::data<sch::T> rho{1.0};
 	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
 	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
-
-	auto meta = lattice.meta();
-	auto& dfs_field = lattice.template get<"dfs">();
-	auto& dfs_old_field = lattice.template get<"dfs_old">();
+	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> meta{{dim_x,dim_y}};
 
 	/**
 	 * Set distribution
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& dfs = dfs_field.at(index);
-		auto& dfs_old = dfs_old_field.at(index);
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
+		auto& dfs = dfs_field[i];
+		auto& dfs_old = dfs_old_field[i];
 
 		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
 			dfs(k) = eq.at(k);
@@ -261,9 +231,9 @@ void set_initial_conditions(
 
 template<typename T, typename Desc>
 void lbm_step(
-	acpp::sycl::buffer<saw::data<sch::CellInfo<Desc>>>& info,
-	acpp::sycl::buffer<saw::data<sch::DfCell<Desc>>>& dfs,
-	acpp::sycl::buffer<saw::data<sch::DfCell<Desc>>>& dfs_old,
+	saw::data<sch::CellInfo<Desc>>* info_r,
+	saw::data<sch::DfCell<Desc>>* dfs_r,
+	saw::data<sch::DfCell<Desc>>* dfs_r_old,
 	bool is_even,
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
@@ -287,9 +257,6 @@ void lbm_step(
 	// Submit collision kernel
 	sycl_q.submit([&](sycl::handler& cgh) {
 	 // Accessor for latt with read/write
-	 auto info_acc = info.template get_access<sycl::access::mode::read>(cgh);
-	 auto dfs_acc = dfs.template get_access<sycl::access::mode::read_write>(cgh);
-	 auto dfs_old_acc = dfs_old.template get_access<sycl::access::mode::read_write>(cgh);
 
 	 cgh.parallel_for(
 		sycl::range<2>{dim_x, dim_y}, [=](sycl::id<2> idx) {
@@ -299,13 +266,13 @@ void lbm_step(
 			size_t acc_id = i * dim_x + j;
 
 			// Read cell info
-			auto& info = info_acc[acc_id];
+			auto& info = info_r[acc_id];
 
 			switch (info({0u}).get()) {
 			 case 1u: {
 				// bb.apply(latt_acc, {i, j}, time_step);
 
-						auto& dfs_old = (is_even) ? dfs_old_acc[acc_id] : dfs_acc[acc_id];
+						auto& dfs_old = (is_even) ? dfs_r_old[acc_id] : dfs_r[acc_id];
 						// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 						auto df_cpy = dfs_old.copy();
 
@@ -318,19 +285,19 @@ void lbm_step(
 			 case 2u: {
 				// coll.apply(latt_acc, {i, j}, time_step);
 
-						auto& dfs_old = (is_even) ? dfs_old_acc[acc_id] : dfs_acc[acc_id];
+				auto& dfs_old = (is_even) ? dfs_r_old[acc_id] : dfs_r[acc_id];
 
-						saw::data<T> rho;
-						saw::data<sch::FixedArray<T,Desc::D>> vel;
-						compute_rho_u<T,Desc>(dfs_old,rho,vel);
-						auto eq = equilibrium<T,Desc>(rho,vel);
+				saw::data<T> rho;
+				saw::data<sch::FixedArray<T,Desc::D>> vel;
+				compute_rho_u<T,Desc>(dfs_old,rho,vel);
+				auto eq = equilibrium<T,Desc>(rho,vel);
 
-						for(uint64_t i = 0u; i < Desc::Q; ++i){
-							dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
-							// dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
-						}
-						break;
-					}
+				for(uint64_t i = 0u; i < Desc::Q; ++i){
+					dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
+					// dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
+				}
+				break;
+			}
 			 default:
 				// Do nothing
 				break;
@@ -340,9 +307,6 @@ void lbm_step(
 
 	// Submit streaming kernel
 	sycl_q.submit([&](sycl::handler& cgh) {
-	 auto info_acc = info.template get_access<sycl::access::mode::read_write>(cgh);
-	 auto dfs_new_acc = is_even ? dfs.template get_access<sycl::access::mode::write>(cgh) : dfs_old.template get_access<sycl::access::mode::write>(cgh);
-	 auto dfs_old_acc = is_even ? dfs_old.template get_access<sycl::access::mode::read>(cgh) : dfs.template get_access<sycl::access::mode::read>(cgh);
 
 	 cgh.parallel_for(
 		sycl::range<2>{dim_x - 2, dim_y - 2}, [=](sycl::id<2> idx) {
@@ -351,8 +315,8 @@ void lbm_step(
 
 			size_t acc_id = i * dim_x + j;
 
-			auto dfs_new = dfs_new_acc[acc_id];
-			auto& info = info_acc[acc_id];
+			auto dfs_new = dfs_r[acc_id];
+			auto& info = info_r[acc_id];
 
 			if (info({0u}).get() > 0u && info({0u}).get() != 3u) {
 			 for (uint64_t k = 0u; k < Desc::Q; ++k) {
@@ -361,11 +325,11 @@ void lbm_step(
 				//
 				size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
 
-				auto& dfs_old = dfs_old_acc[acc_old_id];
-				auto& info_old = info_acc[acc_old_id];
+				auto& dfs_old = dfs_r_old[acc_old_id];
+				auto& info_old = info_r[acc_old_id];
 
 				if (info_old({0}).get() == 3u) {
-					auto& dfs_old_loc = dfs_old_acc[acc_old_id];
+					auto& dfs_old_loc = dfs_r_old[acc_old_id];
 					dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
 				} else {
 					dfs_new({k}) = dfs_old({k});
@@ -374,19 +338,16 @@ void lbm_step(
 			}
 		});
 	});
-
-	sycl_q.wait();
 }
 }
 }
 
 int main(){
 	using namespace kel::lbm;
+	using namespace acpp;
 
 	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
 	constexpr size_t dim_size = dim_x * dim_y;
-
-	saw::data<sch::CavityFieldD2Q9> lattice{dim};
 
 	converter<sch::T> conv{
 		{0.1},
@@ -402,24 +363,24 @@ int main(){
 	auto& lbm_dir = eo_lbm_dir.get_value();
 	auto out_dir = lbm_dir / "cavity_gpu_2d";
 
+	acpp::sycl::queue sycl_q{acpp::sycl::default_selector_v, acpp::sycl::property::queue::in_order{}};
+
+	constexpr size_t num_cells = dim_x * dim_y;
+
+	// Allocate USM shared memory for your main data
+	auto* info     = sycl::malloc_shared<saw::data<sch::CellInfo<sch::D2Q9>>>(num_cells, sycl_q);
+	auto* dfs      = sycl::malloc_shared<saw::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
+	auto* dfs_old  = sycl::malloc_shared<saw::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
+
 	/**
 	 * Set meta information describing what this cell is
 	 */
-	set_geometry(lattice);
+	set_geometry(info);
 
 	/**
 	 *
 	 */
-	set_initial_conditions(lattice);
-
-	auto& info_field = lattice.template get<"info">();
-	auto& dfs_field = lattice.template get<"dfs">();
-	auto& dfs_old_field = lattice.template get<"dfs_old">();
-
-	acpp::sycl::queue sycl_q{acpp::sycl::default_selector_v, acpp::sycl::property::queue::in_order{}};
-	acpp::sycl::buffer<saw::data<sch::CellInfo<sch::D2Q9>>> info_sycl{info_field.internal_data(), info_field.internal_size().get()};
-	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_sycl{dfs_field.internal_data(), dfs_field.internal_size().get()};
-	acpp::sycl::buffer<saw::data<sch::DfCell<sch::D2Q9>>> dfs_old_sycl{dfs_old_field.internal_data(), dfs_old_field.internal_size().get()};
+	set_initial_conditions(info,dfs,dfs_old);
 
 	/**
 	 * Timeloop
@@ -435,6 +396,19 @@ int main(){
 
 	for(uint64_t i = 0u; i < 256u; ++i){
 		{
+			sycl_q.wait();
+			{
+				//auto acc = dfs_sycl.template get_access<acpp::sycl::access::mode::read>(dfs_field.internal_data());
+
+			}
+			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
+				auto dfs = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+
+				auto& rho = macros.at({{i,j}}).template get<"pressure">();
+				auto& vel = macros.at({{i,j}}).template get<"velocity">();
+				compute_rho_u
+			dfs_sycl.synchronize();<sch::T,sch::D2Q9>(dfs,rho,vel);
+			}, lattice);
 			std::string vtk_f_name{"tmp/poiseulle_2d_"};
 			vtk_f_name += std::to_string(i) + ".vtk";
 			write_vtk_file(vtk_f_name, macros);

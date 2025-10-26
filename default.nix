@@ -42,9 +42,14 @@ in rec {
 			inherit pname version stdenv forstio;
 			kel-lbm = lbm;
 		};
+
+		planetary_3d = pkgs.callPackage ./examples/planetary_3d/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp-dev;
+			kel-lbm = lbm;
+		};
 	};
 
 	debug = {
-		# inherit foo;
+		inherit adaptive-cpp-dev;
 	};
 }
