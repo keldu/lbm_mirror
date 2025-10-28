@@ -2,6 +2,12 @@
 #include <iostream>
 
 namespace kel {
+namespace sch {
+using namespace saw::schema;
+using KelConfig = Struct<
+	Member<String,"resolution">
+>;
+}
 
 saw::error_or<void> real_main(int argc, char** argv){
 	return saw::make_void();

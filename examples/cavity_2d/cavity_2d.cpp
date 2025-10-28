@@ -1,9 +1,4 @@
-#include "../c++/descriptor.hpp"
-#include "../c++/macroscopic.hpp"
-#include "../c++/lbm.hpp"
-#include "../c++/component.hpp"
-#include "../c++/collision.hpp"
-#include "../c++/boundary.hpp"
+#include <kel/lbm/lbm.hpp>
 
 #include <forstio/codec/data.hpp>
 

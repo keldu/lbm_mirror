@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 #include <cmath>
 
 namespace saw {
@@ -153,18 +154,19 @@ public:
 constexpr size_t dim_x = 128;
 constexpr size_t dim_y = 128;
 
+template<typename Desc>
 void set_geometry(
-	saw::data<sch::CellInfo<Desc>>& info_field
+	saw::data<sch::CellInfo<Desc>>* info_field
 ){
 	using namespace kel::lbm;
 	using namespace acpp;
-
-	auto meta = lattice.meta();
+	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	/**
 	 * Set ghost
 	 */
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& info = info_field.at(index);
+		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
+		auto& info = info_field[i];
 
 		info({0u}).set(0u);
 
@@ -174,9 +176,10 @@ void set_geometry(
 	 * Set wall
 	 */
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& info = info_field.at(index);
+		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
+		auto& info = info_field[i];
 
-		info({0u}).set(2u);
+		info({0u}).set(1u);
 
 	}, {{0u,0u}}, meta, {{1u,1u}});
 
@@ -184,9 +187,10 @@ void set_geometry(
 	 * Set fluid
 	 */
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& info = info_field.at(index);
+		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
+		auto& info = info_field[i];
 
-		info({0u}).set(1u);
+		info({0u}).set(2u);
 
 	}, {{0u,0u}}, meta, {{2u,2u}});
 
@@ -194,12 +198,14 @@ void set_geometry(
 	 * Set top lid
 	 */
 	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
-		auto& info = info_field.at(index);
+		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
+		auto& info = info_field[i];
 		info({0u}).set(3u);
 
 	}, {{0u,1u}}, {{meta.at({0u}), 2u}}, {{2u,0u}});
 }
 
+template<typename Desc>
 void set_initial_conditions(
 	saw::data<sch::CellInfo<Desc>>* info_field,
 	saw::data<sch::DfCell<Desc>>* dfs_field,
@@ -209,19 +215,19 @@ void set_initial_conditions(
 	using namespace acpp;
 
 	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
-	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> meta{{dim_x,dim_y}};
+	saw::data<sch::FixedArray<sch::T,Desc::D>> vel{{0.0,0.0}};
+	auto eq = equilibrium<sch::T,Desc>(rho, vel);
+	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 
 	/**
 	 * Set distribution
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& dfs = dfs_field[i];
 		auto& dfs_old = dfs_old_field[i];
 
-		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
+		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{Desc::Q}; ++k){
 			dfs(k) = eq.at(k);
 			dfs_old(k) = eq.at(k);
 		}
@@ -249,11 +255,6 @@ void lbm_step(
 	component<T, Desc, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1, 0.0};
 
-	/*
-	const size_t Nx = latt.template get_dim_size<0>().get();
-	const size_t Ny = latt.template get_dim_size<1>().get();
-	*/
-
 	// Submit collision kernel
 	sycl_q.submit([&](sycl::handler& cgh) {
 	 // Accessor for latt with read/write
@@ -272,20 +273,18 @@ void lbm_step(
 			 case 1u: {
 				// bb.apply(latt_acc, {i, j}, time_step);
 
-						auto& dfs_old = (is_even) ? dfs_r_old[acc_id] : dfs_r[acc_id];
-						// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-						auto df_cpy = dfs_old.copy();
+				auto& dfs_old = is_even ? dfs_r_old[acc_id] : dfs_r[acc_id];
+				auto df_cpy = dfs_old.copy();
 
-						for(uint64_t i = 1u; i < Desc::Q; ++i){
-							dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
-						}
+				for(uint64_t i = 1u; i < Desc::Q; ++i){
+					dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
+				}
 
 				break;
 			 }
 			 case 2u: {
 				// coll.apply(latt_acc, {i, j}, time_step);
-
-				auto& dfs_old = (is_even) ? dfs_r_old[acc_id] : dfs_r[acc_id];
+				auto& dfs_old = is_even ? dfs_r_old[acc_id] : dfs_r[acc_id];
 
 				saw::data<T> rho;
 				saw::data<sch::FixedArray<T,Desc::D>> vel;
@@ -294,7 +293,6 @@ void lbm_step(
 
 				for(uint64_t i = 0u; i < Desc::Q; ++i){
 					dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
-					// dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
 				}
 				break;
 			}
@@ -315,26 +313,27 @@ void lbm_step(
 
 			size_t acc_id = i * dim_x + j;
 
-			auto dfs_new = dfs_r[acc_id];
+			auto& dfs_new = is_even ? dfs_r[acc_id] : dfs_r_old[acc_id];
 			auto& info = info_r[acc_id];
 
+
 			if (info({0u}).get() > 0u && info({0u}).get() != 3u) {
-			 for (uint64_t k = 0u; k < Desc::Q; ++k) {
-				auto dir = dfi::directions[dfi::opposite_index[k]];
-				// auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
-				//
-				size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
+				for (uint64_t k = 0u; k < Desc::Q; ++k) {
+					auto dir = dfi::directions[dfi::opposite_index[k]];
+					// auto& cell_dir_old = latt_acc({i + dir[0], j + dir[1]});
+					//
+					size_t acc_old_id = (i+dir[0]) * dim_x + (j+dir[1]);
 
-				auto& dfs_old = dfs_r_old[acc_old_id];
-				auto& info_old = info_r[acc_old_id];
+					auto& dfs_old = is_even ? dfs_r_old[acc_old_id] : dfs_r[acc_old_id];
+					auto& info_old = info_r[acc_old_id];
 
-				if (info_old({0}).get() == 3u) {
-					auto& dfs_old_loc = dfs_r_old[acc_old_id];
-					dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
-				} else {
-					dfs_new({k}) = dfs_old({k});
+					if (info_old({0}).get() == 3u) {
+						auto& dfs_old_loc = is_even ? dfs_r_old[acc_id] : dfs_r[acc_id];
+						dfs_new({k}) = dfs_old_loc({dfi::opposite_index.at(k)}) - 2.0 * dfi::inv_cs2 * dfi::weights.at(k) * 1.0 * (bb_lid.lid_vel[0] * dir[0] + bb_lid.lid_vel[1] * dir[1]);
+					} else {
+						dfs_new({k}) = dfs_old({k});
+					}
 				}
-			 }
 			}
 		});
 	});
@@ -346,7 +345,7 @@ int main(){
 	using namespace kel::lbm;
 	using namespace acpp;
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
+	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> meta{{dim_x, dim_y}};
 	constexpr size_t dim_size = dim_x * dim_y;
 
 	converter<sch::T> conv{
@@ -391,30 +390,35 @@ int main(){
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{meta};
 
+	std::cout<<"Start"<<std::endl;
 
-	for(uint64_t i = 0u; i < 256u; ++i){
-		{
+	auto start = std::chrono::steady_clock::now();
+	sycl_q.wait();
+	for(uint64_t i = 0u; i < lattice_steps; ++i){
+		lbm_step<sch::T,sch::D2Q9>(info, dfs, dfs_old, even_step, i, sycl_q);
+		if(i % 1024u == 0u){
 			sycl_q.wait();
-			{
-				//auto acc = dfs_sycl.template get_access<acpp::sycl::access::mode::read>(dfs_field.internal_data());
+			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+				size_t j = index.at({0u}).get() * dim_x + index.at({1u}).get();
+				auto dfs_field = even_step ? dfs_old : dfs;
 
-			}
-			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
-				auto dfs = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-
-				auto& rho = macros.at({{i,j}}).template get<"pressure">();
-				auto& vel = macros.at({{i,j}}).template get<"velocity">();
-				compute_rho_u
-			dfs_sycl.synchronize();<sch::T,sch::D2Q9>(dfs,rho,vel);
-			}, lattice);
-			std::string vtk_f_name{"tmp/poiseulle_2d_"};
+				auto& rho = macros.at(index).template get<"pressure">();
+				auto& vel = macros.at(index).template get<"velocity">();
+				compute_rho_u<sch::T,sch::D2Q9>(dfs_field[j],rho,vel);
+			}, {{0u,0u}}, meta);
+			std::string vtk_f_name{"tmp/cavity_2d_gpu_"};
 			vtk_f_name += std::to_string(i) + ".vtk";
 			write_vtk_file(vtk_f_name, macros);
 		}
 
-		lbm_step<sch::T,sch::D2Q9>(info_sycl, dfs_sycl, dfs_old_sycl, (i%2u == 0u), i, sycl_q);
+		even_step = not even_step;
 	}
+	auto stop = std::chrono::steady_clock::now();
+	std::cout<<std::format("{:%H:%M:%S}",(stop-start))<<std::endl;
+	sycl::free(info,sycl_q);
+	sycl::free(dfs,sycl_q);
+	sycl::free(dfs_old,sycl_q);
 	return 0;
 }

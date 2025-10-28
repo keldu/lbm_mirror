@@ -164,6 +164,7 @@ public:
 	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
 	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
 };
+
 /*
 template<typename T>
 class df_info<T,sch::Descriptor<3, 27>> {
@@ -177,16 +178,36 @@ public:
 		{ 0, 0, 0},
 		{-1, 0, 0},
 		{ 1, 0, 0},
-		{ 0,-1, 0},
+		// Expand into 2D
+		{ 0, -1, 0},
+		{-1, -1, 0},
+		{ 1, -1, 0},
 		{ 0, 1, 0},
-		{-1,-1, 0},
-		{ 1, 1, 0},
 		{-1, 1, 0},
-		{ 1,-1, 0}
+		{ 1, 1, 0},
+		// Expand into 3D
+		{ 0, 0, -1},
+		{-1, 0, -1},
+		{ 1, 0, -1},
+		{ 0, -1, -1},
+		{-1, -1, -1},
+		{ 1, -1, -1},
+		{ 0, 1, -1},
+		{-1, 1, -1},
+		{ 1, 1, -1},
+		{ 0, 0, 1},
+		{-1, 0, 1},
+		{ 1, 0, 1},
+		{ 0, -1, 1},
+		{-1, -1, 1},
+		{ 1, -1, 1},
+		{ 0, 1, 1},
+		{-1, 1, 1},
+		{ 1, 1, 1}
 	}};
 
 	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
-		4./9.,
+		8./27.,
 		1./9.,
 		1./9.,
 		1./9.,
