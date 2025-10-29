@@ -14,6 +14,42 @@ void iterate_over(Func&& func, const saw::data<sch::FixedArray<sch::UInt64,2u>>&
 	}
 	return;
 }
+
+/**
+ *
+ */
+template<uint64_t D>
+struct iterator {
+private:
+	template<uint64_t i, typename Func>
+	static void iterate_over_i(Func& func,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& start,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& end,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& dist,
+		saw::data<sch::FixedArray<sch::UInt64,D>>& iter
+	){
+		static_assert(i <= D, "Eh. Too tired to think of a good message");
+		if constexpr ( i == D ){
+			func(iter);
+		}else{
+			for(iter.at({i}) = start.at({i})+dist.at({i}); (iter.at({i})+dist.at({i}) < end.at({i})); ++iter.at({i})){
+				iterate_over_i<i+1u,Func>(func,start,end,dist,iter);
+			}
+		}
+	}
+public:
+	template<typename Func>
+	static void apply(
+		Func&& func,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& start,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& end,
+		const saw::data<sch::FixedArray<sch::UInt64,D>>& dist = {}
+	){
+		saw::data<sch::FixedArray<sch::UInt64,D>> iter;
+		iterate_over_i<0u,Func>(func, start, end, dist, iter);
+	}
+};
+
 /* Ambiguous
 template<typename Func>
 void iterate_over(Func&& func, const saw::data<sch::FixedArray<sch::UInt64,3u>>& start, const saw::data<sch::FixedArray<sch::UInt64,3u>>& end, const saw::data<sch::FixedArray<sch::UInt64,3u>>& dist = {{{0u,0u,0u}}}){

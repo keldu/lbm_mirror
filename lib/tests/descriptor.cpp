@@ -32,4 +32,8 @@ SAW_TEST("Opposites and Dirs D2Q9"){
 	using namespace kel;
 	check_opposite_dirs<lbm::sch::Descriptor<2,9>>();
 }
+SAW_TEST("Opposites and Dirs D3Q27"){
+	using namespace kel;
+	check_opposite_dirs<lbm::sch::Descriptor<3,27>>();
+}
 }

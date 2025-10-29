@@ -24,6 +24,8 @@ stdenv.mkDerivation {
 		forstio.codec
 		forstio.codec-unit
 		forstio.codec-json
+		forstio.remote
+		forstio.remote-sycl
 		kel-lbm
 	];
 
