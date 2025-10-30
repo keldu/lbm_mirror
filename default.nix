@@ -12,7 +12,7 @@ let
     inherit clang-tools;
 	}).forstio;
 
-	adaptive-cpp-dev = pkgs.callPackage .nix/adaptive-cpp.nix {
+	adaptive-cpp = pkgs.callPackage .nix/adaptive-cpp.nix {
 		inherit stdenv;
 		llvmPackages = pkgs.llvmPackages_19;
 		lld = pkgs.lld_19;
@@ -29,21 +29,11 @@ in rec {
 
 	examples = {
 		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp-dev;
+			inherit pname version stdenv forstio adaptive-cpp;
 			kel-lbm = lbm;
 		};
 		
 		cavity_2d = pkgs.callPackage ./examples/cavity_2d/.nix/derivation.nix {
-			inherit pname version stdenv forstio;
-			kel-lbm = lbm;
-		};
-		
-		poiseulle_2d = pkgs.callPackage ./examples/poiseulle_2d/.nix/derivation.nix {
-			inherit pname version stdenv forstio;
-			kel-lbm = lbm;
-		};
-		
-		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
 			kel-lbm = lbm;
 		};
@@ -59,12 +49,12 @@ in rec {
 		};
 
 		planetary_3d = pkgs.callPackage ./examples/planetary_3d/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp-dev;
+			inherit pname version stdenv forstio adaptive-cpp;
 			kel-lbm = lbm;
 		};
 	};
 
 	debug = {
-		inherit adaptive-cpp-dev;
+		inherit adaptive-cpp;
 	};
 }
