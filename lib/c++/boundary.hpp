@@ -44,8 +44,8 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, uint64_t time_step){
-		bool is_even = ((time_step % 2u) == 0u);
+	void apply(saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step){
+		bool is_even = ((time_step.get() % 2u) == 0u);
 
 		// This is a ref
 		auto& cell = field(index);
@@ -88,10 +88,10 @@ public:
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step){
 		using dfi = df_info<FP,Descriptor>;
 
-		bool is_even = ((time_step % 2) == 0);
+		bool is_even = ((time_step.get() % 2) == 0);
 		auto& cell = field(index);
 
 		auto& info = cell.template get<"info">();

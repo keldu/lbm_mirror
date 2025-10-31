@@ -251,7 +251,7 @@ void lbm_step(
 	/**
 	 * Collision
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterator<sch::D2Q9::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -279,7 +279,7 @@ void lbm_step(
 	}, {{0u,0u}}, meta);
 
 	// Stream
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterator<sch::D2Q9::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
 		auto& cell = latt(index);
 		auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 		auto& info_new = cell.template get<"info">();

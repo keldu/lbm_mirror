@@ -311,6 +311,9 @@ public:
 	}
 };
 
+/*
+ * Create a cellfield
+ */
 template<typename Desc, typename CellT, typename Encode>
 class data<kel::lbm::sch::CellField<Desc, CellT>, Encode> final {
 public:

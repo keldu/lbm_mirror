@@ -45,9 +45,9 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
-		bool is_even = ((time_step % 2) == 0);
-		auto& cell = field(index);
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+		bool is_even = ((time_step.get() % 2) == 0);
+		auto& cell = field.at(index);
 
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
@@ -90,8 +90,8 @@ public:
 	static constexpr saw::string_literal before = "streaming";
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, uint64_t time_step){
-		bool is_even = ((time_step % 2) == 0);
+	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+		bool is_even = ((time_step.get() % 2) == 0);
 		auto& cell = field(index);
 
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();

@@ -11,6 +11,8 @@ dir_path = Dir('.').abspath
 
 # Environment for base library
 examples_env = env.Clone();
+examples_env['CXX'] = 'syclcc-clang';
+examples_env['CXXFLAGS'] += ['-O3'];
 
 examples_env.sources = sorted(glob.glob(dir_path + "/*.cpp"))
 examples_env.headers = sorted(glob.glob(dir_path + "/*.hpp"))

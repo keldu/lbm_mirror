@@ -4,19 +4,21 @@
 }:
 
 let
-  forstio = (import ((builtins.fetchGit {
-    url = "git@git.keldu.de:forstio/forstio";
-    ref = "dev";
-  }).outPath + "/default.nix"){
-    inherit stdenv;
-    inherit clang-tools;
-	}).forstio;
 
 	adaptive-cpp = pkgs.callPackage .nix/adaptive-cpp.nix {
 		inherit stdenv;
 		llvmPackages = pkgs.llvmPackages_19;
 		lld = pkgs.lld_19;
 	};
+
+	forstio = (import ((builtins.fetchTarball {
+		url = "https://git.keldu.de/forstio-forstio/snapshot/dev.tar.gz";
+		sha256 = "sha256:1mbak3ksppkij0325p6gz8mibbss0gfj4w85fs4f1jkz8wpdbkgq";
+	}) + "/default.nix"){
+		inherit stdenv;
+		inherit clang-tools;
+		inherit adaptive-cpp;
+	}).forstio;
 
 	pname = "kel-lbm";
 	version = "0.0.2";
@@ -49,6 +51,16 @@ in rec {
 		};
 
 		planetary_3d = pkgs.callPackage ./examples/planetary_3d/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			kel-lbm = lbm;
+		};
+
+		poiseulle_2d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
+			inherit pname version stdenv forstio;
+			kel-lbm = lbm;
+		};
+
+		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			kel-lbm = lbm;
 		};
