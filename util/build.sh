@@ -34,14 +34,14 @@ podman run --rm -it \
 
         # Install fpm if missing
         if ! command -v fpm >/dev/null 2>&1; then
-            nix-shell -p rubyPackages.fpm --run 'true'
+            nix-shell -p fpm --run 'true'
         fi
 
         # Create .deb package
-        nix-shell -p rubyPackages.fpm --run \"fpm -s dir -t deb -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
+        nix-shell -p fpm --run \"fpm -s dir -t deb -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
 
         # Create .rpm package
-        nix-shell -p rubyPackages.fpm --run \"fpm -s dir -t rpm -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
+        nix-shell -p fpm rpm --run \"fpm -s dir -t rpm -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
     "
 
 echo "✅ Build complete!"
