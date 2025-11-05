@@ -75,13 +75,14 @@ in rec {
 
 	release = {
 		dev = {
-			inherit lbm;
+			inherit kel-lbm;
 		};
 
 		examples = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-${version}";
 			paths = [
-				lbm
+				kel-lbm.core
+				kel-lbm.sycl
 				examples.cavity_2d_gpu
 			];
 		};
