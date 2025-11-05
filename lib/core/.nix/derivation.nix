@@ -3,12 +3,13 @@
 , scons
 , clang-tools
 , forstio
+, pname
+, version
 }:
 
 stdenv.mkDerivation {
-  pname = "kel-lbm";
-  version = "0.0.2";
-  src = ../lib;
+	inherit pname version;
+	src = ./..;
 
   nativeBuildInputs = [
     scons

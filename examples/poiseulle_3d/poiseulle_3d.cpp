@@ -42,6 +42,10 @@ public:
 		return inner_.at(index);
 	}
 
+	ref<data<schema::Array<CellT,Desc::D>, encode::Sycl<Encode> >> inner_data() {
+		return {inner_};
+	}
+
 	data<schema::UInt64,Encode> internal_size() const {
 		return inner_.internal_size();
 	}
@@ -50,55 +54,90 @@ public:
 		return inner_.internal_data();
 	}
 };
+/*
+template<typename T, uint64_t D, typename Encode>
+class data<schema::Ref<schema::Array<T, D>>, encode::Sycl<Encode>> final {
+public:
+	using Schema = schema::Ref<schema::Array<T, D>>;
+private:
+	data<schema::Ref<schema::Array<CellT,Desc::D>>, encode::Sycl<Encode>>> inner_ref_;
+public:
+	data() = delete;
+	data(ref<data<kel::lbm::sch::CellField<Desc,CellT>,encode::Sycl<Encode>>> inner_ref__):
+		inner_ref_{inner_ref__().inner_data()}
+	{}
+
+	const data<MetaSchema, Encode> meta() const {
+		return inner_ref_().dims();
+	}
+
+	const data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
+		return inner_ref_().at(index);
+	}
+
+	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
+		return inner_ref_().at(index);
+	}
+
+	const data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
+		return inner_ref_().at(index);
+	}
+
+	data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
+		return inner_ref_().at(index);
+	}
+
+	data<schema::UInt64,Encode> internal_size() const {
+		return inner_ref_().internal_size();
+	}
+
+	data<CellT,Encode>* internal_data() {
+		return inner_ref_().internal_data();
+	}
+};
+
 
 template<typename Desc, typename CellT, typename Encode>
 class data<schema::Ref<kel::lbm::sch::CellField<Desc, CellT>>, encode::Sycl<Encode>> final {
 public:
 	using Schema = schema::Ref<kel::lbm::sch::CellField<Desc,CellT>>;
-	using MetaSchema = typename meta_schema<Schema>::MetaSchema;
 private:
-	data<schema::Array<CellT,Desc::D>, Encode>* inner_ref_;
-	data<schema::UInt64, Encode> size_;
+	data<schema::Ref<schema::Array<CellT,Desc::D>>, encode::Sycl<Encode>>> inner_ref_;
 public:
 	data() = delete;
-	data(data<MetaSchema,Encode>& inner_meta__, acpp::sycl::queue& q):
-		inner_{inner_meta__,q}
+	data(ref<data<kel::lbm::sch::CellField<Desc,CellT>,encode::Sycl<Encode>>> inner_ref__):
+		inner_ref_{inner_ref__().inner_data()}
 	{}
 
 	const data<MetaSchema, Encode> meta() const {
-		return inner_.dims();
-	}
-
-	template<uint64_t i>
-	data<schema::UInt64,Encode> get_dim_size() const {
-		static_assert(i < Desc::D, "Not enough dimensions");
-		return inner_.template get_dim_size<i>();
+		return inner_ref_().dims();
 	}
 
 	const data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
-		return inner_.at(index);
+		return inner_ref_().at(index);
 	}
 
 	data<CellT>& operator()(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
-		return inner_.at(index);
+		return inner_ref_().at(index);
 	}
 
 	const data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index)const{
-		return inner_.at(index);
+		return inner_ref_().at(index);
 	}
 
 	data<CellT>& at(const data<schema::FixedArray<schema::UInt64, Desc::D>, Encode>& index){
-		return inner_.at(index);
+		return inner_ref_().at(index);
 	}
 
 	data<schema::UInt64,Encode> internal_size() const {
-		return inner_.internal_size();
+		return inner_ref_().internal_size();
 	}
 
 	data<CellT,Encode>* internal_data() {
-		return inner_.internal_data();
+		return inner_ref_().internal_data();
 	}
 };
+*/
 
 }
 
