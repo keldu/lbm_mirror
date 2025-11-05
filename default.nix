@@ -69,4 +69,18 @@ in rec {
 	debug = {
 		inherit adaptive-cpp;
 	};
+
+	release = {
+		dev = {
+			inherit lbm;
+		};
+
+		examples = pkgs.symlinkJoin {
+			name = "kel-lbm-sims-${version}";
+			paths = [
+				lbm
+				examples.cavity_2d_gpu
+			];
+		};
+	};
 }

@@ -30,7 +30,7 @@ podman run --rm -it \
         set -euo pipefail
 
         # Build the derivation
-        nix-build default.nix --out-link result
+        nix-build default.nix -A release.examples --out-link result
 
         # Install fpm if missing
         if ! command -v fpm >/dev/null 2>&1; then
@@ -41,7 +41,7 @@ podman run --rm -it \
         nix-shell -p fpm --run \"fpm -s dir -t deb -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
 
         # Create .rpm package
-        nix-shell -p fpm rpm --run \"fpm -s dir -t rpm -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
+        # nix-shell -p fpm rpm --run \"fpm -s dir -t rpm -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
     "
 
 echo "✅ Build complete!"
