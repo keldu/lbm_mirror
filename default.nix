@@ -25,10 +25,10 @@ let
 in rec {
 	kel-lbm = {
 		core = pkgs.callPackage ./lib/core/.nix/derivation.nix {
-			inherit forstio stdenv clang-tools;
+			inherit forstio stdenv clang-tools pname version;
 		};
 		sycl = pkgs.callPackage ./lib/sycl/.nix/derivation.nix {
-			inherit forstio stdenv clang-tools kel-lbm adaptive-cpp;
+			inherit forstio stdenv clang-tools pname version kel-lbm adaptive-cpp;
 		};
 	};
 
