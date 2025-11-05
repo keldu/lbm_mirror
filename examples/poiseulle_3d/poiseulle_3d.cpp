@@ -3,6 +3,7 @@
 #include <forstio/remote/sycl/sycl.hpp>
 
 namespace saw {
+/*
 template<typename Desc, typename CellT, typename Encode>
 class data<kel::lbm::sch::CellField<Desc, CellT>, encode::Sycl<Encode>> final {
 public:
@@ -54,6 +55,7 @@ public:
 		return inner_.internal_data();
 	}
 };
+*/
 /*
 template<typename T, uint64_t D, typename Encode>
 class data<schema::Ref<schema::Array<T, D>>, encode::Sycl<Encode>> final {
@@ -159,18 +161,23 @@ using CellStruct = Struct<
 	Member<CellInfo, "info">
 >;
 }
+using SyclKelAllocator = acpp::sycl::usm_allocator<saw::data<sch::CellStruct>, acpp::sycl::usm::alloc::shared>;
 
-template<typename StructFieldSchema, typename Encode>
-saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
+uint64_t to_flat_index(const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index, const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& meta){
+	auto flat = index.at({2u}) + meta.at({2u})*(index.at({1u}) + index.at({0u})*meta.at({1u}));
+	return flat.get();
+}
+
+template<typename StructFieldSchema>
+saw::error_or<void> set_geometry(std::vector<saw::data<StructFieldSchema>,SyclKelAllocator>& latt, const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& meta){
 	using namespace kel::lbm;
-
-	auto meta = latt.meta();
 
 	/**
 	 * Set ghost
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(0u);
@@ -187,7 +194,8 @@ saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
 	/*
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(2u);
@@ -202,7 +210,8 @@ saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
 	/*
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(1u);
@@ -221,7 +230,8 @@ saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
 	/*
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(3u);
@@ -238,7 +248,8 @@ saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
 	/*
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		info({0u}).set(4u);
@@ -248,21 +259,20 @@ saw::error_or<void> set_geometry(saw::data<StructFieldSchema, Encode>& latt){
 	return saw::make_void();
 }
 
-template<typename StructFieldSchema, typename Encode>
-saw::error_or<void> set_initial_conditions(saw::data<StructFieldSchema, Encode>& latt){
+template<typename StructFieldSchema>
+saw::error_or<void> set_initial_conditions(std::vector<saw::data<StructFieldSchema>,SyclKelAllocator>& latt, const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& meta){
 
 	saw::data<sch::T> rho{1.0};
 	saw::data<sch::FixedArray<sch::T,sch::Desc::D>> vel{};
 	vel.at({0u}) = {0.1f};
 	auto eq = equilibrium<sch::T,sch::Desc>(rho, vel);
 
-	auto meta = latt.meta();
-
 	/**
 	 * Set distribution
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& dfs = cell.template get<"dfs">();
 		auto& dfs_old = cell.template get<"dfs_old">();
 
@@ -274,14 +284,14 @@ saw::error_or<void> set_initial_conditions(saw::data<StructFieldSchema, Encode>&
 	return saw::make_void();
 }
 
-template<typename StructFieldSchema, typename Encode>
+template<typename StructFieldSchema>
 saw::error_or<void> lbm_step(
-	saw::data<StructFieldSchema, Encode>& latt,
+	std::vector<saw::data<StructFieldSchema>,SyclKelAllocator>& latt,
+	const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& meta,
 	saw::data<sch::UInt64> time_step,
 	acpp::sycl::queue& sycl_q
 ){
 	using dfi = df_info<sch::T,sch::Desc>;
-	auto meta = latt.meta();
 	bool even_step = ((time_step.get() % 2u) == 0u);
 
 	component<sch::T, sch::Desc, cmpt::BGK, saw::encode::Sycl<saw::encode::Native>> coll{0.5384};
@@ -291,7 +301,8 @@ saw::error_or<void> lbm_step(
 	 * Collision
 	 */
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt.at(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& info = cell.template get<"info">();
 
 		switch(info({0u}).get()){
@@ -319,7 +330,8 @@ saw::error_or<void> lbm_step(
 
 	// Stream
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
-		auto& cell = latt(index);
+		auto findex = to_flat_index(index,meta);
+		auto& cell = latt.at(findex);
 		auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 		auto& info_new = cell.template get<"info">();
 
@@ -330,7 +342,9 @@ saw::error_or<void> lbm_step(
 				for(uint64_t i = 0; i < sch::Desc::D; ++i){
 					index_dir.at({i}) = index_dir.at({i}) + dir[i];
 				}
-				auto& cell_dir_old = latt.at(index_dir);
+
+				auto findex_dir = to_flat_index(index_dir,meta);
+				auto& cell_dir_old = latt.at(findex_dir);
 
 				auto& df_old = even_step ? cell_dir_old.template get<"dfs_old">() : cell_dir_old.template get<"dfs">();
 
@@ -356,13 +370,15 @@ saw::error_or<void> real_main(int argc, char** argv){
 	 * Set the meta and initialize the lattice
 	 */
 	saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>> meta{{2048u,128u,128u}};
-	saw::data<sch::CellField<sch::Desc,sch::CellStruct>, saw::encode::Sycl<saw::encode::Native>> lattice{meta,sycl_q};
+
+	SyclKelAllocator sycl_shared_alloc{sycl_q};
+	std::vector<saw::data<sch::CellStruct>,SyclKelAllocator> lattice{(meta.at({0u})*meta.at({1u})*meta.at({2u})).get(), sycl_shared_alloc};
 
 	/**
 	 * Set the geometry
 	 */
 	{
-		auto eov = set_geometry(lattice);
+		auto eov = set_geometry(lattice, meta);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -372,14 +388,14 @@ saw::error_or<void> real_main(int argc, char** argv){
 	 * Set initial conditions in the simulations
 	 */
 	{
-	auto eov = set_initial_conditions(lattice);
+	auto eov = set_initial_conditions(lattice, meta);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
 	for(saw::data<sch::UInt64> ts{0u}; ts < saw::data<sch::UInt64>{1024u*32u}; ++ts){
-		auto eov = lbm_step(lattice,ts,sycl_q);
+		auto eov = lbm_step(lattice,meta,ts,sycl_q);
 		if(eov.is_error()){
 			return eov;
 		}

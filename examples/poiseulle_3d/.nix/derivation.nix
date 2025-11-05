@@ -28,8 +28,7 @@ stdenv.mkDerivation {
 		forstio.remote
 		forstio.remote-sycl
 		adaptive-cpp
-      kel-lbm.core
-      kel-lbm.sycl
+		kel-lbm.core
 	];
 
 	preferLocalBuild = true;
