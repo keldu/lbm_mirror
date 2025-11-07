@@ -70,18 +70,21 @@ public:
 		const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index,
 		saw::data<sch::UInt64> time_step
 	){
-		bool is_even = ((time_step.get() % 2) == 0);
+		bool is_even = ((time_step.get() % 2u) == 0u);
+
+		// This is a ref
 		auto& cell = field[0u];
-		
+
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
-		saw::data<T> rho;
-		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
-		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
+		using dfi = df_info<T,Descriptor>;
 
-		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs_old({i}) = dfs_old({i}) + frequency_ * (eq.at(i) - dfs_old({i}));
+		// Technically use .copy()
+		auto df_cpy = dfs_old.copy();
+
+		for(uint64_t i = 1u; i < Descriptor::Q; ++i){
+			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
 		}
 	}
 };
