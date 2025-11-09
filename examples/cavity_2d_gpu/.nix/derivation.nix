@@ -3,7 +3,6 @@
 , scons
 , clang-tools
 , forstio
-, keldu
 , python3
 , pname
 , version
