@@ -12,7 +12,7 @@ let
 	};
 
 	forstio = (import ((builtins.fetchTarball {
-		url = "https://git.keldu.de/forstio-forstio/snapshot/dev.tar.gz";
+		url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
 		sha256 = "sha256:0qjishg8za7s4z5nb5zi27zyx70b662mjrfqag9mrxlch866a0fx";
 	}) + "/default.nix"){
 		inherit stdenv;

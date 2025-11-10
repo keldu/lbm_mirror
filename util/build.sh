@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Configuration: package name and version ---
 PKG_NAME="kel-lbm"
-PKG_VERSION="0.0.2"
+PKG_VERSION="0.0.3"
 
 # --- Ensure we're in the Git root ---
 if ! GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
