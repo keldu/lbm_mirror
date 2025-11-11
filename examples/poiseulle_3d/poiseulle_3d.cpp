@@ -294,8 +294,8 @@ saw::error_or<void> lbm_step(
 	using dfi = df_info<sch::T,sch::Desc>;
 	bool even_step = ((time_step.get() % 2u) == 0u);
 
-	component<sch::T, sch::Desc, cmpt::BGK, saw::encode::Sycl<saw::encode::Native>> coll{0.5384};
-	component<sch::T, sch::Desc, cmpt::BounceBack, saw::encode::Sycl<saw::encode::Native>> bb;
+	component<sch::T, sch::Desc, cmpt::BGK, saw::encode::Native> coll{0.5384};
+	component<sch::T, sch::Desc, cmpt::BounceBack, saw::encode::Native> bb;
 
 	/**
 	 * Collision
@@ -307,11 +307,11 @@ saw::error_or<void> lbm_step(
 
 		switch(info({0u}).get()){
 			case 1u: {
-				bb.apply(latt, index, time_step);
+				bb.apply(&latt[0u], meta, index, time_step);
 				break;
 			}
 			case 2u: {
-				coll.apply(latt, index, time_step);
+				coll.apply(&latt[0u], meta, index, time_step);
 				break;
 			}
 			case 3u: {
@@ -326,7 +326,7 @@ saw::error_or<void> lbm_step(
 				break;
 		}
 
-	}, {{0u,0u}}, meta);
+	}, {}, meta);
 
 	// Stream
 	iterator<sch::Desc::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::Desc::D>>& index){
@@ -351,7 +351,7 @@ saw::error_or<void> lbm_step(
 				df_new({k}) = df_old({k});
 			}
 		}
-	}, {{0u,0u}}, meta);
+	}, {}, meta);
 	return saw::make_void();
 }
 

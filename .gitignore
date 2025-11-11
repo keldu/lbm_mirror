@@ -7,3 +7,6 @@ log
 tmp
 vgcore.*
 *.kate-swp
+.sconsign.dblite
+.cache
+compile_commands.json
