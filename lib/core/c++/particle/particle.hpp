@@ -6,6 +6,9 @@
 
 namespace kel {
 namespace lbm {
+namespace coll {
+struct Spheroid{};
+}
 namespace sch {
 using namespace saw::schema;
 
@@ -24,6 +27,11 @@ template<typename T, uint64_t D>
 using ParticleMask = Struct<
 	Member<Array<T,D>, "grid">,
 	Member<Vector<T,D>, "center_of_mass">
+>;
+
+template<typename T>
+using ParticleCollisionSpheroid = Struct<
+	Member<T, "radius">
 >;
 
 template<typename T, uint64_t D>
