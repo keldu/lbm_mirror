@@ -38,6 +38,11 @@ in rec {
 			inherit kel-lbm;
 		};
 		
+		poiseulle_2d_gpu = pkgs.callPackage ./examples/poiseulle_2d_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel-lbm;
+		};
+		
 		cavity_2d = pkgs.callPackage ./examples/cavity_2d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
 			inherit kel-lbm;

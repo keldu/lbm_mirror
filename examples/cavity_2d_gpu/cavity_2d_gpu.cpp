@@ -9,49 +9,6 @@
 #include <chrono>
 #include <cmath>
 
-namespace saw {
-namespace encode {
-template<typename InnerEnc>
-struct Sycl {
-};
-}
-
-template<typename Sch, uint64_t Dim>
-class data<schema::Array<Sch, Dim>, encode::Sycl<encode::Native>> {
-public:
-	using Schema = schema::Array<Sch,Dim>;
-private:
-	using SyclKelAllocator = acpp::sycl::usm_allocator<data<Sch, encode::Native>, acpp::sycl::usm::alloc::shared>;
-	std::vector<data<Sch, encode::Native>, SyclKelAllocator> data_;
-	data<schema::UInt64, encode::Native> size_;
-public:
-	data(const data<Schema, encode::Native>& host_data__):
-		data_{&host_data__.at({0u}),host_data__.size().get()},
-		size_{host_data__.size()}
-	{}
-
-	auto& get_handle() {
-		return data_;
-	}
-
-	const auto& get_handle() const {
-		return data_;
-	}
-
-	data<schema::UInt64, encode::Native> internal_size() const {
-		return size_;
-	}
-
-	data<Sch, encode::Native>* internal_data() {
-		return &data_[0u];
-	}
-
-	const data<Sch, encode::Native>* internal_data() const {
-		return data_.data();
-	}
-};
-}
-
 namespace kel {
 namespace lbm {
 namespace sch {
@@ -417,6 +374,8 @@ int main(){
 	}
 	auto stop = std::chrono::steady_clock::now();
 	std::cout<<std::format("{:%H:%M:%S}",(stop-start))<<std::endl;
+
+	sycl_q.wait();
 	sycl::free(info,sycl_q);
 	sycl::free(dfs,sycl_q);
 	sycl::free(dfs_old,sycl_q);

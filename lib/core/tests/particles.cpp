@@ -10,6 +10,25 @@ using namespace kel::lbm::sch;
 
 using T = Float64;
 }
+SAW_TEST("Verlet step"){
+	using namespace kel;
+
+
+	saw::data<sch::Particle<sch::T,2u>> particle;
+	auto& body = particle.template get<"rigid_body">();
+	auto& pos = body.template get<"position">();
+	auto& pos_old = body.template get<"position_old">();
+
+	// auto& rot = body.template get<"rotation">();
+	auto& acc = body.template get<"acceleration">();
+
+	acc.at({{0}}).set({1.0});
+
+	lbm::verlet_step_lambda<sch::T,2u>(particle,{0.5});
+
+	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
+	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));
+}
 /*
 SAW_TEST("Minor Test for mask"){
 	using namespace kel;
@@ -31,8 +50,9 @@ SAW_TEST("Minor Test for mask"){
 	//saw::data<sch::Array<sch::T,2>> reference_mask{{{4+2,4+2}}};
 	//reference_mask.at({{0,0}});
 }
-
-SAW_TEST("Verlet integration test"){
+*/
+/*
+SAW_TEST("Verlet integration test 2D"){
 	using namespace kel;
 	lbm::particle_system<sch::T,2,sch::Particle<sch::T,2>> system;
 
@@ -79,7 +99,6 @@ SAW_TEST("Verlet integration test"){
 		}
 
 	}
-
 }
 */
 }

@@ -43,6 +43,28 @@ using Particle = Struct<
 >;
 }
 
+template<typename T,uint64_t D>
+constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, saw::data<T> time_step_delta){
+		auto& body = particle.template get<"rigid_body">();
+
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+
+		// auto& rot = body.template get<"rotation">();
+		auto& acc = body.template get<"acceleration">();
+
+		auto tsd_squared = time_step_delta * time_step_delta;
+
+		saw::data<sch::Vector<T,D>> pos_new;
+		// Actual step
+		for(uint64_t i = 0u; i < D; ++i){
+			pos_new.at({{i}}) = saw::data<T>{2.0} * pos.at({{i}}) - pos_old.at({{i}}) + acc.at({{i}}) * tsd_squared;
+		}
+
+		pos_old = pos;
+		pos = pos_new;
+};
+
 template<typename T, uint64_t D, typename ParticleCollision = sch::ParticleMask<T,D> >
 class particle_system {
 private:
