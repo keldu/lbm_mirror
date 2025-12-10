@@ -64,21 +64,45 @@ struct PressureBoundaryRestrictedVelocityTo {};
  *
  */
 
-void set_geometry(
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs,
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs_old,
-	std::vector<saw::data<sch::UInt8>, SyclDeviceAlloc<sch::UInt8>>& info,
+saw::error_or<void> set_geometry(
+	saw::data<sch::CellStruct>* cells,
 	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
 	acpp::sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
 
+	sycl_q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
+			size_t i = idx[0];
+			size_t j = idx[1];
+
+			size_t acc_id = j * meta.at({0u}).get() + i;
+			auto& c = cells[acc_id];
+			auto& info = c.template get<"info">()({0});
+
+			if(i >= 2u and j >= 2u and (i+2u) < meta.at({0u}).get() and (j+2u) < meta.at({1u}).get()){
+				// Fluid
+				info.set({2u});
+			}else if(((j+2u) == meta.at({1u}).get() or j == 1u) and (i>=1u and (i+1u)<meta.at({0u}).get() )){
+				// Wall
+				info.set({1u});
+			}else if((i==1u) and (j >= 1 and (j+1 < meta.at({1u}).get()) ) ){
+				// Left input
+				info.set({3u});
+			}else if((i+2u) == meta.at({0u}).get() and (j >= 1 and (j+1) < meta.at({1u}).get() )){
+				// Left output
+				info.set({4u});
+			}else {
+				info.set({0u});
+			}
+		});
+	});
+
+	return saw::make_void();
 }
 
 void set_initial_conditions(
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs,
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs_old,
-	std::vector<saw::data<sch::UInt8>, SyclDeviceAlloc<sch::UInt8>>& info,
+	saw::data<sch::CellStruct>* cells,
 	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
 	acpp::sycl::queue& sycl_q
 ){
@@ -91,9 +115,7 @@ void set_initial_conditions(
 }
 
 void lbm_step(
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs,
-	std::vector<saw::data<sch::Float64>, SyclDeviceAlloc<sch::Float64>>& dfs_old,
-	std::vector<saw::data<sch::UInt8>, SyclDeviceAlloc<sch::UInt8>>& info,
+	saw::data<sch::CellStruct>* cells,
 	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
@@ -105,11 +127,12 @@ void lbm_step(
   /**
 	* 1. Relaxation parameter \tau
 	*/
+  /*
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
 	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
-
+	*/
 }
 }
 }
@@ -130,36 +153,57 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	// Create Dir TODO
 
 	// 
-	lbm::converter<sch::Float64> conv {
+	lbm::converter<lbm::sch::Float64> conv {
 		// delta_x
 		{{1.0}},
 		// delta_t
 		{{1.0}}
 	};
 
-	uint64_t x_d = 1024u;
-	uint64_t y_d = 128u;
+	uint64_t x_d = 256u;
+	uint64_t y_d = 64u;
 
 	acpp::sycl::queue sycl_q;
-	SyclHostAlloc<sch::CellStruct> sycl_host_alloc{sycl_q};
-	SyclDeviceAlloc<sch::CellStruct> sycl_dev_alloc{sycl_q};
+	SyclHostAlloc<lbm::sch::CellStruct> sycl_host_alloc{sycl_q};
+	// SyclDeviceAlloc<lbm::sch::CellStruct> sycl_dev_alloc{sycl_q};
 
-	std::vector<saw::data<sch::CellStruct>, SyclHostAlloc<sch::CellStruct>> cells{x_d * y_d,sycl_alloc};
-	std::vector<saw::data<sch::CellStruct>, SyclDeviceAlloc<sch::CellStruct>> cells{x_d * y_d,sycl_alloc};
+	std::vector<saw::data<lbm::sch::CellStruct>, SyclHostAlloc<lbm::sch::CellStruct>> host_cells{x_d * y_d,sycl_host_alloc};
+
+	saw::data<lbm::sch::CellStruct>* cells = acpp::sycl::malloc_device<saw::data<lbm::sch::CellStruct>>(x_d * y_d,sycl_q);
 
 	{
-		auto eov = set_geometry(cells);
+		auto eov = lbm::set_geometry(cells,{{x_d,y_d}},sycl_q);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
+	sycl_q.wait();
+	sycl_q.memcpy(&host_cells[0u], cells, x_d * y_d * sizeof(saw::data<lbm::sch::CellStruct>) );
+	sycl_q.wait();
+	acpp::sycl::free(cells, sycl_q);
+	sycl_q.wait();
+
+	std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
+	vtk_f_name += std::to_string(0u) + ".vtk";
+	// write_vtk_file(vtk_f_name,host_cells);
+
+	for(uint64_t i = 0u; i < x_d; ++i){
+		for(uint64_t j = 0u; j < y_d; ++j){
+
+			size_t acc_id = j * x_d + i;
+
+			std::cout<<static_cast<uint64_t>(host_cells.at(acc_id).template get<"info">()({0u}).get())<<" ";
+		}
+		std::cout<<"\n";
+	}
+	std::cout<<std::endl;
 
 	return saw::make_void();
 }
 
 int main(int argc, char** argv){
-	auto eov = kel_main(argc, argv);
+	auto eov = kel_main<kel::lbm::sch::T,kel::lbm::sch::D2Q9>(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();

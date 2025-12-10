@@ -10,7 +10,7 @@ using namespace kel::lbm::sch;
 
 using T = Float64;
 }
-SAW_TEST("Verlet step"){
+SAW_TEST("Verlet step 2D - Planar"){
 	using namespace kel;
 
 
@@ -29,6 +29,7 @@ SAW_TEST("Verlet step"){
 	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
 	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));
 }
+
 /*
 SAW_TEST("Minor Test for mask"){
 	using namespace kel;
