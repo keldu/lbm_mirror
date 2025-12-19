@@ -13,7 +13,7 @@ let
 
 	forstio = (import ((builtins.fetchTarball {
 		url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-		sha256 = "sha256:0qjishg8za7s4z5nb5zi27zyx70b662mjrfqag9mrxlch866a0fx";
+		sha256 = "sha256:0p9k04q4jhxzypawjg2rjpff1f3plrr1azigjlb4l2l9r128jmkm";
 	}) + "/default.nix"){
 		inherit stdenv;
 		inherit clang-tools;
@@ -69,6 +69,11 @@ in rec {
 		};
 
 		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel-lbm;
+		};
+
+		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel-lbm;
 		};

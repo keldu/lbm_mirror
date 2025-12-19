@@ -70,6 +70,10 @@ saw::error_or<void> set_geometry(
 	acpp::sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
+	
+	saw::data<sch::T> rho{1.0};
+	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
+	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 	sycl_q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
@@ -79,6 +83,8 @@ saw::error_or<void> set_geometry(
 			size_t acc_id = j * meta.at({0u}).get() + i;
 			auto& c = cells[acc_id];
 			auto& info = c.template get<"info">()({0});
+			auto& dfs = c.template get<"dfs">();
+			auto& dfs_old = c.template get<"dfs_old">();
 
 			if(i >= 2u and j >= 2u and (i+2u) < meta.at({0u}).get() and (j+2u) < meta.at({1u}).get()){
 				// Fluid
@@ -95,23 +101,16 @@ saw::error_or<void> set_geometry(
 			}else {
 				info.set({0u});
 			}
+			for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Desc::Q}; ++k){
+				dfs(k) = eq.at(k);
+				dfs_old(k) = eq.at(k);
+			}
 		});
 	});
 
+	sycl_q.wait();
+
 	return saw::make_void();
-}
-
-void set_initial_conditions(
-	saw::data<sch::CellStruct>* cells,
-	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
-	acpp::sycl::queue& sycl_q
-){
-	using namespace kel::lbm;
-
-	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
-	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
-
 }
 
 void lbm_step(
@@ -178,26 +177,23 @@ saw::error_or<void> kel_main(int argc, char** argv){
 		}
 	}
 
+	std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
+	vtk_f_name += std::to_string(0u) + ".vtk";
+	// write_vtk_file(vtk_f_name,host_cells);
+
+	for(uint64_t i = 0u; i < 1024u*1204u; ++i){
+		if(i%128u == 0u){
+
+		}
+		lbm_step(cells,meta,i,sycl_q);
+
+	}
+
 	sycl_q.wait();
 	sycl_q.memcpy(&host_cells[0u], cells, x_d * y_d * sizeof(saw::data<lbm::sch::CellStruct>) );
 	sycl_q.wait();
 	acpp::sycl::free(cells, sycl_q);
 	sycl_q.wait();
-
-	std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
-	vtk_f_name += std::to_string(0u) + ".vtk";
-	// write_vtk_file(vtk_f_name,host_cells);
-
-	for(uint64_t i = 0u; i < x_d; ++i){
-		for(uint64_t j = 0u; j < y_d; ++j){
-
-			size_t acc_id = j * x_d + i;
-
-			std::cout<<static_cast<uint64_t>(host_cells.at(acc_id).template get<"info">()({0u}).get())<<" ";
-		}
-		std::cout<<"\n";
-	}
-	std::cout<<std::endl;
 
 	return saw::make_void();
 }

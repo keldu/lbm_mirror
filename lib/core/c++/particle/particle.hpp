@@ -34,10 +34,11 @@ using ParticleCollisionSpheroid = Struct<
 	Member<T, "radius">
 >;
 
-template<typename T, uint64_t D>
+template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
 	Member<ParticleMask<T,D>, "mask">,
+	Member<CollisionType, "collision">,
 	Member<T, "mass">,
 	Member<T, "size">
 >;
@@ -64,6 +65,22 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 		pos_old = pos;
 		pos = pos_new;
 };
+
+/**
+*
+*
+*/
+template<typename T, uint64_t>
+constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right){
+	auto rad_l = left.template get<"collision">().template get<"radius">();
+	auto rad_r = right.template get<"collision">().template get<"radius">();
+
+	auto& rb_l = left.template get<"rigid_body">();
+	auto& rb_r = right.template get<"rigid_body">();
+
+	auto& pos_l = rb_l.template get<"position">();
+	auto& pos_r = rb_r.template get<"position">();
+}
 
 template<typename T, uint64_t D, typename ParticleCollision = sch::ParticleMask<T,D> >
 class particle_system {
