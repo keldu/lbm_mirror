@@ -47,23 +47,31 @@ template<bool East>
 struct PressureBoundaryRestrictedVelocityTo {};
 }
 
-template<typename FP,typename Descriptor, bool East>
-struct component<FP,Descriptor, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
+template<typename FP,typename Desc, bool East>
+struct component<FP,Desc, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
 private:
 	saw::data<FP> pressure_setting_;
 	saw::data<FP> rho_setting_;
 public:
 	component(const saw::data<FP>& pressure_setting__):
 		pressure_setting_{pressure_setting__},
-		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
+		rho_setting_{pressure_setting__ * df_info<FP,Desc>::inv_cs2}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>* field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
-		using dfi = df_info<FP,Descriptor>;
+	void apply(
+			saw::data<CellFieldSchema>* field,
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index,
+			const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
+			uint64_t time_step
+		) const {
 
-		bool is_even = ((time_step % 2) == 0);
-		auto& cell = field[index];
+		using dfi = df_info<FP,Desc>;
+
+		auto flat_ind = flatten_index<sch::UInt64,Desc::D>::apply(index,meta);
+
+		bool is_even = ((time_step % 2u) == 0u);
+		auto& cell = field[flat_ind.get()];
 
 		auto& info = cell.template get<"info">();
 		if(info({0u}).get() == 0u){
@@ -74,10 +82,11 @@ public:
 		/**
 		 * Sum all known DFs
 		 */
-		saw::data<FP> sum_df{0};
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+		saw::data<FP> sum_df{0u};
+		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Desc::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
+			auto flat_ind_n = flatten_index<sch::UInt64,Desc::D>::apply({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}},meta);
+			auto& cell_n = field[flat_ind_n.get()];
 			auto& info_n = cell_n.template get<"info">();
 			auto info_n_val = info_n({0u});
 			auto k_opp = dfi::opposite_index[k.get()];
@@ -92,12 +101,12 @@ public:
 		constexpr int known_dir = East ? 1 : -1;
 		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
 
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Desc::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
+			auto flat_ind_n = flatten_index<sch::UInt64,Desc::D>::apply({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}},meta);
+			auto& cell_n = field[flat_ind_n.get()];
 			auto& info_n = cell_n.template get<"info">();
 			auto info_n_val = info_n({0u});
-			// auto k_opp = dfi::opposite_index[k.get()];
 
 			if(info_n_val.get() > 0u){
 				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
@@ -149,7 +158,6 @@ saw::error_or<void> set_geometry(
 			size_t j = idx[1];
 			size_t acc_id = j * meta.at({0u}).get() + i;
 
-
 			auto& c = cells[acc_id];
 			auto& info = c.template get<"info">()({0});
 			auto& dfs = c.template get<"dfs">();
@@ -165,7 +173,7 @@ saw::error_or<void> set_geometry(
 				// Left input
 				info.set({3u});
 			}else if((i+2u) == meta.at({0u}).get() and (j >= 1 and (j+1) < meta.at({1u}).get() )){
-				// Left output
+				// Right output
 				info.set({4u});
 			}else {
 				info.set({0u});
@@ -175,9 +183,7 @@ saw::error_or<void> set_geometry(
 				dfs_old(k) = eq.at(k);
 			}
 		});
-	});
-
-	sycl_q.wait();
+	}).wait();
 
 	return saw::make_void();
 }
@@ -193,7 +199,7 @@ void step(
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,Desc>;
 	
-	constexpr saw::data<sch::T> frequency{1.0 / 0.59};
+	constexpr saw::data<sch::T> frequency{1.0 / 0.5384};
 
 	bool is_even = ((time_step % 2u) == 0u);
   /**
@@ -203,11 +209,15 @@ void step(
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	*/
-	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
+	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.1 * dfi::cs2};
 	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
 
+			
+	// auto collision_ev = 
 	sycl_q.submit([&](acpp::sycl::handler& h){
-		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
+		
+		/// Collision
+		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<Desc::D> idx){
 			size_t i = idx[0];
 			size_t j = idx[1];
 			size_t acc_id = j * meta.at({0u}).get() + i;
@@ -216,18 +226,18 @@ void step(
 			auto& info = cells[acc_id].template get<"info">();
 
 			switch (info({0u}).get()) {
+				// Bounce Back
 			 case 1u: {
-				// bb.apply(latt_acc, {i, j}, time_step);
-
 				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
 				auto df_cpy = dfs_old.copy();
 
-				for(uint64_t i = 1u; i < Desc::Q; ++i){
-					dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
+				for(uint64_t k = 1u; k < Desc::Q; ++k){
+					dfs_old({k}) = df_cpy({dfi::opposite_index.at(k)});
 				}
 
 				break;
 			 }
+			 // Collision
 			 case 2u: {
 				// coll.apply(latt_acc, {i, j}, time_step);
 				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
@@ -236,23 +246,56 @@ void step(
 
 				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
 				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
 
-				for(uint64_t i = 0u; i < Desc::Q; ++i){
-					dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
+				for(uint64_t k = 0u; k < Desc::Q; ++k){
+					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
 				}
 				break;
 			}
 			case 3u: {
-				inlet.apply(
-			};
+				inlet.apply(cells, {{i,j}}, meta, time_step);
+				break;
+			}
+			case 4u: {
+				outlet.apply(cells, {{i,j}}, meta, time_step);
+				break;
+			}
 			default:
 				// Do nothing
 				break;
 			}
 		});
-	});
+	}).wait();
+	
+	//auto stream_ev = 
+	sycl_q.submit([&](acpp::sycl::handler& h){
+		/// Stream
+		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<Desc::D> idx){
+			size_t i = idx[0];
+			size_t j = idx[1];
+			size_t acc_id = j * meta.at({0u}).get() + i;
+
+			auto& c = cells[acc_id];
+			auto& info = c.template get<"info">();
+			auto& dfs_new = is_even ? c.template get<"dfs">() : c.template get<"dfs_old">();
+
+			if (info({0u}).get() > 0u) {
+				for (uint64_t k = 0u; k < Desc::Q; ++k) {
+					auto dir = dfi::directions[dfi::opposite_index[k]];
+					size_t acc_old_id = (j+dir[1]) * meta.at({0u}).get() + (i+dir[0]);
+
+					auto& dfs_old = is_even ? cells[acc_old_id].template get<"dfs_old">() : cells[acc_old_id].template get<"dfs">();
+					auto& info_old = cells[acc_old_id].template get<"info">();
+
+					dfs_new({k}) = dfs_old({k});
+				}
+			}
+
+		});
+	}).wait();
 }
 }
 }
@@ -300,14 +343,14 @@ saw::error_or<void> kel_main(int argc, char** argv){
 		}
 	}
 
-	std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
-	vtk_f_name += std::to_string(0u) + ".vtk";
-	// write_vtk_file(vtk_f_name,host_cells);
 
 	for(uint64_t i = 0u; i < 1024u*1204u; ++i){
+		sycl_q.wait();
 		if(i%128u == 0u){
-			sycl_q.memcpy(&host_cells[0u], macro_cells, x_d * y_d * sizeof(saw::data<lbm::sch::MacroStruct>) );
-			sycl_q.wait();
+			std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
+			vtk_f_name += std::to_string(i) + ".vtk";
+			// write_vtk_file(vtk_f_name,host_cells);
+			sycl_q.memcpy(&host_cells[0u], macro_cells, x_d * y_d * sizeof(saw::data<lbm::sch::MacroStruct>) ).wait();
 			lbm::write_vtk_file<lbm::sch::MacroStruct,Desc::D>(vtk_f_name, &host_cells[0], meta);
 		}
 		lbm::step<Desc>(cells,macro_cells,meta,i,sycl_q);
