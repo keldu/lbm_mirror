@@ -1,5 +1,7 @@
 #pragma once
 
+#include "schema.hpp"
+#include "flatten.hpp"
 #include "descriptor.hpp"
 #include "boundary.hpp"
 #include "converter.hpp"

@@ -6,9 +6,6 @@
 template<typename T>
 using SyclHostAlloc = acpp::sycl::usm_allocator<saw::data<T>, acpp::sycl::usm::alloc::host>;
 
-template<typename T>
-using SyclDeviceAlloc = acpp::sycl::usm_allocator<saw::data<T>, acpp::sycl::usm::alloc::device>;
-
 namespace kel {
 namespace lbm {
 namespace sch {
@@ -38,10 +35,9 @@ using CellStruct = Struct<
 	Member<CellInfo, "info">
 >;
 
-template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "velocity">,
-	Member<T, "pressure">
+	Member<FixedArray<Float64,D2Q9::D>, "velocity">,
+	Member<Float64, "pressure">
 >;
 
 }
@@ -50,6 +46,77 @@ namespace cmpt {
 template<bool East>
 struct PressureBoundaryRestrictedVelocityTo {};
 }
+
+template<typename FP,typename Descriptor, bool East>
+struct component<FP,Descriptor, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
+private:
+	saw::data<FP> pressure_setting_;
+	saw::data<FP> rho_setting_;
+public:
+	component(const saw::data<FP>& pressure_setting__):
+		pressure_setting_{pressure_setting__},
+		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
+	{}
+
+	template<typename CellFieldSchema>
+	void apply(saw::data<CellFieldSchema>* field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
+		using dfi = df_info<FP,Descriptor>;
+
+		bool is_even = ((time_step % 2) == 0);
+		auto& cell = field[index];
+
+		auto& info = cell.template get<"info">();
+		if(info({0u}).get() == 0u){
+			return;
+		}
+		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+
+		/**
+		 * Sum all known DFs
+		 */
+		saw::data<FP> sum_df{0};
+		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+			auto c_k = dfi::directions[k.get()];
+			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
+			auto& info_n = cell_n.template get<"info">();
+			auto info_n_val = info_n({0u});
+			auto k_opp = dfi::opposite_index[k.get()];
+
+			if(info_n_val.get() > 0u){
+				sum_df += dfs_old({k_opp});
+			}
+		}
+		/**
+		 * Get the sum of the unknown dfs and precalculate the direction
+		 */
+		constexpr int known_dir = East ? 1 : -1;
+		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
+
+		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+			auto c_k = dfi::directions[k.get()];
+			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
+			auto& info_n = cell_n.template get<"info">();
+			auto info_n_val = info_n({0u});
+			// auto k_opp = dfi::opposite_index[k.get()];
+
+			if(info_n_val.get() > 0u){
+				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
+			}
+		}
+
+		auto vel_x = sum_unknown_dfs / rho_setting_;
+
+		if constexpr (East) {
+			dfs_old({2u}) = dfs_old({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old({6u}) = dfs_old({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
+			dfs_old({8u}) = dfs_old({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
+		}else if constexpr (not East){
+			dfs_old({1u}) = dfs_old({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old({5u}) = dfs_old({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
+			dfs_old({7u}) = dfs_old({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
+		}
+	}
+};
 
 /**
  * This is massively hacky and expects a lot of conditions
@@ -64,23 +131,25 @@ struct PressureBoundaryRestrictedVelocityTo {};
  *
  */
 
+template<typename Desc>
 saw::error_or<void> set_geometry(
 	saw::data<sch::CellStruct>* cells,
-	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
+	const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
 	acpp::sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
 	
 	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
-	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
+	saw::data<sch::FixedArray<sch::T,Desc::D>> vel{{0.0,0.0}};
+	auto eq = equilibrium<sch::T,Desc>(rho, vel);
 
 	sycl_q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
 			size_t i = idx[0];
 			size_t j = idx[1];
-
 			size_t acc_id = j * meta.at({0u}).get() + i;
+
+
 			auto& c = cells[acc_id];
 			auto& info = c.template get<"info">()({0});
 			auto& dfs = c.template get<"dfs">();
@@ -113,25 +182,77 @@ saw::error_or<void> set_geometry(
 	return saw::make_void();
 }
 
-void lbm_step(
+template<typename Desc>
+void step(
 	saw::data<sch::CellStruct>* cells,
-	const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& meta,
+	saw::data<sch::MacroStruct>* macro_cells,
+	const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
 ){
 	using namespace kel::lbm;
-	using dfi = df_info<sch::T,sch::D2Q9>;
+	using dfi = df_info<sch::T,Desc>;
+	
+	constexpr saw::data<sch::T> frequency{1.0 / 0.59};
 
-	bool even_step = ((time_step % 2u) == 0u);
+	bool is_even = ((time_step % 2u) == 0u);
   /**
 	* 1. Relaxation parameter \tau
 	*/
   /*
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
-	component<sch::T, sch::D2Q9, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
 	*/
+	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2};
+	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
+
+	sycl_q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
+			size_t i = idx[0];
+			size_t j = idx[1];
+			size_t acc_id = j * meta.at({0u}).get() + i;
+			
+			auto& c = cells[acc_id];
+			auto& info = cells[acc_id].template get<"info">();
+
+			switch (info({0u}).get()) {
+			 case 1u: {
+				// bb.apply(latt_acc, {i, j}, time_step);
+
+				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
+				auto df_cpy = dfs_old.copy();
+
+				for(uint64_t i = 1u; i < Desc::Q; ++i){
+					dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
+				}
+
+				break;
+			 }
+			 case 2u: {
+				// coll.apply(latt_acc, {i, j}, time_step);
+				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
+
+				auto& macro_c = macro_cells[acc_id];
+
+				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
+				auto eq = equilibrium<sch::T,Desc>(rho,vel);
+
+				for(uint64_t i = 0u; i < Desc::Q; ++i){
+					dfs_old({i}) = dfs_old({i}) + frequency * (eq.at(i) - dfs_old({i}));
+				}
+				break;
+			}
+			case 3u: {
+				inlet.apply(
+			};
+			default:
+				// Do nothing
+				break;
+			}
+		});
+	});
 }
 }
 }
@@ -162,16 +283,18 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	uint64_t x_d = 256u;
 	uint64_t y_d = 64u;
 
+	saw::data<lbm::sch::FixedArray<lbm::sch::UInt64,Desc::D>> meta{{x_d,y_d}};
+
 	acpp::sycl::queue sycl_q;
-	SyclHostAlloc<lbm::sch::CellStruct> sycl_host_alloc{sycl_q};
+	SyclHostAlloc<lbm::sch::MacroStruct> sycl_host_alloc{sycl_q};
 	// SyclDeviceAlloc<lbm::sch::CellStruct> sycl_dev_alloc{sycl_q};
 
-	std::vector<saw::data<lbm::sch::CellStruct>, SyclHostAlloc<lbm::sch::CellStruct>> host_cells{x_d * y_d,sycl_host_alloc};
+	std::vector<saw::data<lbm::sch::MacroStruct>, SyclHostAlloc<lbm::sch::MacroStruct>> host_cells{x_d * y_d,sycl_host_alloc};
 
 	saw::data<lbm::sch::CellStruct>* cells = acpp::sycl::malloc_device<saw::data<lbm::sch::CellStruct>>(x_d * y_d,sycl_q);
-
+	saw::data<lbm::sch::MacroStruct>* macro_cells = acpp::sycl::malloc_device<saw::data<lbm::sch::MacroStruct>>(x_d * y_d,sycl_q);
 	{
-		auto eov = lbm::set_geometry(cells,{{x_d,y_d}},sycl_q);
+		auto eov = lbm::set_geometry<Desc>(cells,meta,sycl_q);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -183,16 +306,17 @@ saw::error_or<void> kel_main(int argc, char** argv){
 
 	for(uint64_t i = 0u; i < 1024u*1204u; ++i){
 		if(i%128u == 0u){
-
+			sycl_q.memcpy(&host_cells[0u], macro_cells, x_d * y_d * sizeof(saw::data<lbm::sch::MacroStruct>) );
+			sycl_q.wait();
+			lbm::write_vtk_file<lbm::sch::MacroStruct,Desc::D>(vtk_f_name, &host_cells[0], meta);
 		}
-		lbm_step(cells,meta,i,sycl_q);
+		lbm::step<Desc>(cells,macro_cells,meta,i,sycl_q);
 
 	}
 
 	sycl_q.wait();
-	sycl_q.memcpy(&host_cells[0u], cells, x_d * y_d * sizeof(saw::data<lbm::sch::CellStruct>) );
-	sycl_q.wait();
 	acpp::sycl::free(cells, sycl_q);
+	acpp::sycl::free(macro_cells, sycl_q);
 	sycl_q.wait();
 
 	return saw::make_void();
