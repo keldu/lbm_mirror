@@ -344,17 +344,17 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	}
 
 
-	for(uint64_t i = 0u; i < 1024u*1204u; ++i){
+	uint64_t time_max = 1024u*128u;
+	for(uint64_t i = 0u; i < time_max; ++i){
+		lbm::step<Desc>(cells,macro_cells,meta,i,sycl_q);
 		sycl_q.wait();
-		if(i%128u == 0u){
+		if(i%4u == 0u){
 			std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
 			vtk_f_name += std::to_string(i) + ".vtk";
 			// write_vtk_file(vtk_f_name,host_cells);
 			sycl_q.memcpy(&host_cells[0u], macro_cells, x_d * y_d * sizeof(saw::data<lbm::sch::MacroStruct>) ).wait();
 			lbm::write_vtk_file<lbm::sch::MacroStruct,Desc::D>(vtk_f_name, &host_cells[0], meta);
 		}
-		lbm::step<Desc>(cells,macro_cells,meta,i,sycl_q);
-
 	}
 
 	sycl_q.wait();
