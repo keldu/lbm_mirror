@@ -41,6 +41,7 @@ podman run --rm -it \
         nix-shell -p fpm --run \"fpm -s dir -t deb -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
 
         # Create .rpm package
+		  # Turned off right now (Well, commented)
         # nix-shell -p fpm rpm --run \"fpm -s dir -t rpm -n \$PKG_NAME -v \$PKG_VERSION -C result --prefix /usr/local .\"
     "
 

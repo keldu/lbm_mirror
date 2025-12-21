@@ -2,7 +2,8 @@
 
 #include <iostream>
 //#include "../c++/particle/geometry/circle.hpp"
-
+#include "../c++/particle/particle.hpp"
+#include <forstio/codec/data.hpp>
 
 namespace {
 namespace sch {
@@ -11,9 +12,7 @@ using namespace kel::lbm::sch;
 using T = Float64;
 }
 SAW_TEST("Verlet step 2D - Planar"){
-/*
 	using namespace kel;
-
 
 	saw::data<sch::Particle<sch::T,2u>> particle;
 	auto& body = particle.template get<"rigid_body">();
@@ -29,14 +28,72 @@ SAW_TEST("Verlet step 2D - Planar"){
 
 	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
 	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));
-*/
 }
 
-SAW_TEST("Collision spheroid Test"){
+SAW_TEST("No Collision Spheroid 2D"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u> part_a;
-	saw::data<sch::Particle<sch::T,2u> part_b;
+	saw::data<sch::Particle<sch::T,2u>> part_a;
+	{
+		auto& body = part_a.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& coll = part_a.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+
+		radius.set(1.0);
+
+		pos.at({{0u}}) = 0.1;
+		pos.at({{1u}}) = 0.2;
+
+	}
+	saw::data<sch::Particle<sch::T,2u>> part_b;
+	{
+		auto& body = part_b.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& coll = part_b.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+
+		radius.set(1.0);
+		
+		pos.at({{0u}}) = -2.1;
+		pos.at({{1u}}) = 0.0;
+	}
+
+	bool have_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
+	SAW_EXPECT(not have_collided, "Particles shouldn't collide");
+}
+
+SAW_TEST("Collision Spheroid 2D"){
+	using namespace kel;
+
+	saw::data<sch::Particle<sch::T,2u>> part_a;
+	{
+		auto& body = part_a.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& coll = part_a.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+
+		radius.set(1.0);
+
+		pos.at({{0u}}) = 0.1;
+		pos.at({{1u}}) = 0.2;
+
+	}
+	saw::data<sch::Particle<sch::T,2u>> part_b;
+	{
+		auto& body = part_b.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& coll = part_b.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+
+		radius.set(1.0);
+		
+		pos.at({{0u}}) = -1.5;
+		pos.at({{1u}}) = 0.0;
+	}
+
+	bool have_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
+	SAW_EXPECT(have_collided, "Particles should collide");
 }
 
 /*

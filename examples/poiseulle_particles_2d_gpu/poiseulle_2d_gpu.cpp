@@ -203,7 +203,7 @@ void step(
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,Desc>;
 	
-	constexpr saw::data<sch::T> frequency{1.0 / 0.5384};
+	constexpr saw::data<sch::T> frequency{1.0 / 0.51};
 
 	bool is_even = ((time_step % 2u) == 0u);
   /**

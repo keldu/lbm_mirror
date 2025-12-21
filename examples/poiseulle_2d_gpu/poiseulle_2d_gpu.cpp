@@ -199,7 +199,7 @@ void step(
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,Desc>;
 	
-	constexpr saw::data<sch::T> frequency{1.0 / 0.5384};
+	constexpr saw::data<sch::T> frequency{1.0 / 0.8};
 
 	bool is_even = ((time_step % 2u) == 0u);
   /**
@@ -209,8 +209,8 @@ void step(
 	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
 	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
 	*/
-	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.1 * dfi::cs2};
-	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2};
+	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2 * 2.0/3.0};
+	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2 * 2.0/3.0};
 
 			
 	// auto collision_ev = 
@@ -257,10 +257,36 @@ void step(
 			}
 			case 3u: {
 				inlet.apply(cells, {{i,j}}, meta, time_step);
+				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
+
+				auto& macro_c = macro_cells[acc_id];
+
+				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+
+				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
+				auto eq = equilibrium<sch::T,Desc>(rho,vel);
+
+				for(uint64_t k = 0u; k < Desc::Q; ++k){
+					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
+				}
 				break;
 			}
 			case 4u: {
 				outlet.apply(cells, {{i,j}}, meta, time_step);
+				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
+
+				auto& macro_c = macro_cells[acc_id];
+
+				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+
+				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
+				auto eq = equilibrium<sch::T,Desc>(rho,vel);
+
+				for(uint64_t k = 0u; k < Desc::Q; ++k){
+					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
+				}
 				break;
 			}
 			default:
@@ -323,8 +349,8 @@ saw::error_or<void> kel_main(int argc, char** argv){
 		{{1.0}}
 	};
 
-	uint64_t x_d = 256u;
-	uint64_t y_d = 64u;
+	uint64_t x_d = 512u;
+	uint64_t y_d = 128u;
 
 	saw::data<lbm::sch::FixedArray<lbm::sch::UInt64,Desc::D>> meta{{x_d,y_d}};
 

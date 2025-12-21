@@ -51,7 +51,7 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 		auto& pos = body.template get<"position">();
 		auto& pos_old = body.template get<"position_old">();
 
-		// auto& rot = body.template get<"rotation">();
+		auto& rot = body.template get<"rotation">();
 		auto& acc = body.template get<"acceleration">();
 
 		auto tsd_squared = time_step_delta * time_step_delta;
@@ -70,7 +70,7 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 *
 *
 */
-template<typename T, uint64_t>
+template<typename T, uint64_t D>
 constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right){
 	auto rad_l = left.template get<"collision">().template get<"radius">();
 	auto rad_r = right.template get<"collision">().template get<"radius">();
@@ -80,7 +80,15 @@ constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& le
 
 	auto& pos_l = rb_l.template get<"position">();
 	auto& pos_r = rb_r.template get<"position">();
-}
+
+	auto pos_dist = pos_l - pos_r;
+
+	auto norm_2 = saw::math::dot(pos_dist,pos_dist);
+
+	auto rad_ab_2 = rad_l * rad_l + rad_r * rad_r + rad_r * rad_l * static_cast<saw::native_data_type<T>::type>(2);
+
+	return (norm_2.at({}).get() < rad_ab_2.get());
+};
 
 template<typename T, uint64_t D, typename ParticleCollision = sch::ParticleMask<T,D> >
 class particle_system {
