@@ -1,0 +1,27 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+hetero_env = env.Clone();
+
+hetero_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+hetero_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += hetero_env.sources;
+env.headers += hetero_env.headers;
+
+## Static lib
+objects = []
+hetero_env.add_source_files(objects, hetero_env.sources, shared=False);
+env.library_static = hetero_env.StaticLibrary('#build/kel-lbm-hetero', [objects]);
+
+env.Install('$prefix/lib/', env.library_static);
+env.Install('$prefix/include/kel/lbm/hetero/', hetero_env.headers);

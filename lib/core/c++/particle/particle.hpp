@@ -66,12 +66,9 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 		pos = pos_new;
 };
 
-/**
-*
-*
-*/
+
 template<typename T, uint64_t D>
-constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right){
+constexpr auto broadphase_collision_distance = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> std::pair<bool,saw::data<sch::Scalar<T>>>{
 	auto rad_l = left.template get<"collision">().template get<"radius">();
 	auto rad_r = right.template get<"collision">().template get<"radius">();
 
@@ -87,7 +84,15 @@ constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& le
 
 	auto rad_ab_2 = rad_l * rad_l + rad_r * rad_r + rad_r * rad_l * static_cast<saw::native_data_type<T>::type>(2);
 
-	return (norm_2.at({}).get() < rad_ab_2.get());
+	return std::make_pair((norm_2.at({}).get() < rad_ab_2.get()), norm_2);
+};
+/**
+*
+*
+*/
+template<typename T, uint64_t D>
+constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> bool{
+	return broadphase_collision_distance<T,D>(left,right).first;
 };
 
 template<typename T, uint64_t D, typename ParticleCollision = sch::ParticleMask<T,D> >

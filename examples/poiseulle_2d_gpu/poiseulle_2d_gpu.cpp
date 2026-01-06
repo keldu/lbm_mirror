@@ -199,7 +199,7 @@ void step(
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,Desc>;
 	
-	constexpr saw::data<sch::T> frequency{1.0 / 0.8};
+	constexpr saw::data<sch::T> frequency{1.0 / 0.6};
 
 	bool is_even = ((time_step % 2u) == 0u);
   /**
@@ -349,8 +349,8 @@ saw::error_or<void> kel_main(int argc, char** argv){
 		{{1.0}}
 	};
 
-	uint64_t x_d = 512u;
-	uint64_t y_d = 128u;
+	uint64_t x_d = 1024u;
+	uint64_t y_d = 512u;
 
 	saw::data<lbm::sch::FixedArray<lbm::sch::UInt64,Desc::D>> meta{{x_d,y_d}};
 
