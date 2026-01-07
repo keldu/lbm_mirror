@@ -73,6 +73,11 @@ in rec {
 			inherit kel-lbm;
 		};
 
+		particles_gpu = pkgs.callPackage ./examples/particles_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel-lbm;
+		};
+
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel-lbm;
