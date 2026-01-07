@@ -19,7 +19,49 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	using namespace lbm;
 	using namespace acpp;
 
-	saw::data<sch::Array<sch::Particle<sch::Float32,2u>>> particles{256u};
+	saw::data<sch::Array<sch::Particle<sch::Float32,2u>>> particles{1024u};
+
+	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32u}; ++i){
+		for(saw::data<sch::UInt64> j{0u}; j < saw::data<sch::UInt64>{32u}; ++j){
+
+			auto& part = particles.at(i*32ul+j);
+			auto& body = part.template get<"rigid_body">();
+
+			auto& pos = body.template get<"position">();
+			auto& old_pos = body.template get<"position_old">();
+			auto& acceleration = body.template get<"acceleration">();
+			auto& p_size = part.template get<"size">();
+			p_size = {0.5f};
+
+			if(j.get() % 2u == 0) acceleration.at({{1u}}) = {-9.81};
+
+			pos.at({{0u}}) = {i.template cast_to<sch::Float32>()};
+			pos.at({{1u}}) = {j.template cast_to<sch::Float32>()};
+
+			old_pos = pos;
+		}
+	}
+
+	for(saw::data<sch::UInt64> dt{0u}; dt < saw::data<sch::UInt64>{1024ul*32ul}; ++dt){
+		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
+			auto& part_i = particles.at(i);
+
+			verlet_step_lambda<sch::Float32,2u>(part_i,{1.0f});
+		}
+		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
+			auto& part_i = particles.at(i);
+			for(saw::data<sch::UInt64> j{i+1ul}; j < particles.size(); ++j){
+				auto& part_j = particles.at(j);
+
+				auto res = broadphase_collision_distance<sch::Float32,2u>(part_i, part_j);
+				if(res.first){
+					std::cout<<"Collision"<<std::endl;
+				}
+			}
+		}
+
+		saw::codec<sch::Array<sch::Particle<sch::Float32,2u>>, saw::encode::Json> j_codec;
+	}
 
 	return saw::make_void();
 }
