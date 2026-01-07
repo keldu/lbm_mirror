@@ -1,8 +1,9 @@
 { pkgs ? import (builtins.fetchTarball{
 	url = "https://github.com/NixOS/nixpkgs/archive/nixos-25.11.tar.gz";
 }) {}
-, stdenv ? pkgs.llvmPackages_19.stdenv
-, clang-tools ? pkgs.clang-tools_19
+, llvmPackages ? pkgs.llvmPackages_19
+, stdenv ? llvmPackages.stdenv
+, clang-tools ? llvmPackages.clang-tools
 }:
 
 let

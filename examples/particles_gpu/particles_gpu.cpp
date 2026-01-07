@@ -33,7 +33,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			auto& p_size = part.template get<"size">();
 			p_size = {0.5f};
 
-			if(j.get() % 2u == 0) acceleration.at({{1u}}) = {-9.81};
+			if(j.get() % 2u == 0) acceleration.at({{1u}}) = {9.81};
 
 			pos.at({{0u}}) = {i.template cast_to<sch::Float32>()};
 			pos.at({{1u}}) = {j.template cast_to<sch::Float32>()};
@@ -42,11 +42,11 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	for(saw::data<sch::UInt64> dt{0u}; dt < saw::data<sch::UInt64>{1024ul*32ul}; ++dt){
+	for(saw::data<sch::UInt64> dt{0u}; dt < saw::data<sch::UInt64>{32ul}; ++dt){
 		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
 			auto& part_i = particles.at(i);
 
-			verlet_step_lambda<sch::Float32,2u>(part_i,{1.0f});
+			verlet_step_lambda<sch::Float32,2u>(part_i,{0.05f});
 		}
 		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
 			auto& part_i = particles.at(i);
@@ -59,6 +59,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		auto& pos = particles.at({0u}).template get<"rigid_body">().template get<"position">();
+		std::cout<<pos.at({{0u}}).get()<<" "<<pos.at({{1u}}).get()<<std::endl;
 
 		saw::codec<sch::Array<sch::Particle<sch::Float32,2u>>, saw::encode::Json> j_codec;
 	}
