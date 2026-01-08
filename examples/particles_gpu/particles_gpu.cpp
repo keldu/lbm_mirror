@@ -50,33 +50,56 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			auto& part_i = particles.at(i);
 
 			verlet_step_lambda<sch::Float32,2u>(part_i,{0.05f});
+			auto& body_i = part_i.template get<"rigid_body">();
+			auto& acc_i = body_i.template get<"acceleration">();
+
+			acc_i.at({{0u}}) = 0.0;
+			acc_i.at({{1u}}) = -9.81;
 		}
 		//
 		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
 			auto& part_i = particles.at(i);
+			auto& body_i = part_i.template get<"rigid_body">();
+			auto& pos_i = body_i.template get<"position">();
+			auto& pos_old_i = body_i.template get<"position_old">();
 			/**
 			 * Test against other particles
 			 */
 			for(saw::data<sch::UInt64> j{i+1ul}; j < particles.size(); ++j){
 				auto& part_j = particles.at(j);
+				auto& body_j = part_j.template get<"rigid_body">();
+				auto& pos_j = body_j.template get<"position">();
+				auto& pos_old_j = body_j.template get<"position_old">();
 
 				auto res = broadphase_collision_distance<sch::Float32,2u>(part_i, part_j);
 				if(res.first){
-					std::cout<<"Collision"<<std::endl;
+					//std::cout<<"Collision"<<std::endl;
+					// Do collision
+
+					auto vel_i = pos_i - pos_old_i;
+					auto vel_j = pos_j - pos_old_j;
+
+					auto vel_rel = vel_i - vel_j;
+					auto pos_rel = pos_i - pos_j;
+
+					auto vel_pos_rel_dot = saw::math::dot(vel_rel,pos_rel);
+					if(vel_pos_rel_dot.get() < 0.0){
+
+					}
+
+					auto vel_ij = saw::math::dot(vel_i,vel_j);
+
 				}
 			}
 			/**
 			 * Test against walls
 			 */
-			auto& body_i = part_i.template get<"rigid_body">();
-			auto& pos_i = body_i.template get<"position">();
-			auto& pos_old_i = body_i.template get<"position_old">();
 			if(pos_i.at({{0u}}).get() <= 0 or pos_i.at({{0u}}).get() >= 40 ){
 				auto pos_i_0 = pos_i.at({{0u}});
 				pos_i.at({{0u}}) = pos_old_i.at({{0u}});
 				pos_old_i.at({{0u}}) = pos_i_0;
 			}
-			if(pos_i.at({{1u}}).get() <= 0 or pos_i.at({{1u}}).get() >= 40 ){
+			if(pos_i.at({{1u}}).get() <= 0 ){
 				auto pos_i_1 = pos_i.at({{1u}});
 				pos_i.at({{1u}}) = pos_old_i.at({{1u}});
 				pos_old_i.at({{1u}}) = pos_i_1;
@@ -84,7 +107,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 		auto& pos = particles.at({0u}).template get<"rigid_body">().template get<"position">();
 
-		saw::codec<sch::Array<sch::Particle<sch::Float32,2u>>, saw::encode::Json> j_codec;
+		std::cout<<pos.at({{0u}}).get()<<" "<<pos.at({{1u}}).get()<<std::endl;
 	}
 
 	return saw::make_void();
