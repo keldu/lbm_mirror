@@ -100,9 +100,10 @@ in rec {
 			name = "kel-lbm-sims-${version}";
 			paths = [
 				kel-lbm.core
-				kel-lbm.sycl
 				examples.cavity_2d_gpu
 			];
 		};
 	};
+
+	default = release.examples;
 }

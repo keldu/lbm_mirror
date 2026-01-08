@@ -8,6 +8,6 @@
 			pkgs = nixpkgs.legacyPackages.x86_64-linux;
 			packagesSet = import ./default.nix { inherit pkgs; };
 		in {
-			packages.x86_64-linux = packagesSet;
+			packages.x86_64-linux = packagesSet.release.examples;
 		};
 }
