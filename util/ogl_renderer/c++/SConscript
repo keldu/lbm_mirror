@@ -1,0 +1,26 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+core_env = env.Clone();
+
+core_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+core_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += core_env.sources;
+env.headers += core_env.headers;
+
+## Static lib
+objects = []
+core_env.add_source_files(objects, core_env.sources, shared=False);
+env.lbm_ogl_renderer = core_env.Program('#build/kel_lbm_ogl_renderer', [objects]);
+
+env.Install('$prefix/bin/', env.lbm_ogl_renderer);

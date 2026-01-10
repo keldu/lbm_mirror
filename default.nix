@@ -1,12 +1,35 @@
-{ pkgs ? import (builtins.fetchTarball{
-	url = "https://github.com/NixOS/nixpkgs/archive/nixos-25.11.tar.gz";
-}) {}
+{ pkgs ? import <nixpkgs> {}
 , llvmPackages ? pkgs.llvmPackages_19
 , stdenv ? llvmPackages.stdenv
 , clang-tools ? llvmPackages.clang-tools
 }:
 
 let
+	glad_opengl_33_core = stdenv.mkDerivation {
+		pname = "glad_opengl_33_core";
+		version = "0.0.1";
+
+		dontUnpack = true;
+
+		nativeBuildInputs = [
+			pkgs.python312Packages.glad2
+		];
+
+		buildPhase = ''
+			mkdir -p glad_out
+			glad \
+			--api gl:core=3.3 \
+			--out-path glad_out \
+			--reproducible \
+			c
+			mkdir -p glad_out/lib
+			cc -Iglad_out/include -fPIC -shared -o glad_out/lib/libgl.so glad_out/src/gl.c
+		'';
+
+		installPhase = ''
+			mv glad_out $out
+		'';
+   };
 
 	adaptive-cpp = pkgs.callPackage .nix/adaptive-cpp.nix {
 		inherit stdenv;
@@ -33,7 +56,14 @@ in rec {
 		sycl = pkgs.callPackage ./lib/sycl/.nix/derivation.nix {
 			inherit forstio stdenv clang-tools pname version kel-lbm adaptive-cpp;
 		};
-	};
+    };
+
+  util = {
+    lbm_ogl_renderer = pkgs.callPackage ./util/ogl_renderer/.nix/derivation.nix {
+      inherit forstio stdenv clang-tools pname version kel-lbm;
+      kel-glad = glad_opengl_33_core;
+    };
+  };
 
 	examples = {
 		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {

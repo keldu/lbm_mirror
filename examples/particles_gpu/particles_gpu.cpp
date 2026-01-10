@@ -56,6 +56,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			acc_i.at({{0u}}) = 0.0;
 			acc_i.at({{1u}}) = -9.81;
 		}
+
 		//
 		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
 			auto& part_i = particles.at(i);
@@ -83,7 +84,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 					auto pos_rel = pos_i - pos_j;
 
 					auto vel_pos_rel_dot = saw::math::dot(vel_rel,pos_rel);
-					if(vel_pos_rel_dot.get() < 0.0){
+					if(vel_pos_rel_dot.at({}).get() < 0.0){
 
 					}
 
