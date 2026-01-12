@@ -96,6 +96,62 @@ SAW_TEST("Collision Spheroid 2D"){
 	SAW_EXPECT(have_collided, "Particles should collide");
 }
 
+SAW_TEST("Moving particles 2D"){
+	using namespace kel;
+
+	saw::data<sch::Particle<sch::T,2u>> part_a;
+	{
+		auto& body = part_a.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+		auto& coll = part_a.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+		auto& acc = body.template get<"acceleration">();
+
+		radius.set(1.0);
+
+		pos.at({{0u}}) = -5.0;
+		pos.at({{1u}}) = 0.2;
+		pos_old = pos;
+		acc.at({{0u}}) = 0.1;
+
+	}
+	saw::data<sch::Particle<sch::T,2u>> part_b;
+	{
+		auto& body = part_b.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+		auto& coll = part_b.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+		auto& acc = body.template get<"acceleration">();
+
+		radius.set(1.0);
+		
+		pos.at({{0u}}) = 5.0;
+		pos.at({{1u}}) = 0.0;
+		pos_old = pos;
+		acc.at({{0u}}) = -0.1;
+	}
+	
+	bool has_collided = false;
+	for(uint64_t i = 0u; i < 32u; ++i){
+		lbm::verlet_step_lambda<sch::T,2u>(part_a,{0.5});
+		lbm::verlet_step_lambda<sch::T,2u>(part_b,{0.5});
+
+		has_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
+		if(has_collided){
+			std::cout<<"Collided at: "<<i<<std::endl;
+			break;
+		}
+		std::cout<<part_a.template get<"rigid_body">().template get<"position">().at({{0u}}).get();
+		std::cout<<" ";
+		std::cout<<part_b.template get<"rigid_body">().template get<"position">().at({{0u}}).get();
+		std::cout<<std::endl;
+	}
+
+	SAW_EXPECT(has_collided, "Expecting collision within those steps");
+}
+
 /*
 SAW_TEST("Minor Test for mask"){
 	using namespace kel;
