@@ -23,12 +23,6 @@ using ParticleRigidBody = Struct<
 	Member<T, "rotational_acceleration">
 >;
 
-template<typename T, uint64_t D>
-using ParticleMask = Struct<
-	Member<Array<T,D>, "grid">,
-	Member<Vector<T,D>, "center_of_mass">
->;
-
 template<typename T>
 using ParticleCollisionSpheroid = Struct<
 	Member<T, "radius">
@@ -37,11 +31,42 @@ using ParticleCollisionSpheroid = Struct<
 template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
-	Member<ParticleMask<T,D>, "mask">,
 	Member<CollisionType, "collision">,
-	Member<T, "mass">,
-	Member<T, "size">
+	Member<T, "mass">
 >;
+}
+
+template<typename T, uint64_t D>
+saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid_particle(
+		saw::data<sch::Vector<T,D>> pos_p,
+		saw::data<sch::Vector<T,D>> vec_p,
+		saw::data<sch::Vector<T,D>> acc_p,
+		saw::data<sch::Vector<T,D>> rot_pos_p,
+		saw::data<sch::Vector<T,D>> rot_vel_p,
+		saw::data<sch::Vector<T,D>> rot_acc_p,
+		saw::data<T> rad_p,
+		saw::data<T> density_p
+	){
+
+	saw::data<sch::Particle<T,D>> part;
+	auto& body = part.template get<"rigid_body">();
+	auto& pos = body.template get<"position">();
+
+	auto& pos_old = body.template get<"position_old">();
+	auto& acc = body.template get<"acceleration">();
+
+	auto& rot = body.template get<"rotation">();
+	auto& rot_old = body.template get<"rotation_old">();
+
+	auto& coll = part.template get<"collision">();
+	auto& rad = coll.template get<"radius">();
+
+	pos = pos_p;
+	pos_old = pos - vec_p;
+	acc = acc_p;
+	rad = rad_p;
+
+	return part;
 }
 
 template<typename T,uint64_t D>
@@ -93,81 +118,6 @@ constexpr auto broadphase_collision_distance = [](saw::data<sch::Particle<T,D>>&
 template<typename T, uint64_t D>
 constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> bool{
 	return broadphase_collision_distance<T,D>(left,right).first;
-};
-
-template<typename T, uint64_t D, typename ParticleCollision = sch::ParticleMask<T,D> >
-class particle_system {
-private:
-	saw::data<sch::Array<sch::Particle<T,D>>> particles_;
-
-	void verlet_step(saw::data<sch::Particle<T,D>>& particle, saw::data<T> time_step_delta){
-		auto& body = particle.template get<"rigid_body">();
-
-		auto& pos = body.template get<"position">();
-		auto& pos_old = body.template get<"position_old">();
-
-		// auto& rot = body.template get<"rotation">();
-		auto& acc = body.template get<"acceleration">();
-
-		auto tsd_squared = time_step_delta * time_step_delta;
-
-		saw::data<sch::Vector<T,D>> pos_new;
-		// Actual step
-		for(uint64_t i = 0u; i < D; ++i){
-			pos_new.at({{i}}) = saw::data<T>{2.0} * pos.at({{i}}) - pos_old.at({{i}}) + acc.at({{i}}) * tsd_squared;
-		}
-
-		pos_old = pos;
-		pos = pos_new;
-	}
-public:
-	/**
-	 *  Add particle to this class and return an id representing this particle
-	 */
-	saw::error_or<saw::data<sch::UInt64>> add_particle(saw::data<sch::Particle<T,D>> particle__){
-		auto size = particles_.size();
-		auto eov = particles_.add(std::move(particle__));
-		if(eov.is_error()){
-			return std::move(eov.get_error());
-		}
-
-		return size;
-	}
-
-	/*
-	saw::data<sch::Particle<T,D>>& get_particle(saw::data<sch::UInt64> id){
-	}
-	*/
-
-	void step(saw::data<T> time_step_delta){
-		for(saw::data<sch::UInt64> i{0u}; i < particles_.size(); ++i){
-			verlet_step(particles_.at(i), time_step_delta);
-		}
-	}
-
-	template<typename LbmLattice>
-	void update_particle_border(saw::data<LbmLattice>& latt){
-		(void) latt;
-		for(auto& iter : particles_){
-			auto& par = iter;
-
-			auto& body = par.template get<"rigid_body">();
-			auto& size = par.template get<"size">();
-
-
-		}
-	}
-
-	saw::data<sch::UInt64> size() const {
-		return particles_.size();
-	}
-
-	/**
-	 * Mostly meant for unforeseen use cases.
-	 */
-	saw::data<sch::Particle<T,D>>& at(saw::data<sch::UInt64> i){
-		return particles_.at(i);
-	}
 };
 }
 }
