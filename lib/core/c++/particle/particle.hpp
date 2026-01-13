@@ -91,6 +91,25 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 		pos = pos_new;
 };
 
+template<typename T, uint64_t D>
+constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right){
+	auto& rb_l = left.template get<"rigid_body">();
+	auto& rb_r = right.template get<"rigid_body">();
+
+	auto& pos_l = rb_l.template get<"position">();
+	auto& pos_old_l = rb_l.template get<"position_old">();
+	auto vel_l = pos_l - pos_old_l;
+	auto& mass_l = left.template get<"mass">();
+
+
+	/**
+	 * E to 0
+	 */
+
+
+
+};
+
 
 template<typename T, uint64_t D>
 constexpr auto broadphase_collision_distance = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> std::pair<bool,saw::data<sch::Scalar<T>>>{

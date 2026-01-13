@@ -47,73 +47,75 @@ let
 	}).forstio;
 
 	pname = "kel-lbm";
-	version = "0.0.3";
+	version = "0.0.4";
 in rec {
-	kel-lbm = {
-		core = pkgs.callPackage ./lib/core/.nix/derivation.nix {
-			inherit forstio stdenv clang-tools pname version;
+	kel = {
+		lbm = {
+			core = pkgs.callPackage ./lib/core/.nix/derivation.nix {
+				inherit forstio stdenv clang-tools pname version;
+			};
+			sycl = pkgs.callPackage ./lib/sycl/.nix/derivation.nix {
+				inherit forstio stdenv clang-tools pname version kel adaptive-cpp;
+			};
 		};
-		sycl = pkgs.callPackage ./lib/sycl/.nix/derivation.nix {
-			inherit forstio stdenv clang-tools pname version kel-lbm adaptive-cpp;
-		};
-    };
+	};
 
-  util = {
-    lbm_ogl_renderer = pkgs.callPackage ./util/ogl_renderer/.nix/derivation.nix {
-      inherit forstio stdenv clang-tools pname version kel-lbm;
-      kel-glad = glad_opengl_33_core;
-    };
-  };
+	util = {
+		lbm_ogl_renderer = pkgs.callPackage ./util/ogl_renderer/.nix/derivation.nix {
+			inherit forstio stdenv clang-tools pname version kel;
+			kel-glad = glad_opengl_33_core;
+		};
+	};
 
 	examples = {
 		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 		
 		poiseulle_2d_gpu = pkgs.callPackage ./examples/poiseulle_2d_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 		
 		cavity_2d = pkgs.callPackage ./examples/cavity_2d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		poiseulle_particles_channel_2d = pkgs.callPackage ./examples/poiseulle_particles_channel_2d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		meta_2d = pkgs.callPackage ./examples/meta_2d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		planetary_3d = pkgs.callPackage ./examples/planetary_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		poiseulle_2d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		particles_gpu = pkgs.callPackage ./examples/particles_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel-lbm;
+			inherit kel;
 		};
 	};
 
@@ -123,13 +125,13 @@ in rec {
 
 	release = {
 		dev = {
-			inherit kel-lbm;
+			inherit kel;
 		};
 
 		examples = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-${version}";
 			paths = [
-				kel-lbm.core
+				kel.lbm.core
 				examples.cavity_2d_gpu
 			];
 		};

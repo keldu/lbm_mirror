@@ -1,9 +1,7 @@
 #include <forstio/test/suite.hpp>
 
 #include <iostream>
-//#include "../c++/particle/geometry/circle.hpp"
 #include "../c++/particle/particle.hpp"
-#include <forstio/codec/data.hpp>
 
 namespace {
 namespace sch {
@@ -143,13 +141,47 @@ SAW_TEST("Moving particles 2D"){
 			std::cout<<"Collided at: "<<i<<std::endl;
 			break;
 		}
-		std::cout<<part_a.template get<"rigid_body">().template get<"position">().at({{0u}}).get();
-		std::cout<<" ";
-		std::cout<<part_b.template get<"rigid_body">().template get<"position">().at({{0u}}).get();
-		std::cout<<std::endl;
 	}
 
 	SAW_EXPECT(has_collided, "Expecting collision within those steps");
+}
+
+SAW_TEST("Particle Collision Impulse"){
+	using namespace kel;
+
+	saw::data<sch::Particle<sch::T,2u>> part_a;
+	{
+		auto& body = part_a.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+		auto& coll = part_a.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+		auto& acc = body.template get<"acceleration">();
+
+		radius.set(1.0);
+
+		pos.at({{0u}}) = -5.0;
+		pos.at({{1u}}) = 0.2;
+		pos_old = pos;
+		acc.at({{0u}}) = 0.1;
+
+	}
+	saw::data<sch::Particle<sch::T,2u>> part_b;
+	{
+		auto& body = part_b.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+		auto& coll = part_b.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+		auto& acc = body.template get<"acceleration">();
+
+		radius.set(1.5);
+		
+		pos.at({{0u}}) = 5.0;
+		pos.at({{1u}}) = 0.0;
+		pos_old = pos;
+		acc.at({{0u}}) = -0.1;
+	}
 }
 
 /*
