@@ -6,7 +6,7 @@
 , python3
 , pname
 , version
-, kel-lbm
+, kel
 , adaptive-cpp
 }:
 
@@ -27,7 +27,7 @@ stdenv.mkDerivation {
 		forstio.codec
 		forstio.codec-unit
 		forstio.codec-json
-		kel-lbm.core
+		kel.lbm.core
 		adaptive-cpp
 	];
 

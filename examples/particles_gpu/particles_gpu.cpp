@@ -2,7 +2,7 @@
 #include <AdaptiveCpp/sycl/sycl.hpp>
 
 
-#include <kel/lbm/particle/geometry/circle.hpp>
+#include <kel/lbm/particle/particle.hpp>
 #include <iostream>
 
 namespace kel{
@@ -30,9 +30,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			auto& pos = body.template get<"position">();
 			auto& old_pos = body.template get<"position_old">();
 			auto& acceleration = body.template get<"acceleration">();
-			auto& p_size = part.template get<"size">();
 			auto& p_rad = part.template get<"collision">().template get<"radius">();
-			p_size = {0.4f};
 			p_rad = {0.4f};
 
 			if(j.get() % 2u == 0) acceleration.at({{1u}}) = {-9.81};
