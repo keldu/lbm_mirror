@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {}
+{ pkgs ? (import <nixpkgs> {})
 , llvmPackages ? pkgs.llvmPackages_19
 , stdenv ? llvmPackages.stdenv
 , clang-tools ? llvmPackages.clang-tools

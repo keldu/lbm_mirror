@@ -11,10 +11,9 @@
 		pkgs = import nixpkgs {
 			inherit system;
 		};
-		packageSet = pkgs.callPackage ./default.nix {
-			pkgs = pkgs;
-		};
 	in {
-		packages.${system} = packageSet;
+		packages.${system} = pkgs.callPackage ./lib/core/.nix/derivation.nix {
+			inherit pkgs;
+		};
 	};
 }
