@@ -92,27 +92,37 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 };
 
 template<typename T, uint64_t D>
-constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right){
+constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right, saw::data<sch::Vector<T,D>> unit_pos_rel, saw::data<sch::Vector<T,D>> vel_rel)
+{
 	auto& rb_l = left.template get<"rigid_body">();
-	auto& rb_r = right.template get<"rigid_body">();
-
 	auto& pos_l = rb_l.template get<"position">();
 	auto& pos_old_l = rb_l.template get<"position_old">();
 	auto vel_l = pos_l - pos_old_l;
 	auto& mass_l = left.template get<"mass">();
 
+	auto& rb_r = right.template get<"rigid_body">();
+	auto& pos_r = rb_r.template get<"position">();
+	auto& pos_old_r = rb_r.template get<"position_old">();
+	auto vel_r = pos_r - pos_old_r;
+	auto& mass_r = left.template get<"mass">();
 
 	/**
 	 * E to 0
 	 */
 
+	constexpr saw::data<sch::Scalar<T>> elasticity{0u};
+	constexpr saw::data<sch::Scalar<T>> one{1.0};
 
+	saw::data<sch::Scalar<T>> j = (e - one) / ((one / mass_l) + (one / mass_r));
+
+	vel_l = vel_l + vel_rel * j;
+	vel_r = vel_r - vel_rel * j;
 
 };
 
 
 template<typename T, uint64_t D>
-constexpr auto broadphase_collision_distance = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> std::pair<bool,saw::data<sch::Scalar<T>>>{
+constexpr auto broadphase_collision_distance_squared = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> std::pair<bool,saw::data<sch::Scalar<T>>>{
 	auto rad_l = left.template get<"collision">().template get<"radius">();
 	auto rad_r = right.template get<"collision">().template get<"radius">();
 
@@ -136,7 +146,7 @@ constexpr auto broadphase_collision_distance = [](saw::data<sch::Particle<T,D>>&
 */
 template<typename T, uint64_t D>
 constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> bool{
-	return broadphase_collision_distance<T,D>(left,right).first;
+	return broadphase_collision_distance_squared<T,D>(left,right).first;
 };
 }
 }
