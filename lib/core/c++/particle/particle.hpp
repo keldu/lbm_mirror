@@ -12,15 +12,30 @@ struct Spheroid{};
 namespace sch {
 using namespace saw::schema;
 
+namespace impl {
+template<typename T,uint64_t D>
+struct rotation_type_helper;
+
+template<typename T>
+struct rotation_type_helper<T,2u> {
+	using Schema = Scalar<T>;
+};
+
+template<typename T>
+struct rotation_type_helper<T,3u> {
+	using Schema = Vector<T,3u>;
+};
+}
+
 template<typename T, uint64_t D>
 using ParticleRigidBody = Struct<
 	Member<Vector<T,D>, "position">,
 	Member<Vector<T,D>, "position_old">,
-	Member<T, "rotation">,
-	Member<T, "rotation_old">,
+	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation">,
+	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation_old">,
 
 	Member<Vector<T,D>, "acceleration">,
-	Member<T, "rotational_acceleration">
+	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotational_acceleration">
 >;
 
 template<typename T>
@@ -44,8 +59,8 @@ saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid
 		saw::data<sch::Vector<T,D>> rot_pos_p,
 		saw::data<sch::Vector<T,D>> rot_vel_p,
 		saw::data<sch::Vector<T,D>> rot_acc_p,
-		saw::data<T> rad_p,
-		saw::data<T> density_p
+		saw::data<sch::Scalar<T>> rad_p,
+		saw::data<sch::Scalar<T>> density_p
 	){
 
 	saw::data<sch::Particle<T,D>> part;
@@ -70,54 +85,48 @@ saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid
 }
 
 template<typename T,uint64_t D>
-constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, saw::data<T> time_step_delta){
-		auto& body = particle.template get<"rigid_body">();
+constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, saw::data<sch::Scalar<T>> time_step_delta){
+	auto& body = particle.template get<"rigid_body">();
 
-		auto& pos = body.template get<"position">();
-		auto& pos_old = body.template get<"position_old">();
+	auto& pos = body.template get<"position">();
+	auto& pos_old = body.template get<"position_old">();
 
-		auto& rot = body.template get<"rotation">();
-		auto& acc = body.template get<"acceleration">();
+	auto& rot = body.template get<"rotation">();
+	auto& acc = body.template get<"acceleration">();
 
-		auto tsd_squared = time_step_delta * time_step_delta;
+	auto tsd_squared = time_step_delta * time_step_delta;
 
-		saw::data<sch::Vector<T,D>> pos_new;
-		// Actual step
-		for(uint64_t i = 0u; i < D; ++i){
-			pos_new.at({{i}}) = saw::data<T>{2.0} * pos.at({{i}}) - pos_old.at({{i}}) + acc.at({{i}}) * tsd_squared;
-		}
+	saw::data<sch::Vector<T,D>> pos_new;
+	// Actual step
+	saw::data<sch::Scalar<T>> two;
+	two.at({}).set(2.0);
+	pos_new = pos * two - pos_old + acc * tsd_squared;
 
-		pos_old = pos;
-		pos = pos_new;
+	pos_old = pos;
+	pos = pos_new;
 };
 
 template<typename T, uint64_t D>
-constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right, saw::data<sch::Vector<T,D>> unit_pos_rel, saw::data<sch::Vector<T,D>> vel_rel)
+constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right, saw::data<sch::Vector<T,D>> unit_pos_rel, saw::data<sch::Vector<T,D>> vel_rel, saw::data<sch::Scalar<T>> d_t)
 {
 	auto& rb_l = left.template get<"rigid_body">();
 	auto& pos_l = rb_l.template get<"position">();
 	auto& pos_old_l = rb_l.template get<"position_old">();
-	auto vel_l = pos_l - pos_old_l;
 	auto& mass_l = left.template get<"mass">();
+	auto vel_l = (pos_l-pos_old_l)/d_t;
 
 	auto& rb_r = right.template get<"rigid_body">();
 	auto& pos_r = rb_r.template get<"position">();
 	auto& pos_old_r = rb_r.template get<"position_old">();
-	auto vel_r = pos_r - pos_old_r;
 	auto& mass_r = left.template get<"mass">();
+	auto vel_r = (pos_r-pos_old_r)/d_t;
 
-	/**
-	 * E to 0
-	 */
+	auto vel_pos_rel_dot = saw::math::dot(unit_pos_rel,vel_rel);
 
-	constexpr saw::data<sch::Scalar<T>> elasticity{0u};
-	constexpr saw::data<sch::Scalar<T>> one{1.0};
-
-	saw::data<sch::Scalar<T>> j = (e - one) / ((one / mass_l) + (one / mass_r));
-
-	vel_l = vel_l + vel_rel * j;
-	vel_r = vel_r - vel_rel * j;
-
+  if( vel_pos_rel_dot.at({{0u}}).get() < 0.0 ){
+		pos_l = pos_l + vel_rel * unit_pos_rel * d_t;
+		pos_r = pos_r - vel_rel * unit_pos_rel * d_t;
+	}
 };
 
 

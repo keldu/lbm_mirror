@@ -42,12 +42,15 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
+	saw::data<sch::Scalar<sch::Float32>> time_step;
+	time_step.at({}).set(0.05f);
+
 	for(saw::data<sch::UInt64> dt{0u}; dt < saw::data<sch::UInt64>{32ul}; ++dt){
 		// Do Verlet Step
 		for(saw::data<sch::UInt64> i{0u}; i < particles.size(); ++i){
 			auto& part_i = particles.at(i);
 
-			verlet_step_lambda<sch::Float32,2u>(part_i,{0.05f});
+			verlet_step_lambda<sch::Float32,2u>(part_i,time_step);
 			auto& body_i = part_i.template get<"rigid_body">();
 			auto& acc_i = body_i.template get<"acceleration">();
 
@@ -70,23 +73,23 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				auto& pos_j = body_j.template get<"position">();
 				auto& pos_old_j = body_j.template get<"position_old">();
 
-				auto res = broadphase_collision_distance<sch::Float32,2u>(part_i, part_j);
+				auto res = broadphase_collision_distance_squared<sch::Float32,2u>(part_i, part_j);
 				if(res.first){
 					//std::cout<<"Collision"<<std::endl;
 					// Do collision
 
-					auto vel_i = pos_i - pos_old_i;
-					auto vel_j = pos_j - pos_old_j;
+					auto vel_i = (pos_i - pos_old_i)/time_step;
+					auto vel_j = (pos_j - pos_old_j)/time_step;
 
 					auto vel_rel = vel_i - vel_j;
 					auto pos_rel = pos_i - pos_j;
 
 					auto vel_pos_rel_dot = saw::math::dot(vel_rel,pos_rel);
 					if(vel_pos_rel_dot.at({}).get() < 0.0){
-
+						auto pos_rel_normed = pos_rel / saw::math::sqrt(res.second);
 					}
 
-					auto vel_ij = saw::math::dot(vel_i,vel_j);
+					// auto vel_ij = saw::math::dot(vel_i,vel_j);
 
 				}
 			}

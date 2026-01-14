@@ -22,7 +22,9 @@ SAW_TEST("Verlet step 2D - Planar"){
 
 	acc.at({{0}}).set({1.0});
 
-	lbm::verlet_step_lambda<sch::T,2u>(particle,{0.5});
+	saw::data<sch::Scalar<sch::T>> dt;
+	dt.at({}).set(0.5);
+	lbm::verlet_step_lambda<sch::T,2u>(particle,dt);
 
 	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
 	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));
@@ -130,11 +132,13 @@ SAW_TEST("Moving particles 2D"){
 		pos_old = pos;
 		acc.at({{0u}}) = -0.1;
 	}
-	
+
+	saw::data<sch::Scalar<sch::T>> dt;
+	dt.at({}).set(0.5);
 	bool has_collided = false;
 	for(uint64_t i = 0u; i < 32u; ++i){
-		lbm::verlet_step_lambda<sch::T,2u>(part_a,{0.5});
-		lbm::verlet_step_lambda<sch::T,2u>(part_b,{0.5});
+		lbm::verlet_step_lambda<sch::T,2u>(part_a,dt);
+		lbm::verlet_step_lambda<sch::T,2u>(part_b,dt);
 
 		has_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
 		if(has_collided){
