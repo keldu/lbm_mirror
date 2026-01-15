@@ -1,5 +1,7 @@
 #pragma once
 
+#include "component.hpp"
+
 namespace kel {
 namespace lbm {
 /*
@@ -10,6 +12,17 @@ struct geometry {
 	}
 };
 */
+namespace cmpt {
+struct PoiseulleChannel;
+}
+
+template<typename Schema, typename Desc, typename Encode>
+class component<Schema, Desc, cmpt::PoiseulleChannel, Encode> final {
+private:
+public:
+	template<typename CellFieldSchema>
+	void apply(saw::data<CellFieldSchema,Encode>& field, const saw::data<sch::FixedArraysch::UInt64,Desc::D>)
+};
 
 // Ghost - 0
 // Wall  - 1
