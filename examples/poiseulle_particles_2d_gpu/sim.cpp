@@ -7,12 +7,10 @@ namespace sch {
 using namespace saw::schema;
 
 template<typename T, typename Desc>
-using MesoStruct = Struct<
-	Member<UInt8, "info">
->;
-
-template<typename T, typename Desc>
-using MacroStruct = Struct<
+using CellStruct = Struct<
+	Member<FixedArray<T,Desc::Q>, "dfs">,
+	Member<FixedArray<T,Desc::Q>, "dfs_old">,
+	Member<UInt8, "info">,
 	Member<Vector<T,Desc::D>, "velocity">,
 	Member<Vector<T,Desc::D>, "force">
 >;

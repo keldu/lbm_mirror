@@ -10,5 +10,10 @@ struct geometry {
 	}
 };
 */
+
+// Ghost - 0
+// Wall  - 1
+// Fluid - 2
+// Other Stuff - 3-x
 }
 }
