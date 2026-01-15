@@ -3,6 +3,26 @@
 
 namespace kel {
 namespace lbm {
+namespace sch {
+using namespace saw::schema;
+
+template<typename T, typename Desc>
+using MesoStruct = Struct<
+	Member<UInt8, "info">
+>;
+
+template<typename T, typename Desc>
+using MacroStruct = Struct<
+	Member<Vector<T,Desc::D>, "velocity">,
+	Member<Vector<T,Desc::D>, "force">
+>;
+}
+
+template<typename T, typename Desc>
+saw::error_or<void> step(){
+
+	return saw::make_void();
+}
 }
 }
 
