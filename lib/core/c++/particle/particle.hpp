@@ -60,13 +60,15 @@ saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid
 		saw::data<sch::Vector<T,D>> rot_vel_p,
 		saw::data<sch::Vector<T,D>> rot_acc_p,
 		saw::data<sch::Scalar<T>> rad_p,
-		saw::data<sch::Scalar<T>> density_p
+		saw::data<sch::Scalar<T>> density_p,
+		saw::data<sch::Scalar<T>> dt
 	){
 
 	saw::data<sch::Particle<T,D>> part;
 	auto& body = part.template get<"rigid_body">();
+	auto& mass = part.template get<"mass">();
+	
 	auto& pos = body.template get<"position">();
-
 	auto& pos_old = body.template get<"position_old">();
 	auto& acc = body.template get<"acceleration">();
 
@@ -77,9 +79,25 @@ saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid
 	auto& rad = coll.template get<"radius">();
 
 	pos = pos_p;
-	pos_old = pos - vec_p;
+	pos_old = pos - vec_p * dt;
 	acc = acc_p;
 	rad = rad_p;
+
+	if constexpr ( D == 1u){
+		saw::data<sch::Scalar<T>> c;
+		c.at({}).set(2.0);
+		mass = rad_p * c * density_p;
+	} else if constexpr ( D == 2u){
+		saw::data<sch::Scalar<T>> pi;
+		pi.at({}).set(3.14159);
+		mass = rad_p * rad_p * pi * density_p;
+	} else if constexpr ( D == 3u ){
+		saw::data<sch::Scalar<T>> c;
+		c.at({}).set(3.14159 * 4.0 / 3.0);
+		mass = rad_p * rad_p * rad_p * c * density_p;
+	} else {
+		static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
+	}
 
 	return part;
 }
