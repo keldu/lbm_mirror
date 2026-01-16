@@ -55,8 +55,10 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	return saw::make_void();
 }
 
+using FloatT = kel::sch::Float32;
+
 int main(int argc, char** argv){
-	auto eov = kel_main<kel::lbm::sch::T,kel::lbm::sch::D2Q9>(argc, argv);
+	auto eov = kel_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();
