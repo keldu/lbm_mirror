@@ -19,7 +19,7 @@ struct struct_has_only_equal_dimension_array{};
 
 namespace saw {
 template<uint64_t... Meta, typename... Sch, string_literal... Keys, typename Encode>
-class data<schema::Struct<schema::Member<schema::FixedArray<Sch,Meta...>, Keys>...>, kel::lbm::encode::Sycl<Encode>> final {
+class data<schema::Struct<schema::Member<schema::Chunk<Sch,Ghost,Meta...>, Keys>...>, kel::lbm::encode::Sycl<Encode>> final {
 public:
 	static constexpr data<schema::FixedArray meta = {{Meta...}};
 	using StorageT = std::tuple<data<Members::Type::InnerSchema,Encode>*...>;
