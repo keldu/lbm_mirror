@@ -32,7 +32,10 @@ using SuperChunk = Array<ChunkSchema,Dim>;
 namespace saw {
 template<typename Sch, uint64_t Dim, uint64_t Side, uint64_t Ghost, typename Encode>
 class data<kel::lbm::sch::Chunk<Sch,Dim,Side,Ghost>,Encode> final {
+public:
+	using Schema = kel::lbm::sch::Chunk<Sch,Dim,Side,Ghost>;
 private:
+	data<Schema::InnerSchema, Encode> 
 public:
 };
 }
