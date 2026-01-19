@@ -319,7 +319,7 @@ int main(){
 	auto& lbm_dir = eo_lbm_dir.get_value();
 	auto out_dir = lbm_dir / "cavity_gpu_2d";
 
-	acpp::sycl::queue sycl_q{acpp::sycl::default_selector_v, acpp::sycl::property::queue::in_order{}};
+	sycl::queue sycl_q{sycl::default_selector_v, sycl::property::queue::in_order{}};
 
 	constexpr size_t num_cells = dim_x * dim_y;
 

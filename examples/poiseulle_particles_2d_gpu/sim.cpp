@@ -47,10 +47,18 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	uint64_t x_d = 256u;
 	uint64_t y_d = 64u;
 	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{x_d,y_d}};
+	saw::data<sch::Array<lbm::sch::CellStruct<T,Desc>,Desc::D>> lbm_data{meta};
 
 	acpp::sycl::queue sycl_q;
-
 	sycl_q.wait();
+	{
+		auto eov = setup_initial_conditions(lbm_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+
+	
 
 	return saw::make_void();
 }
@@ -70,5 +78,4 @@ int main(int argc, char** argv){
 		return err.get_id();
 	}
 	return 0;
-}
 }

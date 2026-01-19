@@ -22,7 +22,7 @@ env.headers += examples_env.headers;
 
 # Cavity2D
 examples_objects = [];
-examples_env.add_source_files(examples_objects, ['heterogeneous_computing.cpp'], shared=False);
+examples_env.add_source_files(examples_objects, ['sim.cpp'], shared=False);
 examples_env.heterogeneous_computing = examples_env.Program('#bin/heterogeneous_computing', [examples_objects]);
 
 # Set Alias

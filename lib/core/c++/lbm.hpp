@@ -19,9 +19,6 @@
 #include <iostream>
 
 namespace kel {
-namespace sch {
-using namespace saw::schema;
-}
 namespace lbm {
 template<typename T, typename Desc>
 void print_lbm_meta(const converter<T>& conv, const saw::data<sch::SiKinematicViscosity<T>>& kin_vis_si){

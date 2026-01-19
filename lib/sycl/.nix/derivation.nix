@@ -5,7 +5,7 @@
 , pname
 , version
 , forstio
-, kel-lbm
+, kel
 , adaptive-cpp
 }:
 
@@ -27,7 +27,7 @@ stdenv.mkDerivation {
 		forstio.codec-json
 		forstio.remote
 		forstio.remote-sycl
-		kel-lbm.core
+		kel.lbm.core
 		adaptive-cpp
 	];
 

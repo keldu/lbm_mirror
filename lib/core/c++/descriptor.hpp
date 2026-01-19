@@ -15,6 +15,10 @@ struct Descriptor {
 	static constexpr uint64_t Q = QV;
 };
 
+using D2Q9 = Descriptor<2u,9u>;
+//using D2Q5 = Descriptor<2u,5u>;
+using D3Q27 = Descriptor<3u,27u>;
+
 template<typename Sch, typename Desc, uint64_t SC_V, uint64_t DC_V, uint64_t QC_V>
 struct Cell {
 	using Descriptor = Desc;
