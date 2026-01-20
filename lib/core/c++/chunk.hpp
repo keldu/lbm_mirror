@@ -34,12 +34,46 @@ using SuperChunk = Array<ChunkSchema,Dim>;
 }
 
 namespace saw {
-template<typename Sch, uint64_t Dim, uint64_t Side, uint64_t Ghost, typename Encode>
-class data<kel::lbm::sch::Chunk<Sch,Dim,Side,Ghost>,Encode> final {
+template<typename Sch, uint64_t Ghost, uint64_t... Sides, typename Encode>
+class data<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>,Encode> final {
 public:
-	using Schema = kel::lbm::sch::Chunk<Sch,Dim,Side,Ghost>;
+	using Schema = kel::lbm::sch::Chunk<Sch,Ghost,Sides...>;
 private:
-	data<typename Schema::InnerSchema, Encode> values_;
+	using InnerSchema = typename Schema::InnerSchema;
+	using ValueSchema = typename InnerSchema::ValueType;
+
+	data<InnerSchema, Encode> values_;
 public:
+	data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+		return values_.at(index);
+	}
+	
+	const data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+		return values_.at(index);
+	}
+
+	static constexpr auto get_ghost_dims() {
+		return data<InnerSchema,Encode>::get_dims();
+	}
+	
+	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+		std::decay_t<decltype(index)> ind;
+		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
+			ind.at({i}) = index.at({i}) + Ghost;
+		}
+		return values_.at(ind);
+	}
+	
+	const data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+		std::decay_t<decltype(index)> ind;
+		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
+			ind.at({i}) = index.at({i}) + Ghost;
+		}
+		return values_.at(ind);
+	}
+
+	static constexpr auto get_dims(){
+		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+	}
 };
 }
