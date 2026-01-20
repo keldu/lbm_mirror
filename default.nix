@@ -39,7 +39,7 @@ let
 
 	forstio = (import ((builtins.fetchTarball {
 		url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-		sha256 = "sha256:1l305m2vsm4vxflip9ij9f8q7qbiy85k06kwqi7jwm0b1j23jrin";
+		sha256 = "sha256:12wm3kgrsw3irfnafixrq89vr2gr4h05vc2ybixkgfsnc1znhwlv";
 	}) + "/default.nix"){
 		inherit stdenv;
 		inherit clang-tools;
