@@ -339,7 +339,7 @@ saw::error_or<void> kel_main(int argc, char** argv){
 	auto& lbm_dir = eo_lbm_dir.get_value();
 	auto out_dir = lbm_dir / "poiseulle_channel_2d_gpu";
 
-	// Create Dir TODO
+	std::filesystem::create_directories(out_dir);
 
 	// 
 	lbm::converter<lbm::sch::Float64> conv {
