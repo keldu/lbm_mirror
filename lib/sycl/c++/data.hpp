@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include <kel/lbm/lbm.hpp>
 
 namespace kel {
 namespace lbm {
@@ -19,9 +20,9 @@ struct struct_has_only_equal_dimension_array{};
 
 namespace saw {
 template<uint64_t Ghost, uint64_t... Meta, typename... Sch, string_literal... Keys, typename Encode>
-class data<schema::Struct<schema::Member<schema::Chunk<Sch,Ghost,Meta...>, Keys>...>, kel::lbm::encode::Sycl<Encode>> final {
+class data<schema::Struct<schema::Member<kel::lbm::sch::Chunk<Sch,Ghost,Meta...>, Keys>...>, kel::lbm::encode::Sycl<Encode> > final {
 public:
-	static constexpr data<schema::FixedArray meta = {{Meta...}};
+	static constexpr data<schema::FixedArray<schema::UInt64,sizeof...(Meta)>> meta = {{Meta...}};
 	using StorageT = std::tuple<data<Sch,Encode>*...>;
 private:
 
@@ -50,14 +51,14 @@ public:
 			if(not arg){
 				return;
 			}
-			sycl::free(arg,*q_);
+			acpp::sycl::free(arg,*q_);
 			arg = nullptr;
 		},members_);
 	}
 
 	template<saw::string_literal K>
 	auto* get_ptr(){
-		return std::get<parameter_key_pack_index<K, Keys...>::value(members_);
+		return std::get<parameter_key_pack_index<K, Keys...>::value>(members_);
 	}
 
 	template<saw::string_literal K>
@@ -67,6 +68,7 @@ public:
 		return *ptr;
 	}
 };
+}
 
 namespace kel {
 namespace lbm {
@@ -76,14 +78,15 @@ struct sycl_malloc_struct_helper;
 	
 template<typename... Members, typename Encode>
 struct sycl_malloc_struct_helper<sch::Struct<Members...>, Encode> final {
+	using Schema = sch::Struct<Members...>;
+
 	template<uint64_t i>
-	static saw::error_or<void> allocate_on_device_member(typename data<Sch,encode::Sycl<Encode>>::StorageT& storage, sycl::queue& q){
+	static saw::error_or<void> allocate_on_device_member(typename saw::data<typename saw::parameter_pack_type<i,Members...>::type::ValueType,encode::Sycl<Encode>>::StorageT& storage, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
 			using M = typename saw::parameter_pack_type<i,Members...>::type;
 			auto& ptr = std::get<i>(storage);
 
-			
-			ptr = sycl::malloc_device<M::ValueType::InnerSchema>(,q);
+			ptr = sycl::malloc_device<M::ValueType::InnerSchema>(1u,q);
 
 			return allocate_on_device_member<i+1u>(storage,q);
 		}
@@ -91,8 +94,8 @@ struct sycl_malloc_struct_helper<sch::Struct<Members...>, Encode> final {
 		return saw::make_void();
 	}
 	
-	static saw::error_or<void> allocate_on_device(data<Sch,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
-		typename data<Sch,encode::Sycl<Encode>>::StorageT storage;
+	static saw::error_or<void> allocate_on_device(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+		typename saw::data<Schema,encode::Sycl<Encode>>::StorageT storage;
  
 		auto eov = allocate_on_device_member<0u>(storage,q);
 		sycl_data = {storage, q};
@@ -112,8 +115,8 @@ public:
 	~device() = default;
 
 	template<typename Sch, typename Encode>
-	saw::error_or<void> allocate_on_device(data<Sch,encode::Sycl<Encode>>& sycl_data){
-		auto eov = sycl_malloc_struct_helper<Sch,Encode>::allocate_on_device(sycl_data, q_);
+	saw::error_or<void> allocate_on_device(saw::data<Sch,encode::Sycl<Encode>>& sycl_data){
+		auto eov = impl::sycl_malloc_struct_helper<Sch,Encode>::allocate_on_device(sycl_data, q_);
 		if(eov.is_error()){
 			return eov;
 		}

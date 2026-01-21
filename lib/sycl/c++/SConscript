@@ -15,18 +15,13 @@ core_env = env.Clone();
 core_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
 core_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
 
-core_env.particle_headers = sorted(glob.glob(dir_path + "/particle/*.hpp"));
-core_env.particle_geometry_headers = sorted(glob.glob(dir_path + "/particle/geometry/*.hpp"));
-
 env.sources += core_env.sources;
 env.headers += core_env.headers;
 
 ## Static lib
 objects = []
 core_env.add_source_files(objects, core_env.sources, shared=False);
-env.library_static = core_env.StaticLibrary('#build/kel-lbm', [objects]);
+env.library_static = core_env.StaticLibrary('#build/kel-lbm-sycl', [objects]);
 
 env.Install('$prefix/lib/', env.library_static);
-env.Install('$prefix/include/kel/lbm/', core_env.headers);
-env.Install('$prefix/include/kel/lbm/particle/', core_env.particle_headers);
-env.Install('$prefix/include/kel/lbm/particle/geometry/', core_env.particle_geometry_headers);
+env.Install('$prefix/include/kel/lbm/sycl/', core_env.headers);

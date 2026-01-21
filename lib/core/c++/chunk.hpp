@@ -76,4 +76,10 @@ public:
 		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 };
+
+template<typename Sch, uint64_t Ghost, uint64_t... Sides>
+struct meta_schema<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>> {
+	using MetaSchema = typename meta_schema<Sch>::MetaSchema;
+};
+
 }

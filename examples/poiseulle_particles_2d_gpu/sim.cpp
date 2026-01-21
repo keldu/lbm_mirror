@@ -1,8 +1,15 @@
 #include <kel/lbm/lbm.hpp>
-#include <AdaptiveCpp/sycl/sycl.hpp>
+#include <kel/lbm/sycl/lbm.hpp>
+
+#include <forstio/remote/filesystem/easy.hpp>
+#include <forstio/codec/json/json.hpp>
 
 namespace kel {
 namespace lbm {
+
+constexpr uint64_t dim_x = 16u;
+constexpr uint64_t dim_y = 4u;
+
 namespace sch {
 using namespace saw::schema;
 
@@ -14,6 +21,63 @@ using CellStruct = Struct<
 	Member<Vector<T,Desc::D>, "velocity">,
 	Member<Vector<T,Desc::D>, "force">
 >;
+
+
+using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
+using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
+using ChunkStruct = Struct<
+	Member<InfoChunk, "info">
+>;
+
+}
+
+template<typename T, typename Desc>
+saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>& fields){
+	auto& info_f = fields.get<"info">();
+	// Set everything as walls
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(2u);
+		},
+		{{0u,0u}},
+		{{dim_x, dim_y}},
+		{{0u,0u}}
+	);
+	// Fluid
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(1u);
+		},
+		{{0u,0u}},
+		{{dim_x, dim_y}},
+		{{1u,1u}}
+	);
+	
+	// Inflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(3u);
+		},
+		{{0u,0u}},
+		{{1u, dim_y}},
+		{{0u,1u}}
+	);
+	
+	// Outflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(4u);
+		},
+		{{dim_x-1u,0u}},
+		{{dim_x, dim_y}},
+		{{0u,1u}}
+	);
+
+	return saw::make_void();
 }
 
 template<typename T, typename Desc>
@@ -25,48 +89,54 @@ saw::error_or<void> step(){
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> kel_main(int argc, char** argv){
-	using namespace kel;
+saw::error_or<void> lbm_main(int argc, char** argv){
+	using namespace kel::lbm;
 
-	using dfi = lbm::df_info<T,Desc>;
+	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_dir = lbm::output_directory();
+	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
 		return std::move(eo_lbm_dir.get_error());
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
 
-	lbm::converter<lbm::sch::Float64> conv {
+	converter<sch::Float64> conv {
 		// delta_x
 		{{1.0}},
 		// delta_t
 		{{1.0}}
 	};
 
-	uint64_t x_d = 256u;
-	uint64_t y_d = 64u;
-	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{x_d,y_d}};
-	saw::data<sch::Array<lbm::sch::CellStruct<T,Desc>,Desc::D>> lbm_data{meta};
+	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	saw::data<sch::ChunkStruct<T,Desc>> lbm_data{};
 
 	acpp::sycl::queue sycl_q;
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions(lbm_data);
+		auto eov = setup_initial_conditions<T,Desc>(lbm_data);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
-	
+	/*
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			std::cout<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<" "<<lbm_data.get<"info">().at(index).template cast_to<sch::UInt16>().get()<<"\n";
+		},
+		{{0u,0u}},
+		{{dim_x, dim_y}}
+	);
+	*/
 
 	return saw::make_void();
 }
 
-using FloatT = kel::sch::Float32;
+using FloatT = kel::lbm::sch::Float32;
 
 int main(int argc, char** argv){
-	auto eov = kel_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
+	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();

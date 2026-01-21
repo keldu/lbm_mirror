@@ -2,6 +2,7 @@
 
 #include "schema.hpp"
 #include "flatten.hpp"
+#include "chunk.hpp"
 #include "descriptor.hpp"
 #include "boundary.hpp"
 #include "converter.hpp"
