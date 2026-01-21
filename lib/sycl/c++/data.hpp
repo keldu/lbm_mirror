@@ -18,11 +18,11 @@ struct struct_has_only_equal_dimension_array{};
 }
 
 namespace saw {
-template<uint64_t... Meta, typename... Sch, string_literal... Keys, typename Encode>
+template<uint64_t Ghost, uint64_t... Meta, typename... Sch, string_literal... Keys, typename Encode>
 class data<schema::Struct<schema::Member<schema::Chunk<Sch,Ghost,Meta...>, Keys>...>, kel::lbm::encode::Sycl<Encode>> final {
 public:
 	static constexpr data<schema::FixedArray meta = {{Meta...}};
-	using StorageT = std::tuple<data<Members::Type::InnerSchema,Encode>*...>;
+	using StorageT = std::tuple<data<Sch,Encode>*...>;
 private:
 
 	/**
@@ -81,6 +81,8 @@ struct sycl_malloc_struct_helper<sch::Struct<Members...>, Encode> final {
 		if constexpr (i < sizeof...(Members)){
 			using M = typename saw::parameter_pack_type<i,Members...>::type;
 			auto& ptr = std::get<i>(storage);
+
+			
 			ptr = sycl::malloc_device<M::ValueType::InnerSchema>(,q);
 
 			return allocate_on_device_member<i+1u>(storage,q);

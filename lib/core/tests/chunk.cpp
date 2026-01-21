@@ -34,7 +34,7 @@ SAW_TEST("Chunk Ghost size 3"){
 	SAW_EXPECT((std::is_same_v<TestChunk::InnerSchema,TestArray>), "Types are not identical");
 }
 
-SAW_TEST("Chunk setup"){
+SAW_TEST("Chunk 2D setup"){
 	using namespace kel;
 
 	using TestChunk = lbm::sch::Chunk<sch::Float32, 1u, 2u, 2u>;
