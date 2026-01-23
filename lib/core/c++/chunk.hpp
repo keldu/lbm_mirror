@@ -47,7 +47,7 @@ public:
 	data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		return values_.at(index);
 	}
-	
+
 	const data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
 		return values_.at(index);
 	}
@@ -55,7 +55,7 @@ public:
 	static constexpr auto get_ghost_dims() {
 		return data<InnerSchema,Encode>::get_dims();
 	}
-	
+
 	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
@@ -63,7 +63,7 @@ public:
 		}
 		return values_.at(ind);
 	}
-	
+
 	const data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
@@ -74,6 +74,14 @@ public:
 
 	static constexpr auto get_dims(){
 		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+	}
+
+	auto flat_data(){
+		return values_.flat_data();
+	}
+
+	static constexpr auto flat_size() {
+		return data<InnerSchema,Encode>::flat_size();
 	}
 };
 

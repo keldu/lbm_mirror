@@ -7,8 +7,8 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_x = 16u;
-constexpr uint64_t dim_y = 4u;
+constexpr uint64_t dim_x = 256u;
+constexpr uint64_t dim_y = 16u;
 
 namespace sch {
 using namespace saw::schema;
@@ -31,29 +31,29 @@ using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
 template<typename T, typename Desc>
 using ChunkStruct = Struct<
 	Member<InfoChunk, "info">
+	//,Member<DfChunk<T,Desc>, "dfs">
 >;
-
 }
 
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>& fields){
-	auto& info_f = fields.get<"info">();
+	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			info_f.at(index).set(2u);
 		},
-		{{0u,0u}},
-		{{dim_x, dim_y}},
-		{{0u,0u}}
+		{},
+		info_f.get_dims(),
+		{}
 	);
 	// Fluid
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			info_f.at(index).set(1u);
 		},
-		{{0u,0u}},
-		{{dim_x, dim_y}},
+		{},
+		info_f.get_dims(),
 		{{1u,1u}}
 	);
 	
@@ -76,12 +76,30 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 		{{dim_x, dim_y}},
 		{{0u,1u}}
 	);
+/*
+	//
+	auto& df_f = fields.template get<"dfs">();
+	saw::data<T> rho{1};
+	saw::data<sch::FixedArray<T,Desc::D>> vel{};
+	auto eq = equilibrium<T,Desc>(rho,vel);
+
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			auto& df = df_f.at(index);
+
+			df = eq;
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
+*/
 
 	return saw::make_void();
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> step(){
+saw::error_or<void> step(saw::data<sch::ChunkStruct<T,Desc>,encode::Sycl<saw::encode::Native>>& fields, saw::data<sch::UInt64> t_i, device& dev){
+	auto& q = dev.get_handle();
 
 	return saw::make_void();
 }
@@ -111,10 +129,33 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	saw::data<sch::ChunkStruct<T,Desc>> lbm_data{};
 
-	acpp::sycl::queue sycl_q;
+	device dev;
+	auto& sycl_q = dev.get_handle();
+
 	sycl_q.wait();
 	{
 		auto eov = setup_initial_conditions<T,Desc>(lbm_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+
+	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data;
+	{
+		auto eov = dev.allocate_on_device(lbm_sycl_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = dev.copy_to_device(lbm_data,lbm_sycl_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+
+	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32ul}; ++i){
+		auto eov = step<T,Desc>(lbm_sycl_data,i,dev);
 		if(eov.is_error()){
 			return eov;
 		}

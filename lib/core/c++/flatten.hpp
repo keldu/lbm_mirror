@@ -20,7 +20,6 @@ public:
 
 		return 1u;
 	}
-
 private:
 	/// 2,3,4 => 2,6,24
 	/// i + j * 2 + k * 3*2
@@ -35,7 +34,6 @@ private:
 public:
 	static saw::data<T> apply(const saw::data<sch::FixedArray<T,D>>& index, const saw::data<sch::FixedArray<T,D>>& meta){
 		saw::data<T> flat_ind{0u};
-
 		apply_i<0u>(flat_ind, index, meta);
 		return flat_ind;
 	}
