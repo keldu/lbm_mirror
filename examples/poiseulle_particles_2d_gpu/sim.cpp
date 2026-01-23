@@ -1,5 +1,5 @@
-#include <kel/lbm/lbm.hpp>
 #include <kel/lbm/sycl/lbm.hpp>
+#include <kel/lbm/lbm.hpp>
 
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
@@ -12,16 +12,6 @@ constexpr uint64_t dim_y = 16u;
 
 namespace sch {
 using namespace saw::schema;
-
-template<typename T, typename Desc>
-using CellStruct = Struct<
-	Member<FixedArray<T,Desc::Q>, "dfs">,
-	Member<FixedArray<T,Desc::Q>, "dfs_old">,
-	Member<UInt8, "info">,
-	Member<Vector<T,Desc::D>, "velocity">,
-	Member<Vector<T,Desc::D>, "force">
->;
-
 
 using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 
@@ -127,14 +117,15 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	};
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
-	saw::data<sch::ChunkStruct<T,Desc>> lbm_data{};
+	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 
 	device dev;
+
 	auto& sycl_q = dev.get_handle();
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(lbm_data);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -147,7 +138,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 	std::cout<<"Hey2"<<std::endl;
 	{
-		auto eov = dev.copy_to_device(lbm_data,lbm_sycl_data);
+		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){
 			return eov;
 		}

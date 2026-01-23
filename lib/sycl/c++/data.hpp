@@ -33,15 +33,19 @@ public:
 		q_{&q__},
 		values_{nullptr}
 	{
-		values_ = acpp::sycl::malloc_device<data<Sch>>(ct_multiply<uint64_t,Dims...>::value,*q_);
+		std::cout<<"Hey: "<<ct_multiply<uint64_t,Dims...>::value<<std::endl;
+		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(ct_multiply<uint64_t,Dims...>::value,*q_);
+		SAW_ASSERT(values_ and q_);
 	}
 
 	~data(){
 		if(not values_){
 			return;
 		}
+		SAW_ASSERT(q_);
 
 		acpp::sycl::free(values_,*q_);
+		values_ = nullptr;
 	}
 
 	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> get_dims() {
@@ -169,7 +173,13 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 			auto host_ptr = host_member_data.flat_data();
 			auto sycl_ptr = sycl_member_data.flat_data();
 
-			q.memcpy(host_ptr, sycl_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size().get() );
+			static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
+
+			std::cout<<host_member_data.flat_size().get()<<" "<<std::endl;
+
+			q.submit([&](acpp::sycl::handler& h){
+				h.copy(host_ptr,sycl_ptr, host_member_data.flat_size().get());
+			}).wait();
 
 			return copy_to_device_member<i+1u>(host_data,sycl_data,q);
 		}
@@ -192,7 +202,9 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 			auto host_ptr = host_member_data.flat_data();
 			auto sycl_ptr = sycl_member_data.flat_data();
 
-			q.memcpy(sycl_ptr, host_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size().get() );
+			q.submit([&](acpp::sycl::handler& h){
+				h.copy(sycl_ptr,host_ptr, host_member_data.flat_size().get());
+			}).wait();
 
 			return copy_to_host_member<i+1u>(sycl_data,host_data,q);
 		}

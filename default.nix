@@ -102,6 +102,11 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+		
+		s_poiseulle_particles_2d_gpu = pkgs.callPackage ./examples/s_poiseulle_particles_2d_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
 
 		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "flatten.hpp"
 
 namespace kel {
 namespace lbm {
