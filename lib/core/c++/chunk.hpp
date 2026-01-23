@@ -81,7 +81,7 @@ public:
 	}
 
 	static constexpr auto flat_size() {
-		return data<InnerSchema,Encode>::flat_size();
+		return data<InnerSchema,Encode>::flat_dims();
 	}
 };
 

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "common.hpp"
 #include <kel/lbm/lbm.hpp>
 
@@ -35,7 +33,7 @@ public:
 		q_{&q__},
 		values_{nullptr}
 	{
-		values_ = acpp::sycl::malloc<data<Sch>>(ct_multiply<uint64_t,Dims...>::value,q_);
+		values_ = acpp::sycl::malloc_device<data<Sch>>(ct_multiply<uint64_t,Dims...>::value,*q_);
 	}
 
 	~data(){
@@ -43,7 +41,7 @@ public:
 			return;
 		}
 
-		acpp::sycl::free(values_,q_);
+		acpp::sycl::free(values_,*q_);
 	}
 
 	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> get_dims() {
@@ -127,10 +125,20 @@ private:
 	 * Do it here by specializing.
 	 */
 	StorageT members_;
+
+	template<std::size_t... Is>
+	constexpr data(acpp::sycl::queue& q, std::index_sequence<Is...>):
+		members_{(static_cast<void>(Is), q)...}
+	{
+
+	}
 public:
 	data(acpp::sycl::queue& q__):
-		members_{{data<kel::lbm::sch::Chunk<Sch,Ghost,Meta...>,kel::lbm::encode::Sycl<Encode>>{q__}...}}
-	{}
+		data{q__, std::make_index_sequence<sizeof...(Sch)>{}}
+//		members_(q__)//data<kel::lbm::sch::Chunk<Sch,Ghost,Meta...>,kel::lbm::encode::Sycl<Encode>>(q__)...)
+	{
+		q__.wait();
+	}
 
 	template<saw::string_literal K>
 	auto& get(){
@@ -145,37 +153,6 @@ namespace kel {
 namespace lbm {
 namespace impl {
 template<typename Sch, typename Encode>
-struct sycl_malloc_struct_helper;
-	
-template<typename... Members, typename Encode>
-struct sycl_malloc_struct_helper<sch::Struct<Members...>, Encode> final {
-	using Schema = sch::Struct<Members...>;
-
-	template<uint64_t i>
-	static saw::error_or<void> allocate_on_device_member(typename saw::data<Schema,encode::Sycl<Encode>>::StorageT& storage, sycl::queue& q){
-		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
-			auto& ptr = std::get<i>(storage);
-
-			ptr = sycl::malloc_device<M::ValueType::InnerSchema>(1u,q);
-
-			return allocate_on_device_member<i+1u>(storage,q);
-		}
-		
-		return saw::make_void();
-	}
-	
-	static saw::error_or<void> allocate_on_device(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
-		typename saw::data<Schema,encode::Sycl<Encode>>::StorageT storage;
- 
-		auto eov = allocate_on_device_member<0u>(storage,q);
-		sycl_data = {storage, q};
-
-		return eov;
-	}
-};
-
-template<typename Sch, typename Encode>
 struct sycl_copy_helper;
 
 template<typename... Members, typename Encode>
@@ -186,13 +163,13 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 	static saw::error_or<void> copy_to_device_member(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
 			using M = typename saw::parameter_pack_type<i,Members...>::type;
-			auto& host_member_data = host_data.template get<i>();
-			auto& sycl_member_data = sycl_data.template get<i>();
+			auto& host_member_data = host_data.template get<M::KeyLiteral>();
+			auto& sycl_member_data = sycl_data.template get<M::KeyLiteral>();
 
 			auto host_ptr = host_member_data.flat_data();
 			auto sycl_ptr = sycl_member_data.flat_data();
 
-			q.memcpy(host_ptr, sycl_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size() );
+			q.memcpy(host_ptr, sycl_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size().get() );
 
 			return copy_to_device_member<i+1u>(host_data,sycl_data,q);
 		}
@@ -209,13 +186,13 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 	static saw::error_or<void> copy_to_host_member(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
 			using M = typename saw::parameter_pack_type<i,Members...>::type;
-			auto& host_member_data = host_data.template get<i>();
-			auto& sycl_member_data = sycl_data.template get<i>();
+			auto& host_member_data = host_data.template get<M::KeyLiteral>();
+			auto& sycl_member_data = sycl_data.template get<M::KeyLiteral>();
 
 			auto host_ptr = host_member_data.flat_data();
 			auto sycl_ptr = sycl_member_data.flat_data();
 
-			q.memcpy(sycl_ptr, host_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size() );
+			q.memcpy(sycl_ptr, host_ptr, sizeof(std::decay_t<decltype(host_ptr)>) * host_member_data.flat_size().get() );
 
 			return copy_to_host_member<i+1u>(sycl_data,host_data,q);
 		}
@@ -238,15 +215,6 @@ private:
 public:
 	device() = default;
 	~device() = default;
-
-	template<typename Sch, typename Encode>
-	saw::error_or<void> allocate_on_device(saw::data<Sch,encode::Sycl<Encode>>& sycl_data){
-		auto eov = impl::sycl_malloc_struct_helper<Sch,Encode>::allocate_on_device(sycl_data, q_);
-		if(eov.is_error()){
-			return eov;
-		}
-		return saw::make_void();
-	}
 
 	template<typename Sch, typename Encode>
 	saw::error_or<void> copy_to_device(saw::data<Sch,Encode>& host_data, saw::data<Sch,encode::Sycl<Encode>>& sycl_data){

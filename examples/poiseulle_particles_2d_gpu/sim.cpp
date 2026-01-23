@@ -140,13 +140,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data;
-	{
-		auto eov = dev.allocate_on_device(lbm_sycl_data);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
+	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	{
 		auto eov = dev.copy_to_device(lbm_data,lbm_sycl_data);
 		if(eov.is_error()){
