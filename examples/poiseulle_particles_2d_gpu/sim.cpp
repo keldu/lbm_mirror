@@ -139,14 +139,21 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
+	{
+
+	std::cout<<"Hey"<<std::endl;
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
+	sycl_q.wait();
+	std::cout<<"Hey2"<<std::endl;
 	{
 		auto eov = dev.copy_to_device(lbm_data,lbm_sycl_data);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
+	sycl_q.wait();
+	std::cout<<"Hey3"<<std::endl;
 
 	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32ul}; ++i){
 		auto eov = step<T,Desc>(lbm_sycl_data,i,dev);
@@ -154,7 +161,10 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
+	}
+	sycl_q.wait();
 
+	std::cout<<"Hey4"<<std::endl;
 	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -165,6 +175,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	);
 	*/
 
+	sycl_q.wait();
 	return saw::make_void();
 }
 
