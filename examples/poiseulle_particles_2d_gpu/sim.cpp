@@ -8,7 +8,7 @@ namespace kel {
 namespace lbm {
 
 constexpr uint64_t dim_x = 256u;
-constexpr uint64_t dim_y = 16u;
+constexpr uint64_t dim_y = 32u;
 
 namespace sch {
 using namespace saw::schema;
@@ -20,8 +20,9 @@ using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using ChunkStruct = Struct<
-	Member<InfoChunk, "info">
-	//,Member<DfChunk<T,Desc>, "dfs">
+	Member<InfoChunk, "info">,
+	Member<DfChunk<T,Desc>, "dfs">,
+	Member<DfChunk<T,Desc>, "dfs_old">
 >;
 }
 
@@ -66,7 +67,6 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 		{{dim_x, dim_y}},
 		{{0u,1u}}
 	);
-/*
 	//
 	auto& df_f = fields.template get<"dfs">();
 	saw::data<T> rho{1};
@@ -82,7 +82,6 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 		{},// 0-index
 		df_f.get_dims()
 	);
-*/
 
 	return saw::make_void();
 }
@@ -90,6 +89,19 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 template<typename T, typename Desc>
 saw::error_or<void> step(saw::data<sch::ChunkStruct<T,Desc>,encode::Sycl<saw::encode::Native>>& fields, saw::data<sch::UInt64> t_i, device& dev){
 	auto& q = dev.get_handle();
+	auto& info_f = fields.template get<"info">();
+
+	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			collision.apply(fields,index,t_i);
+		});
+	}).wait();
 
 	return saw::make_void();
 }
@@ -132,11 +144,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	{
 
-	std::cout<<"Hey"<<std::endl;
-
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	sycl_q.wait();
-	std::cout<<"Hey2"<<std::endl;
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){
@@ -144,7 +153,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	std::cout<<"Hey3"<<std::endl;
 
 	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32ul}; ++i){
 		auto eov = step<T,Desc>(lbm_sycl_data,i,dev);
@@ -155,7 +163,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	sycl_q.wait();
 
-	std::cout<<"Hey4"<<std::endl;
 	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){

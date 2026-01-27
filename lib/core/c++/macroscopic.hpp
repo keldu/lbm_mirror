@@ -4,6 +4,31 @@
 
 namespace kel {
 namespace lbm {
+template<typename T, typename Desc>
+void compute_rho_u (
+		const saw::data<sch::FixedArray<T,Desc::Q>>& dfs,
+		saw::data<T>& rho,
+		saw::data<sch::FixedArray<T,Desc::D>>& vel
+	)
+{
+	using dfi = df_info<T, Desc>;
+
+	rho = 0;
+	for(size_t j = 0; j < Desc::D; ++j){
+		vel.at({{j}}).set(0);
+	}
+
+	for(size_t j = 0; j < Desc::Q; ++j){
+		rho = rho + dfs.at({j});
+		for(size_t i = 0; i < Desc::D; ++i){
+			vel.at({{i}}) = vel.at({{i}}) + dfi::directions[j][i] * dfs.at({j}).get();
+		}
+	}
+
+	for(size_t i = 0; i < Desc::D; ++i){
+		vel.at({i}) = vel.at({i}) / rho;
+	}
+}
 /**
  * Calculate the macroscopic variables rho and u in Lattice Units.
  */

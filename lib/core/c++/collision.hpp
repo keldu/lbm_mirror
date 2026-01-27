@@ -45,43 +45,19 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
 		bool is_even = ((time_step.get() % 2) == 0);
-		auto& cell = field.at(index);
 
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		saw::data<T> rho;
 		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
-		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
+		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs_old({i}) = dfs_old({i}) + frequency_ * (eq.at(i) - dfs_old({i}));
-			// dfs_old({i}).set(dfs_old({i}).get() + (1.0 / relaxation_) * (eq.at(i).get() - dfs_old({i}).get()));
-		}
-	}
-
-	template<typename CellStructSchema>
-	void apply(
-		saw::data<CellStructSchema, Encode>* field, 
-		const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& meta,
-		const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index,
-		saw::data<sch::UInt64> time_step
-	){
-		bool is_even = ((time_step.get() % 2) == 0);
-		auto& cell = field[0u];
-		
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-
-		saw::data<T> rho;
-		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
-		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
-
-		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs_old({i}) = dfs_old({i}) + frequency_ * (eq.at(i) - dfs_old({i}));
+			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 	}
 };
