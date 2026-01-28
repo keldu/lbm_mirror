@@ -72,9 +72,10 @@ public:
 private:
 	data<Sch,Encode>* values_;
 
+public:
 	SAW_DEFAULT_COPY(data);
 	SAW_DEFAULT_MOVE(data);
-public:
+	
 	data():
 		values_{nullptr}
 	{}
@@ -165,9 +166,10 @@ private:
 	
 	data<schema::Ptr<InnerSchema>,kel::lbm::encode::Sycl<Encode>> values_;
 
+public:
 	SAW_DEFAULT_MOVE(data);
 	SAW_DEFAULT_COPY(data);
-public:
+
 	data():
 		values_{nullptr}
 	{}
