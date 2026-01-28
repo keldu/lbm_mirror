@@ -87,7 +87,7 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> step(saw::data<sch::ChunkStruct<T,Desc>,encode::Sycl<saw::encode::Native>>& fields, saw::data<sch::UInt64> t_i, device& dev){
+saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields, saw::data<sch::UInt64> t_i, device& dev){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 
@@ -99,7 +99,7 @@ saw::error_or<void> step(saw::data<sch::ChunkStruct<T,Desc>,encode::Sycl<saw::en
 				index.at({{i}}).set(idx[i]);
 			}
 
-			collision.apply(fields,index,t_i);
+			// collision.apply(fields,index,t_i);
 		});
 	}).wait();
 
@@ -146,6 +146,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	sycl_q.wait();
+	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){
@@ -155,7 +156,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 
 	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32ul}; ++i){
-		auto eov = step<T,Desc>(lbm_sycl_data,i,dev);
+		auto eov = step<T,Desc>(lsd_view,i,dev);
 		if(eov.is_error()){
 			return eov;
 		}
