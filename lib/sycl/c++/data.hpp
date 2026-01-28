@@ -28,7 +28,7 @@ private:
 	data<Sch,Encode>* values_;
 
 	SAW_FORBID_COPY(data);
-	SAW_DEFAULT_MOVE(data);
+	SAW_FORBID_MOVE(data);
 public:
 	data(acpp::sycl::queue& q__):
 		q_{&q__},

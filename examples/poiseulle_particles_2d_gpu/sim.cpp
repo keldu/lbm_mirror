@@ -99,7 +99,7 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 				index.at({{i}}).set(idx[i]);
 			}
 
-			// collision.apply(fields,index,t_i);
+			collision.apply(fields,index,t_i);
 		});
 	}).wait();
 
