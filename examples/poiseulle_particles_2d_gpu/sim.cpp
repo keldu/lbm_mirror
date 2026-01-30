@@ -199,10 +199,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	sycl_q.wait();
 
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{1024ul}; ++i){
-		auto eov = step<T,Desc>(lsd_view,i,dev);
-		if(eov.is_error()){
-			return eov;
+	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{1024ul*1024ul}; ++i){
+		{
+			auto eov = step<T,Desc>(lsd_view,i,dev);
+			if(eov.is_error()){
+				return eov;
+			}
 		}
 	}
 	}
