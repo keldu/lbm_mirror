@@ -191,7 +191,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
-	{
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	sycl_q.wait();
@@ -211,7 +210,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				return eov;
 			}
 		}
-	}
 	}
 	sycl_q.wait();
 
