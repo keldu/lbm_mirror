@@ -147,6 +147,11 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 		});
 	}).wait();
 
+	// Step
+	q.submit([&](acpp::sycl::handler& h){
+		h.depends_on(collision_ev);
+	}).wait();
+
 	return saw::make_void();
 }
 }
