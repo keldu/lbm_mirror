@@ -32,7 +32,7 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			info_f.at(index).set(2u);
+			info_f.at(index).set(1u);
 		},
 		{},
 		info_f.get_dims(),
@@ -41,7 +41,7 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 	// Fluid
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			info_f.at(index).set(1u);
+			info_f.at(index).set(2u);
 		},
 		{},
 		info_f.get_dims(),
@@ -91,15 +91,59 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 
+	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
+		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
+		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.01};
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
 
-			collision.apply(fields,index,t_i);
+			auto info = info_f.at(index);
+			
+			switch(info.get()){
+				case 0u:
+				break;
+				case 1u:
+					bb.apply(fields,index,t_i);
+				break;
+				case 2u:
+					collision.apply(fields,index,t_i);
+				break;
+				case 3u:
+					flow_in.apply(fields,index,t_i);
+					collision.apply(fields,index,t_i);
+				break;
+				case 4u:
+					flow_out.apply(fields,index,t_i);
+					collision.apply(fields,index,t_i);
+				break;
+				default:
+				break;
+			}
+		});
+	}).wait();
+
+	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
+
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+			
+			auto info = info_f.at(index);
+			
+			if(info.get() > 0u){
+				stream.apply(fields,index,t_i);
+			}
 		});
 	}).wait();
 
@@ -155,7 +199,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	sycl_q.wait();
 
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{32ul}; ++i){
+	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{1024ul}; ++i){
 		auto eov = step<T,Desc>(lsd_view,i,dev);
 		if(eov.is_error()){
 			return eov;

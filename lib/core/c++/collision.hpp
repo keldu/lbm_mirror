@@ -3,6 +3,7 @@
 #include "macroscopic.hpp"
 #include "component.hpp"
 #include "equilibrium.hpp"
+#include "chunk.hpp"
 
 namespace kel {
 namespace lbm {

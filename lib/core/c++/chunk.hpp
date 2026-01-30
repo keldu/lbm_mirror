@@ -35,6 +35,7 @@ using SuperChunk = Array<ChunkSchema,Dim>;
 }
 
 namespace saw {
+
 template<typename Sch, uint64_t Ghost, uint64_t... Sides, typename Encode>
 class data<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>,Encode> final {
 public:
@@ -57,19 +58,21 @@ public:
 		return data<InnerSchema,Encode>::get_dims();
 	}
 
-	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	static constexpr auto to_ghost_index(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
 			ind.at({i}) = index.at({i}) + Ghost;
 		}
+		return ind;
+	}
+
+	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+		std::decay_t<decltype(index)> ind = to_ghost_index(index);
 		return values_.at(ind);
 	}
 
 	const data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
-		std::decay_t<decltype(index)> ind;
-		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
-			ind.at({i}) = index.at({i}) + Ghost;
-		}
+		std::decay_t<decltype(index)> ind = to_ghost_index(index);
 		return values_.at(ind);
 	}
 

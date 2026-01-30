@@ -44,47 +44,22 @@ public:
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step){
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
 		bool is_even = ((time_step.get() % 2u) == 0u);
 
 		// This is a ref
-		auto& cell = field(index);
 
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		using dfi = df_info<T,Descriptor>;
 
 		// Technically use .copy()
-		auto df_cpy = dfs_old.copy();
+		auto& dfs_old = dfs_old_f.at(index);
+		auto df_cpy = dfs_old;
 
-		for(uint64_t i = 1u; i < Descriptor::Q; ++i){
-			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
-		}
-	}
-	
-	template<typename CellStructSchema>
-	void apply(
-		saw::data<CellStructSchema, Encode>* field, 
-		const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& meta,
-		const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index,
-		saw::data<sch::UInt64> time_step
-	){
-		bool is_even = ((time_step.get() % 2u) == 0u);
-
-		// This is a ref
-		auto& cell = field[0u];
-
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-
-		using dfi = df_info<T,Descriptor>;
-
-		// Technically use .copy()
-		auto df_cpy = dfs_old.copy();
-
-		for(uint64_t i = 1u; i < Descriptor::Q; ++i){
-			dfs_old({i}) = df_cpy({dfi::opposite_index.at(i)});
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			dfs_old.at({i}) = df_cpy.at({dfi::opposite_index.at(i)});
 		}
 	}
 };
@@ -104,59 +79,46 @@ public:
 template<typename FP, typename Descriptor, bool Dir, typename Encode>
 class component<FP, Descriptor, cmpt::ZouHeHorizontal<Dir>, Encode> final {
 private:
-	saw::data<FP> pressure_setting_;
 	saw::data<FP> rho_setting_;
 public:
-	component(const saw::data<FP>& pressure_setting__):
-		pressure_setting_{pressure_setting__},
-		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
+	component(const saw::data<FP>& density_setting__):
+		rho_setting_{density_setting__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
 		using dfi = df_info<FP,Descriptor>;
+		constexpr int known_dir = Dir ? 1 : -1;
 
 		bool is_even = ((time_step.get() % 2) == 0);
-		auto& cell = field(index);
 
-		auto& info = cell.template get<"info">();
-		if(info({0u}).get() == 0u){
-			return;
-		}
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		auto& info_f = field.template get<"info">();
+		
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
+		auto& dfs_old = dfs_old_f.at(index);
 		/**
 		 * Sum all known DFs
 		 */
 		saw::data<FP> sum_df{0};
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-			auto k_opp = dfi::opposite_index[k.get()];
 
-			if(info_n_val.get() > 0u){
-				sum_df += dfs_old({k_opp});
+			if(c_k[0u]*known_dir <= 0){
+				sum_df += dfs_old.at({k});
 			}
 		}
 
 		/**
 		 * Get the sum of the unknown dfs and precalculate the direction
 		 */
-		constexpr int known_dir = Dir ? 1 : -1;
 		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
 
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
-			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-			// auto k_opp = dfi::opposite_index[k.get()];
-
-			if(info_n_val.get() > 0u){
-				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
+			if(c_k[0u]*known_dir > 0){
+				sum_unknown_dfs += dfs_old.at({k}) * c_k[0u];
 			}
 		}
 
@@ -165,13 +127,13 @@ public:
 		static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
 
 		if constexpr (Dir) {
-			dfs_old({2u}) = dfs_old({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({6u}) = dfs_old({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-			dfs_old({8u}) = dfs_old({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
+			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
 		}else if constexpr (not Dir){
-			dfs_old({1u}) = dfs_old({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({5u}) = dfs_old({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-			dfs_old({7u}) = dfs_old({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
+			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
 		}
 	}
 };
