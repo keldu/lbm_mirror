@@ -32,15 +32,13 @@ struct lbm_vtk_writer<sch::Primitive<T,D>> {
 	}
 };
 
-template<typename T, uint64_t D>
+template<typename T, uint64_t... D>
 struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 	static saw::error_or<void> apply_header(std::ostream& vtk_file, std::string_view name){
 		vtk_file<<"VECTORS "<<name<<" float\n";
 		return saw::make_void();
 	}
-	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::FixedArray<T,D>>& field){
-		static_assert(D > 0, "Non-dimensionality is bad for velocity.");
-		static_assert(D <= 3, "4th dimension as well. Mostly due to vtk.");
+	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::FixedArray<T,D...>>& field){
 
 		// vtk_file<<"VECTORS "<<name<<" float\n";
 		for(uint64_t i = 0u; i < D; ++i){
@@ -80,6 +78,12 @@ struct lbm_vtk_writer<sch::Vector<T,D>> {
 		vtk_file<<"\n";
 		return saw::make_void();
 	}
+};
+
+template<typename... Members>
+struct lbm_vtk_writer<sch::Struct<Members...>> final  {
+	template<uint64_t i>
+	lbm_vtk_writer<s
 };
 
 template<uint64_t Dim, typename... StructT, saw::string_literal... StructN>

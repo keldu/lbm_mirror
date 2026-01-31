@@ -338,7 +338,7 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 	}
 	
 
-	static saw::error_or<void> copy_to_host(saw::data<Schema,Encode>& sycl_data, saw::data<Schema,encode::Sycl<Encode>>& host_data, sycl::queue& q){
+	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
 		return copy_to_host_member<0u>(sycl_data, host_data, q);
 	}
 };

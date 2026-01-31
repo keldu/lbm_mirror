@@ -210,6 +210,21 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				return eov;
 			}
 		}
+		{
+			auto eov = dev.copy_to_host(lbm_sycl_data,*lbm_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
+		{
+			std::string file_name = "t_";
+			file_name += std::to_string(i.get());
+			file_name += ".vtk";
+			auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
 	}
 	sycl_q.wait();
 
