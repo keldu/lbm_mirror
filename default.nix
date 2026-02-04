@@ -62,7 +62,7 @@ let
 	}).forstio;
 
 	pname = "kel-lbm";
-	version = "0.0.4";
+	version = "0.0.5";
 in rec {
 	kel = {
 		lbm = {
@@ -152,7 +152,8 @@ in rec {
 			name = "kel-lbm-sims-${version}";
 			paths = [
 				kel.lbm.core
-				examples.cavity_2d_gpu
+				kel.lbm.sycl
+				examples.poiseulle_particles_2d_gpu
 			];
 		};
 	};
