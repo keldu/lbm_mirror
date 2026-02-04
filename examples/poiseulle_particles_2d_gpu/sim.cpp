@@ -83,7 +83,7 @@ saw::error_or<void> setup_initial_conditions(
 		{{0u,1u}}
 	);
 	//
-	auto& df_f = fields.template get<"dfs">();
+	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
 
@@ -249,6 +249,15 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		{
+			std::string file_name = "tmp/df_";
+			file_name += std::to_string(i.get());
+			file_name += ".vtk";
+			auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
+		{
 			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
 			if(eov.is_error()){
 				return eov;
@@ -276,9 +285,14 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		if(eov.is_error()){
 			return eov;
 		}
-		auto eov2 = write_vtk_file((std::string{"tmp/df_"}+std::to_string(time_steps.get())+std::string{".vtk"}), *lbm_data_ptr);
-		if(eov2.is_error()){
-			return eov2;
+	}
+	{
+		std::string file_name = "tmp/df_";
+		file_name += std::to_string(time_steps.get());
+		file_name += ".vtk";
+		auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+		if(eov.is_error()){
+			return eov;
 		}
 	}
 
