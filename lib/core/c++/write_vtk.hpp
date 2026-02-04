@@ -7,6 +7,7 @@
 
 #include "descriptor.hpp"
 #include "flatten.hpp"
+#include "chunk.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -27,7 +28,11 @@ struct lbm_vtk_writer<sch::Primitive<T,D>> {
 		return saw::make_void();
 	}
 	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::Primitive<T,D>>& field){
-		vtk_file<<field.get()<<"\n";
+		if constexpr (std::is_same_v<T,sch::UnsignedInteger> and D == 1u) {
+			vtk_file<<field.template cast_to<sch::UInt16>().get()<<"\n";
+		}else{
+			vtk_file<<field.get()<<"\n";
+		}
 		return saw::make_void();
 	}
 };
@@ -60,13 +65,10 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 	}
 };
 
-template<typename Sch>
-struct lbm_vtk_struct_field_writer;
-
-template<typename T, uint64_t... D>
-struct lbm_vtk_struct_field_writer<sch::FixedArray<T,D...>> {
+template<typename T, uint64_t Ghost, uint64_t... D>
+struct lbm_vtk_writer<sch::Chunk<T,Ghost,D...>> {
 	template<uint64_t d>
-	static saw::error_or<void> apply_d(std::ostream& vtk_file, const saw::data<sch::FixedArray<T,D...>>& field, saw::data<sch::FixedArray<sch::UInt64,sizeof...(D)>>& index){
+	static saw::error_or<void> apply_d(std::ostream& vtk_file, const saw::data<sch::Chunk<T,Ghost,D...>>& field, saw::data<sch::FixedArray<sch::UInt64,sizeof...(D)>>& index){
 
 		if constexpr ( d < sizeof...(D)){
 			for(index.at({d}) = 0u; index.at({d}) < field.get_dims().at({d}); ++index.at({d})){
@@ -75,13 +77,11 @@ struct lbm_vtk_struct_field_writer<sch::FixedArray<T,D...>> {
 		}else{
 			auto eov = lbm_vtk_writer<T>::apply(vtk_file, field.at(index));
 			if(eov.is_error()) return eov;
-
-
 		}
 		return saw::make_void();
 	}
 
-	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::FixedArray<T,D...>>& field, std::string_view name){
+	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::Chunk<T,Ghost,D...>>& field, std::string_view name){
 		{
 			auto eov = lbm_vtk_writer<T>::apply_header(vtk_file,name);
 			if(eov.is_error()){
@@ -129,16 +129,16 @@ struct lbm_vtk_writer<sch::Vector<T,D>> {
 	}
 };
 
-template<typename... MemberT, saw::string_literal... Keys, uint64_t... Dims>
-struct lbm_vtk_writer<sch::Struct<sch::Member<sch::FixedArray<MemberT,Dims...>,Keys>...>> final  {
+template<typename... MemberT, saw::string_literal... Keys, uint64_t... Ghost, uint64_t... Dims>
+struct lbm_vtk_writer<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,Keys>...>> final  {
 	template<uint64_t i>
 	static saw::error_or<void> iterate_i(std::ostream& vtk_file,
-		const saw::data<sch::Struct<sch::Member<StructT,Keys>...>>& field){
+		const saw::data<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,Keys>...>>& field){
 
 		if constexpr ( i < sizeof...(MemberT) ) {
-			using MT = typename saw::paramter_pack_type<i,sch::Member<StrucT,Keys>...>::type;
+			using MT = typename saw::parameter_pack_type<i,sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,Keys>...>::type;
 			{
-				auto eov = lbm_vtk_struct_field_writer<typename MT::Type>::apply(vtk_file,field.template get<MT::KeyLiteral>(), MT::KeyLiteral.view());
+				auto eov = lbm_vtk_writer<typename MT::ValueType>::apply(vtk_file,field.template get<MT::KeyLiteral>(), MT::KeyLiteral.view());
 				if(eov.is_error()){
 					return eov;
 				}
@@ -152,7 +152,7 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::FixedArray<MemberT,Dims...>,K
 
 
 	static saw::error_or<void> apply(std::ostream& vtk_file,
-		const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>, Dim>>& field){
+		const saw::data<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,Keys>...>>& field){
 		
 		vtk_file
 			<<"# vtk DataFile Version 3.0\n"
@@ -162,8 +162,10 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::FixedArray<MemberT,Dims...>,K
 			<<"SPACING 1.0 1.0 1.0\n"
 			<<"ORIGIN 0.0 0.0 0.0\n"
 		;
+
+		auto& field_0 = field.template get<saw::parameter_key_pack_type<0u,Keys...>::literal>();	
+		auto meta = field_0.get_dims();
 		
-		auto meta = field.get_dims();
 		saw::data<sch::UInt64> pd_size{1u};
 		// DIMENSIONS
 
@@ -177,7 +179,7 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::FixedArray<MemberT,Dims...>,K
 				pd_size = pd_size * meta.at(i);
 				vtk_file << " " << meta.at(i).get(); 
 			}
-			for(saw::data<sch::UInt64> i{Dim}; i.get() < 3u; ++i){
+			for(saw::data<sch::UInt64> i{sizeof...(Dims)}; i.get() < 3u; ++i){
 				vtk_file << " 1";
 			}
 
@@ -199,216 +201,6 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::FixedArray<MemberT,Dims...>,K
 	}
 };
 
-template<uint64_t Dim, typename... StructT, saw::string_literal... StructN>
-struct lbm_vtk_writer<sch::Array<sch::Struct<sch::Member<StructT,StructN>...> , Dim>> {
-
-	template<uint64_t i, uint64_t Dep>
-	static saw::error_or<void> write_i_iterate_d(std::ostream& vtk_file, const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>,Dim>>& field, saw::data<sch::FixedArray<sch::UInt64,Dim>>& index){
-		constexpr auto Lit = saw::parameter_key_pack_type<i, StructN...>::literal;
-		using Type = typename saw::parameter_pack_type<i,StructT...>::type;
-
-		if constexpr (Dep == 0u){
-			return lbm_vtk_writer<Type>::apply(vtk_file, field.at(index).template get<Lit>());
-		} else {
-			// Dep < Dim // I hope
-			static_assert(Dep > 0u, "Don't fall into this case");
-			for(index.at({Dep-1u}) = 0; index.at({Dep-1u}) < field.get_dims().at({Dep-1u}); ++index.at({Dep-1u})){
-				auto eov = write_i_iterate_d<i,Dep-1u>(vtk_file, field, index);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-		}
-		return saw::make_void();
-	}
-
-	template<uint64_t i>
-	static saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>,Dim>>& field){
-
-		// auto meta = field.get_dims();
-		saw::data<sch::FixedArray<sch::UInt64,Dim>> index;
-		for(saw::data<sch::UInt64> it{0}; it.get() < Dim; ++it){
-			index.at({0u}).set(0u);
-		}
-		// vtk_file write?
-		// Data header
-		{
-
-			auto eov = lbm_vtk_writer<typename saw::parameter_pack_type<i,StructT...>::type>::apply_header(vtk_file, saw::parameter_key_pack_type<i, StructN...>::literal.view());
-			if(eov.is_error()){
-				return eov;
-			}
-
-		}
-		return write_i_iterate_d<i,Dim>(vtk_file, field, index);
-	}
-
-	template<uint64_t i>
-	static saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>, Dim>>& field){
-		// constexpr auto Lit = saw::parameter_key_pack_type<i, StructN...>::literal;
-		{
-			auto eov = write_i<i>(vtk_file, field);
-			if(eov.is_error()){
-				return eov;
-			}
-		}
-		if constexpr ( (i+1u) < sizeof...(StructT) ){
-			return iterate_i<i+1u>(vtk_file, field);
-		}
-		return saw::make_void();
-	}
-
-	static saw::error_or<void> apply(std::ostream& vtk_file,
-		const saw::data<sch::Array<sch::Struct<sch::Member<StructT,StructN>...>, Dim>>& field){
-
-		vtk_file
-			<<"# vtk DataFile Version 3.0\n"
-			<<"LBM File\n"
-			<<"ASCII\n"
-			<<"DATASET STRUCTURED_POINTS\n"
-			<<"SPACING 1.0 1.0 1.0\n"
-			<<"ORIGIN 0.0 0.0 0.0\n"
-		;
-		
-		auto meta = field.get_dims();
-		saw::data<sch::UInt64> pd_size{1u};
-		// DIMENSIONS
-
-		{
-			vtk_file << "DIMENSIONS";
-			for(saw::data<sch::UInt64> i{0u}; i.get() < Dim; ++i){
-				pd_size = pd_size * meta.at(i);
-				vtk_file << " " << meta.at(i).get(); 
-			}
-			for(saw::data<sch::UInt64> i{Dim}; i.get() < 3u; ++i){
-				vtk_file << " 1";
-			}
-
-			vtk_file << "\n";
-		}
-
-		if constexpr (sizeof...(StructT) > 0u){
-			// POINT DATA
-			{
-				vtk_file << "POINT_DATA " << pd_size.get() <<"\n";
-			}
-
-			// HEADER TO BODY
-			{
-				vtk_file << "\n";
-			}
-
-			return iterate_i<0u>(vtk_file, field);
-		}
-
-		return saw::make_void();
-	}
-};
-
-template<typename StructT, uint64_t Dim>
-struct lbm_vtk_writer_raw {
-	template<uint64_t i, uint64_t Dep>
-	static saw::error_or<void> write_i_iterate_d(std::ostream& vtk_file, const saw::data<StructT>* field, const saw::data<sch::FixedArray<sch::UInt64,Dim>>& meta, saw::data<sch::FixedArray<sch::UInt64,Dim>>& index){
-		constexpr auto Lit = saw::schema_type_at_index<i, StructT>::Type::KeyLiteral;
-		using Type = typename saw::schema_type_at_index<i, StructT>::Type::ValueType;
-
-		if constexpr (Dep == 0u){
-			auto flat_index = flatten_index<sch::UInt64,Dim>::apply(index, meta);
-			return lbm_vtk_writer<Type>::apply(vtk_file, field[flat_index.get()].template get<Lit>());
-		} else {
-			// Dep < Dim // I hope
-			static_assert(Dep > 0u, "Don't fall into this case");
-			for(index.at({Dep-1u}) = 0; index.at({Dep-1u}) < meta.at({Dep-1u}); ++index.at({Dep-1u})){
-				auto eov = write_i_iterate_d<i,Dep-1u>(vtk_file, field, meta, index);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-		}
-		return saw::make_void();
-	}
-
-	template<uint64_t i>
-	static saw::error_or<void> write_i(std::ostream& vtk_file, const saw::data<StructT>* field, const saw::data<sch::FixedArray<sch::UInt64,Dim>>& meta){
-		constexpr auto Lit = saw::schema_type_at_index<i, StructT>::Type::KeyLiteral;
-
-		// auto meta = field.get_dims();
-		saw::data<sch::FixedArray<sch::UInt64,Dim>> index;
-		for(saw::data<sch::UInt64> it{0}; it.get() < Dim; ++it){
-			index.at({0u}).set(0u);
-		}
-		// vtk_file write?
-		// Data header
-		{
-
-			auto eov = lbm_vtk_writer<typename saw::schema_type_at_index<i,StructT>::Type::ValueType>::apply_header(vtk_file, Lit.view());
-			if(eov.is_error()){
-				return eov;
-			}
-
-		}
-		return write_i_iterate_d<i,Dim>(vtk_file, field, meta, index);
-	}
-	template<uint64_t i>
-	static saw::error_or<void> iterate_i(std::ostream& vtk_file, const saw::data<StructT>* field,
-			const saw::data<sch::FixedArray<sch::UInt64,Dim>>& meta){
-		{
-			auto eov = write_i<i>(vtk_file, field, meta);
-			if(eov.is_error()){
-				return eov;
-			}
-		}
-		if constexpr ( (i+1u) < saw::schema_width<StructT>::value ){
-			return iterate_i<i+1u>(vtk_file, field, meta);
-		}
-		return saw::make_void();
-	}
-
-	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<StructT>* field,
-			const saw::data<sch::FixedArray<sch::UInt64,Dim>>& meta){
-
-		vtk_file
-			<<"# vtk DataFile Version 3.0\n"
-			<<"LBM File\n"
-			<<"ASCII\n"
-			<<"DATASET STRUCTURED_POINTS\n"
-			<<"SPACING 1.0 1.0 1.0\n"
-			<<"ORIGIN 0.0 0.0 0.0\n"
-		;
-		
-		saw::data<sch::UInt64> pd_size{1u};
-		// DIMENSIONS
-
-		{
-			vtk_file << "DIMENSIONS";
-			for(saw::data<sch::UInt64> i{0u}; i.get() < Dim; ++i){
-				pd_size = pd_size * meta.at(i);
-				vtk_file << " " << meta.at(i).get(); 
-			}
-			for(saw::data<sch::UInt64> i{Dim}; i.get() < 3u; ++i){
-				vtk_file << " 1";
-			}
-
-			vtk_file << "\n";
-		}
-
-		if constexpr (saw::schema_width<StructT>::value > 0u){
-			// POINT DATA
-			{
-				vtk_file << "POINT_DATA " << pd_size.get() <<"\n";
-			}
-
-			// HEADER TO BODY
-			{
-				vtk_file << "\n";
-			}
-
-			return iterate_i<0u>(vtk_file, field,meta);
-		}
-
-		return saw::make_void();
-	}
-};
 }
 
 template<typename Sch>
@@ -424,20 +216,5 @@ saw::error_or<void> write_vtk_file(const std::filesystem::path& file_name, const
 	return eov;
 }
 
-template<typename StructInRaw, uint64_t D>
-saw::error_or<void> write_vtk_file(
-		const std::filesystem::path& file_name,
-		const saw::data<StructInRaw>* field, 
-		const saw::data<sch::FixedArray<sch::UInt64,D>>& meta
-	){
-	std::ofstream vtk_file{file_name};
-
-	if( not vtk_file.is_open() ){
-		return saw::make_error<saw::err::critical>("Could not open file.");
-	}
-
-	auto eov = impl::lbm_vtk_writer_raw<StructInRaw,D>::apply(vtk_file, field, meta);
-	return eov;
-}
 }
 }

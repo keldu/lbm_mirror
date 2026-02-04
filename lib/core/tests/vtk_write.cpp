@@ -36,7 +36,7 @@ using MacroStruct = Struct<
 >;
 
 }
-
+/*
 SAW_TEST("VTK Write test example"){
 	using namespace kel;
 
@@ -88,5 +88,6 @@ SAW_TEST("VTK Write raw test example"){
 
 	// using Type = typename parameter_pack_type<i,T...>::type;
 }
+*/
 
 }

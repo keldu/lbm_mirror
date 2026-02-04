@@ -144,7 +144,7 @@ public:
 	}
 
 	static constexpr auto get_dims(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,kel::lbm::encode::Sycl<Encode>>{{Sides...}};
+		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	auto flat_data(){
@@ -207,7 +207,7 @@ public:
 	}
 
 	static constexpr auto get_dims(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,kel::lbm::encode::Sycl<Encode>>{{Sides...}};
+		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	auto flat_data(){

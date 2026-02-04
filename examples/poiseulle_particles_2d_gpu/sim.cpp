@@ -97,7 +97,7 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.01};
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -148,9 +148,11 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 	}).wait();
 
 	// Step
+	/*
 	q.submit([&](acpp::sycl::handler& h){
-		h.depends_on(collision_ev);
+		// h.depends_on(collision_ev);
 	}).wait();
+	*/
 
 	return saw::make_void();
 }
@@ -202,8 +204,18 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
+	saw::data<sch::UInt64> time_steps{256ul};
 
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{1024ul*1024ul}; ++i){
+	for(saw::data<sch::UInt64> i{0u}; i < time_steps; ++i){
+		{
+			std::string file_name = "tmp/t_";
+			file_name += std::to_string(i.get());
+			file_name += ".vtk";
+			auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
 		{
 			auto eov = step<T,Desc>(lsd_view,i,dev);
 			if(eov.is_error()){
@@ -216,17 +228,17 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				return eov;
 			}
 		}
-		{
-			std::string file_name = "t_";
-			file_name += std::to_string(i.get());
-			file_name += ".vtk";
-			auto eov = write_vtk_file(file_name, *lbm_data_ptr);
-			if(eov.is_error()){
-				return eov;
-			}
-		}
 	}
 	sycl_q.wait();
+	{
+		std::string file_name = "tmp/t_";
+		file_name += std::to_string(time_steps.get());
+		file_name += ".vtk";
+		auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 
 	/*
 	iterator<Desc::D>::apply(
