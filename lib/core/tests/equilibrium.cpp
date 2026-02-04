@@ -11,10 +11,11 @@ void check_equilibrium(){
 
 	using dfi = lbm::df_info<lbm::sch::Float64,Descriptor>;
 
-	saw::data<lbm::sch::Float64> rho{1.0};
-	saw::data<lbm::sch::FixedArray<lbm::sch::Float64,Descriptor::D>> vel;
+	saw::data<lbm::sch::Scalar<lbm::sch::Float64>> rho;
+	rho.at({}).set(1.0);
+	saw::data<lbm::sch::Vector<lbm::sch::Float64,Descriptor::D>> vel;
 	for(saw::data<lbm::sch::UInt64> i{0u}; i.get() < Descriptor::D; ++i){
-		vel.at(i) = {0.0};
+		vel.at({{i}}) = {0.0};
 	}
 	auto eq = lbm::equilibrium<lbm::sch::Float64,Descriptor>(rho,vel);
 

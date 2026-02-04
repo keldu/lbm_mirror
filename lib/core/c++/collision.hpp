@@ -61,6 +61,28 @@ public:
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 	}
+	
+	template<typename CellFieldSchema, typename MacroFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+		bool is_even = ((time_step.get() % 2) == 0);
+
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+		auto& rho_f = macros.template get<"density">();
+		auto& vel_f = macros.template get<"velocity">();
+	
+		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+
+		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
+		
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
+
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
+		}
+	}
 };
 
 template<typename T, typename Descriptor, typename Encode>

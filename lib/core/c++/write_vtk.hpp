@@ -100,6 +100,8 @@ struct lbm_vtk_writer<sch::Chunk<T,Ghost,D...>> {
 			}
 		}
 
+		vtk_file<<"\n";
+
 		return saw::make_void();
 	}
 };
@@ -124,6 +126,21 @@ struct lbm_vtk_writer<sch::Vector<T,D>> {
 		for(uint64_t i = D; i < 3; ++i){
 			vtk_file<<" 0";
 		}
+		vtk_file<<"\n";
+		return saw::make_void();
+	}
+};
+
+template<typename T>
+struct lbm_vtk_writer<sch::Scalar<T>> {
+	static saw::error_or<void> apply_header(std::ostream& vtk_file, std::string_view name){
+		vtk_file<<"SCALARS "<<name<<" float\n";
+		vtk_file<<"LOOKUP_TABLE default\n";
+		return saw::make_void();
+	}
+	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::Scalar<T>>& field){
+		// vtk_file<<"VECTORS "<<name<<" float\n";
+		vtk_file<<field.at({}).get();
 		vtk_file<<"\n";
 		return saw::make_void();
 	}
@@ -176,7 +193,6 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,
 			static_assert(saw::ct_multiply<uint64_t,Dims...>::value > 0u, "Invalid Dim size resulting in length 0u");
 
 			for(saw::data<sch::UInt64> i{0u}; i.get() < sizeof...(Dims); ++i){
-				pd_size = pd_size * meta.at(i);
 				vtk_file << " " << meta.at(i).get(); 
 			}
 			for(saw::data<sch::UInt64> i{sizeof...(Dims)}; i.get() < 3u; ++i){

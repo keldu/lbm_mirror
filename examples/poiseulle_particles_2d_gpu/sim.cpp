@@ -7,8 +7,8 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_x = 256u;
-constexpr uint64_t dim_y = 32u;
+constexpr uint64_t dim_x = 1024u;
+constexpr uint64_t dim_y = 512u;
 
 namespace sch {
 using namespace saw::schema;
@@ -24,10 +24,25 @@ using ChunkStruct = Struct<
 	Member<DfChunk<T,Desc>, "dfs">,
 	Member<DfChunk<T,Desc>, "dfs_old">
 >;
+
+template<typename T, typename Desc>
+using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+
+template<typename T>
+using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
+using MacroStruct = Struct<
+	Member<VelChunk<T,Desc>, "velocity">,
+	Member<RhoChunk<T>, "density">
+>;
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>& fields){
+saw::error_or<void> setup_initial_conditions(
+		saw::data<sch::ChunkStruct<T,Desc>>& fields,
+		saw::data<sch::MacroStruct<T,Desc>>& macros
+){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
@@ -69,13 +84,16 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 	);
 	//
 	auto& df_f = fields.template get<"dfs">();
-	saw::data<T> rho{1};
-	saw::data<sch::FixedArray<T,Desc::D>> vel{};
-	auto eq = equilibrium<T,Desc>(rho,vel);
+	auto& rho_f = macros.template get<"density">();
+	auto& vel_f = macros.template get<"velocity">();
 
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			auto& df = df_f.at(index);
+			auto& rho = rho_f.at(index);
+			rho.at({}) = {1};
+			auto& vel = vel_f.at(index);
+			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
 		},
@@ -87,7 +105,12 @@ saw::error_or<void> setup_initial_conditions(saw::data<sch::ChunkStruct<T,Desc>>
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields, saw::data<sch::UInt64> t_i, device& dev){
+saw::error_or<void> step(
+		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
+		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+		saw::data<sch::UInt64> t_i,
+		device& dev
+){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 
@@ -96,7 +119,7 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.01};
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.001};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -114,15 +137,15 @@ saw::error_or<void> step(saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sy
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					collision.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
 				break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
-					collision.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
 				break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
-					collision.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
 				break;
@@ -181,6 +204,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
+	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
 
 	device dev;
 
@@ -188,17 +212,25 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
+	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
 	sycl_q.wait();
 	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
+	auto lsdm_view = make_chunk_struct_view(lbm_sycl_macro_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = dev.copy_to_device(*lbm_macro_data_ptr,lbm_sycl_macro_data);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -211,13 +243,19 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			std::string file_name = "tmp/t_";
 			file_name += std::to_string(i.get());
 			file_name += ".vtk";
-			auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+			auto eov = write_vtk_file(file_name, *lbm_macro_data_ptr);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
 		{
-			auto eov = step<T,Desc>(lsd_view,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
+		{
+			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 			if(eov.is_error()){
 				return eov;
 			}
@@ -234,9 +272,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		std::string file_name = "tmp/t_";
 		file_name += std::to_string(time_steps.get());
 		file_name += ".vtk";
-		auto eov = write_vtk_file(file_name, *lbm_data_ptr);
+		auto eov = write_vtk_file(file_name, *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
+		}
+		auto eov2 = write_vtk_file((std::string{"tmp/df_"}+std::to_string(time_steps.get())+std::string{".vtk"}), *lbm_data_ptr);
+		if(eov2.is_error()){
+			return eov2;
 		}
 	}
 

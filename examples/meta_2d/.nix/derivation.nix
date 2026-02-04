@@ -5,7 +5,7 @@
 , forstio
 , pname
 , version
-, kel-lbm
+, kel
 }:
 
 stdenv.mkDerivation {
@@ -24,7 +24,7 @@ stdenv.mkDerivation {
     forstio.codec
     forstio.codec-unit
 		forstio.codec-json
-		kel-lbm
+		kel.lbm.core
   ];
 
 	preferLocalBuild = true;

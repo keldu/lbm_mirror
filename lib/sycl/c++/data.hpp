@@ -52,11 +52,11 @@ public:
 		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
-	constexpr data<Sch,Encode>& at(data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
+	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
 		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 	
-	constexpr data<Sch,Encode>& at(data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
+	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
 		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 
@@ -88,11 +88,11 @@ public:
 		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
-	constexpr data<Sch,Encode>& at(data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
+	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
 		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 	
-	constexpr data<Sch,Encode>& at(data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
+	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
 		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 
@@ -115,11 +115,11 @@ public:
 		values_{q__}
 	{}
 
-	data<ValueSchema, kel::lbm::encode::Sycl<Encode>>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		return values_.at(index);
 	}
 
-	data<ValueSchema, kel::lbm::encode::Sycl<Encode>>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
 		return values_.at(index);
 	}
 
@@ -178,11 +178,11 @@ public:
 		values_{values__}
 	{}
 
-	data<ValueSchema, kel::lbm::encode::Sycl<Encode>>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		return values_.at(index);
 	}
 
-	data<ValueSchema, kel::lbm::encode::Sycl<Encode>>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
 		return values_.at(index);
 	}
 
