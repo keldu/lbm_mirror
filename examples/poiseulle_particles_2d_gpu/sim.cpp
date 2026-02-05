@@ -7,8 +7,8 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_x = 1024u;
-constexpr uint64_t dim_y = 512u;
+constexpr uint64_t dim_x = 2048u;
+constexpr uint64_t dim_y = 1024u;
 
 namespace sch {
 using namespace saw::schema;
@@ -119,7 +119,7 @@ saw::error_or<void> step(
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.001};
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.01};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){

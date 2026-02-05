@@ -67,12 +67,14 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 
 template<typename T, uint64_t Ghost, uint64_t... D>
 struct lbm_vtk_writer<sch::Chunk<T,Ghost,D...>> {
+
 	template<uint64_t d>
 	static saw::error_or<void> apply_d(std::ostream& vtk_file, const saw::data<sch::Chunk<T,Ghost,D...>>& field, saw::data<sch::FixedArray<sch::UInt64,sizeof...(D)>>& index){
-
-		if constexpr ( d < sizeof...(D)){
-			for(index.at({d}) = 0u; index.at({d}) < field.get_dims().at({d}); ++index.at({d})){
-				auto eov = apply_d<d+1u>(vtk_file, field, index);
+		// VTK wants to iterate over z,y,x instead of x,y,z
+		// We could reorder the dimensions, but eh
+		if constexpr ( d > 0u){
+			for(index.at({d-1u}) = 0u; index.at({d-1u}) < field.get_dims().at({d-1u}); ++index.at({d-1u})){
+				auto eov = apply_d<d-1u>(vtk_file, field, index);
 			}
 		}else{
 			auto eov = lbm_vtk_writer<T>::apply(vtk_file, field.at(index));
@@ -94,7 +96,7 @@ struct lbm_vtk_writer<sch::Chunk<T,Ghost,D...>> {
 		}
 
 		{
-			auto eov = apply_d<0u>(vtk_file, field, index);
+			auto eov = apply_d<sizeof...(D)>(vtk_file, field, index);
 			if(eov.is_error()){
 				return eov;
 			}
