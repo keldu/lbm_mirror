@@ -11,6 +11,8 @@ struct BounceBack {};
 template<bool East>
 struct ZouHeHorizontal{};
 
+struct Equilibrium {};
+
 template<bool North>
 struct ZouHeVertical{};
 }
@@ -61,6 +63,28 @@ public:
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			dfs_old.at({i}) = df_cpy.at({dfi::opposite_index.at(i)});
 		}
+	}
+};
+
+template<typename FP, typename Descriptor, typename Encode>
+class component<FP, Descriptor, cmpt::Equilibrium, Encode> final {
+private:
+	saw::data<FP> density_;
+	saw::data<FP> velocity_;
+public:
+	component(
+		saw::data<FP> density__,
+		saw::Data<FP> velocity__
+	):
+		density_{density__},
+		velocity_{velocity__}
+	{}
+
+	template<typename CellFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
+		using dfi = df_info<T,Descriptor>;
+		
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 	}
 };
 

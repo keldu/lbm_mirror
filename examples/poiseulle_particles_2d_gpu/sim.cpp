@@ -121,7 +121,7 @@ saw::error_or<void> step(
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
-				uint64_t target_t_i = 128u;
+				uint64_t target_t_i = 256u;
 				if(t_i.get() < target_t_i){
 					return 1.0 + (0.001 / target_t_i) * t_i.get();
 				}
