@@ -69,22 +69,28 @@ public:
 template<typename FP, typename Descriptor, typename Encode>
 class component<FP, Descriptor, cmpt::Equilibrium, Encode> final {
 private:
-	saw::data<FP> density_;
-	saw::data<FP> velocity_;
+	saw::data<sch::Scalar<FP>> density_;
+	saw::data<sch::Vector<FP,Descriptor::D>> velocity_;
 public:
 	component(
-		saw::data<FP> density__,
-		saw::Data<FP> velocity__
+		saw::data<sch::Scalar<FP>> density__,
+		saw::data<sch::Vector<FP,Descriptor::D>> velocity__
 	):
 		density_{density__},
 		velocity_{velocity__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
-		using dfi = df_info<T,Descriptor>;
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step) const {
+		
+		bool is_even = ((time_step.get() % 2u) == 0u);
+		using dfi = df_info<FP,Descriptor>;
 		
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+		auto eq = equilibrium<FP,Descriptor>(density_,velocity_);
+
+		dfs_old_f.at(index) = eq;
 	}
 };
 

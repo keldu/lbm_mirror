@@ -52,8 +52,8 @@ public:
 		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
-		saw::data<T> rho;
-		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
+		saw::data<sch::Scalar<T>> rho;
+		saw::data<sch::Vector<T,Descriptor::D>> vel;
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 

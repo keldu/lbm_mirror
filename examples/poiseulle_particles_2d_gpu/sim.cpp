@@ -119,6 +119,14 @@ saw::error_or<void> step(
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+
+		saw::data<sch::Scalar<T>> rho_b;
+		rho_b.at({}) = 1.0;
+		saw::data<sch::Vector<T,Desc::D>> vel_b;
+		vel_b.at({{0u}}) = 0.01;
+
+		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
 				uint64_t target_t_i = 256u;
@@ -148,11 +156,13 @@ saw::error_or<void> step(
 					collision.apply(fields,macros,index,t_i);
 				break;
 				case 3u:
-					flow_in.apply(fields,index,t_i);
+					equi.apply(fields,index,t_i);
+					// flow_in.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				case 4u:
-					flow_out.apply(fields,index,t_i);
+					equi.apply(fields,index,t_i);
+					// flow_out.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
