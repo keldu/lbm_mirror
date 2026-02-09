@@ -254,7 +254,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{512ul};
+	saw::data<sch::UInt64> time_steps{4096ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps; ++i){
 		{
