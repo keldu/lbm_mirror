@@ -28,6 +28,7 @@ stdenv.mkDerivation {
 		forstio.codec-unit
 		forstio.remote
 		forstio.codec-json
+		forstio.io
 		adaptive-cpp
 		kel.lbm.core
 #		kel-lbm.sycl

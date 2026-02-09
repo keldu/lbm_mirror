@@ -36,6 +36,32 @@ let
 		llvmPackages = pkgs.llvmPackages_19;
 		lld = pkgs.lld_19;
 	};
+
+	sci_tools = let
+		scitoolsSrc = stdenv.mkDerivation {
+			name = "scitools-src";
+
+		 src = builtins.fetchurl {
+			url = "https://git.keldu.de/apps-science_tools/snapshot/master.tar.gz";
+			sha256 = "e91c18fef798dd7b3afbd1615c2e320b90a74aa2d7ef726801a76e3f7f77ae81";
+		 };
+
+		 phases = [ "unpackPhase" "installPhase" ];
+
+		 unpackPhase = ''
+			mkdir source
+			tar -xzf "$src" -C source --strip-components=1
+		 '';
+
+		 installPhase = ''
+			cp -r source $out
+		 '';
+	  };
+	in
+		(import "${scitoolsSrc}/default.nix" {
+			inherit stdenv clang-tools forstio;
+		});
+
 	forstio = let
 		forstioSrc = stdenv.mkDerivation {
 			name = "forstio-src";

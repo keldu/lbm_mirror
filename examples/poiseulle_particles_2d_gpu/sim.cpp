@@ -1,6 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 
+#include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
 
@@ -36,6 +37,9 @@ using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">
 >;
+
+// template<typename T, typename Desc>
+// using Particles = Particle<
 }
 
 template<typename T, typename Desc>
@@ -224,6 +228,22 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
 
+	auto eo_aio = saw::setup_async_io();
+	if(eo_aio.is_error()){
+		return std::move(eo_aio.get_error());
+	}
+	auto& aio = eo_aio.get_value();
+	saw::wait_scope wait{aio.event_loop};
+
+	bool krun = true;
+	bool print_status = false;
+	aio.event_port.on_signal(saw::Signal::Terminate).then([&](){
+		krun = false;
+	}).detach();
+	aio.event_port.on_signal(saw::Signal::User1).then([&](){
+		print_status = true;
+	}).detach();
+
 	device dev;
 
 	auto& sycl_q = dev.get_handle();
@@ -256,7 +276,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 	saw::data<sch::UInt64> time_steps{4096ul};
 
-	for(saw::data<sch::UInt64> i{0u}; i < time_steps; ++i){
+	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
 			std::string file_name = "tmp/t_";
 			file_name += std::to_string(i.get());
@@ -292,6 +312,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			if(eov.is_error()){
 				return eov;
 			}
+		}
+
+		wait.poll();
+		if(print_status){
+			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
+			print_status = false;
 		}
 	}
 	sycl_q.wait();

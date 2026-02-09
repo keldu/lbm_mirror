@@ -118,8 +118,8 @@ public:
 		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
-		saw::data<T> rho;
-		saw::data<sch::FixedArray<T,Descriptor::D>> vel;
+		saw::data<sch::Scalar<T>> rho;
+		saw::data<sch::Vector<T,Descriptor::D>> vel;
 		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
@@ -131,7 +131,7 @@ public:
 			// saw::data<T> ci_min_u{0};
 			saw::data<T> ci_dot_u{0};
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){
-				ci_dot_u = ci_dot_u + vel.at({d}) * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])};
+				ci_dot_u = ci_dot_u + vel.at({{d}}) * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])};
 			}
 			saw::data<T> F_i{0};// = saw::data<T>{dfi::weights[i]} * (ci_dot_F * dfi::inv_cs2 + ci_dot_u * ci_dot_F * (dfi::inv_cs2 * dfi::inv_cs2));
 
