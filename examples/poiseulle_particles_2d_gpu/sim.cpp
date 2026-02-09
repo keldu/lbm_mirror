@@ -90,7 +90,7 @@ saw::error_or<void> setup_initial_conditions(
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
-
+	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			auto& df = df_f.at(index);
@@ -103,6 +103,22 @@ saw::error_or<void> setup_initial_conditions(
 		},
 		{},// 0-index
 		df_f.get_dims()
+	);
+
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			auto& df = df_f.at(index);
+			auto& rho = rho_f.at(index);
+			rho.at({}) = {1};
+			auto& vel = vel_f.at(index);
+			vel.at({{0u}}) = 0.1;
+			auto eq = equilibrium<T,Desc>(rho,vel);
+
+			df = eq;
+		},
+		{},// 0-index
+		df_f.get_dims(),
+		{{1u,1u}}
 	);
 
 	return saw::make_void();
@@ -127,7 +143,7 @@ saw::error_or<void> step(
 		saw::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
 		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.01;
+		vel_b.at({{0u}}) = 0.1;
 
 		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
 
