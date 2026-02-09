@@ -4,6 +4,7 @@
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
+#include <forstio/codec/simple.hpp>
 
 namespace kel {
 namespace lbm {
@@ -297,9 +298,18 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			std::string file_name = "tmp/t_";
 			file_name += std::to_string(i.get());
 			file_name += ".vtk";
-			auto eov = write_vtk_file(file_name, *lbm_macro_data_ptr);
-			if(eov.is_error()){
-				return eov;
+			
+			{
+				auto eov = write_vtk_file(file_name, *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = saw::easy::encode_and_write_file<sch::ChunkStruct<T,Desc>,saw::encode::KelSimple>(file_name, *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
 			}
 		}
 		{
