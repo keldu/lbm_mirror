@@ -12,6 +12,7 @@
 #include "environment.hpp"
 #include "equilibrium.hpp"
 #include "iterator.hpp"
+#include "hlbm.hpp"
 #include "macroscopic.hpp"
 #include "stream.hpp"
 #include "write_vtk.hpp"

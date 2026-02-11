@@ -8,5 +8,9 @@ namespace lbm {
 namespace sch {
 using namespace saw::schema;
 }
+
+saw::error_or<void> init_lbm_env(){
+	return saw::make_void();
+}
 }
 }

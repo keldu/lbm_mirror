@@ -35,7 +35,7 @@ using ParticleRigidBody = Struct<
 	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation_old">,
 
 	Member<Vector<T,D>, "acceleration">,
-	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotational_acceleration">
+	Member<typename impl::rotation_type_helper<T,D>::Schema, "angular_acceleration">
 >;
 
 template<typename T>
@@ -109,8 +109,12 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 	auto& pos = body.template get<"position">();
 	auto& pos_old = body.template get<"position_old">();
 
+	auto& pos_acc = body.template get<"acceleration">();
+	
 	auto& rot = body.template get<"rotation">();
-	auto& acc = body.template get<"acceleration">();
+	auto& rot_old = body.template get<"rotation_old">();
+
+	auto& rot_acc = body.template get<"angular_acceleration">();
 
 	auto tsd_squared = time_step_delta * time_step_delta;
 
@@ -118,10 +122,18 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 	// Actual step
 	saw::data<sch::Scalar<T>> two;
 	two.at({}).set(2.0);
-	pos_new = pos * two - pos_old + acc * tsd_squared;
+	pos_new = pos * two - pos_old + pos_acc * tsd_squared;
 
+	// Angular
+	saw::data<typename sch::impl::rotation_type_helper<T,D>::Schema> rot_new;
+	rot_new = rot * two - rot_old + rot_acc * tsd_squared;
+
+	// Swap - Could be std::swap?
 	pos_old = pos;
 	pos = pos_new;
+
+	rot_old = rot;
+	rot = rot_new;
 };
 
 template<typename T, uint64_t D>

@@ -80,6 +80,10 @@ public:
 		values_{nullptr}
 	{}
 
+	data(data<schema::FixedArray<Sch,Dims...>, kel::lbm::encode::Sycl<Encode>>& values__):
+		values_{&values__.at({})}
+	{}
+
 	data(data<Sch,Encode>* values__):
 		values_{values__}
 	{}
@@ -342,6 +346,36 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 		return copy_to_host_member<0u>(sycl_data, host_data, q);
 	}
 };
+
+template<typename Sch, uint64_t... Dims, typename Encode>
+struct sycl_copy_helper<sch::FixedArray<Sch,Dims...>, Encode> final {
+	using Schema = sch::FixedArray<Sch,Dims...>;
+	
+	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+		auto host_ptr = host_data.flat_data();
+		auto sycl_ptr = sycl_data.flat_data();
+
+		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
+
+		q.submit([&](acpp::sycl::handler& h){
+			h.copy(sycl_ptr,host_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+		}).wait();
+		return saw::make_void();
+	}
+
+	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+		auto host_ptr = host_data.flat_data();
+		auto sycl_ptr = sycl_data.flat_data();
+
+		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
+
+		q.submit([&](acpp::sycl::handler& h){
+			h.copy(host_ptr,sycl_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+		}).wait();
+		return saw::make_void();
+	}
+};
+
 
 template<typename Schema, typename Encode>
 struct make_chunk_struct_view_helper;
