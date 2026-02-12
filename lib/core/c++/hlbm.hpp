@@ -40,15 +40,17 @@ public:
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
 
-		compute_rho_u<T,Descriptor::D>(dfs_old_f.at(index), rho, vel);
+		compute_rho_u<T,Descriptor>(dfs_old_f.at(index), rho, vel);
 
 		auto& porosity = porosity_f.at(index);
-		auto flip_porosity = saw::data<sch::Scalar<T>>{1.0} - porosity;
+		saw::data<sch::Scalar<T>> one;
+		one.at({}) = 1.0;
+		auto flip_porosity = one - porosity;
 
 		auto& N = particle_N_f.at(index);
 		auto& D = particle_D_f.at(index);
 		// Convex combination of velocities
-		vel = vel * flip_porosity + N * porosity / D;
+		vel = vel * porosity + N * flip_porosity / D;
 		// Equilibrium
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
@@ -57,7 +59,7 @@ public:
 		}
 
 		porosity.at({}) = 1.0;
-
+		D.at({}) = 0.0;
 	}
 };
 

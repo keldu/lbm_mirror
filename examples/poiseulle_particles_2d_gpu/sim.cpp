@@ -26,11 +26,14 @@ template<typename T, typename Desc>
 using ScalarChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
+using VectorChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
 using ChunkStruct = Struct<
 	Member<InfoChunk, "info">,
 	Member<DfChunk<T,Desc>, "dfs">,
 	Member<DfChunk<T,Desc>, "dfs_old">,
-	Member<ScalarChunk<T,Desc>, "particle_N">,
+	Member<VectorChunk<T,Desc>, "particle_N">,
 	Member<ScalarChunk<T,Desc>, "particle_D">
 >;
 
@@ -102,11 +105,13 @@ saw::error_or<void> setup_initial_conditions(
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
+	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			auto& df = df_f.at(index);
 			auto& rho = rho_f.at(index);
+			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			auto eq = equilibrium<T,Desc>(rho,vel);
@@ -324,7 +329,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{particle_size};
+	saw::data<sch::UInt64> time_steps{256ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
@@ -346,15 +351,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 					return eov;
 				}
 			}*/
-		}
-		{
-			std::string file_name = "df_";
-			file_name += std::to_string(i.get());
-			file_name += ".vtk";
-			auto eov = write_vtk_file(out_dir/file_name, *lbm_data_ptr);
-			if(eov.is_error()){
-				return eov;
-			}
 		}
 		{
 			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
@@ -387,15 +383,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		file_name += std::to_string(time_steps.get());
 		file_name += ".vtk";
 		auto eov = write_vtk_file(out_dir/file_name, *lbm_macro_data_ptr);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
-	{
-		std::string file_name = "df_";
-		file_name += std::to_string(time_steps.get());
-		file_name += ".vtk";
-		auto eov = write_vtk_file(out_dir/file_name, *lbm_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
