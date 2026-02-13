@@ -23,7 +23,7 @@ struct lbm_vtk_writer {
 template<typename T, uint64_t D>
 struct lbm_vtk_writer<sch::Primitive<T,D>> {
 	static saw::error_or<void> apply_header(std::ostream& vtk_file, std::string_view name){
-		vtk_file<<"SCALARS "<<name<<" float\n";
+		vtk_file<<"SCALARS "<<name<<" float 1\n";
 		vtk_file<<"LOOKUP_TABLE default\n";
 		return saw::make_void();
 	}
