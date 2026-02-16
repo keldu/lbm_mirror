@@ -158,7 +158,8 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.6};
+		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		saw::data<sch::Scalar<T>> rho_b;
@@ -329,7 +330,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{256ul};
+	saw::data<sch::UInt64> time_steps{2048ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{

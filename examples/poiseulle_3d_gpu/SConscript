@@ -22,12 +22,12 @@ env.headers += examples_env.headers;
 
 # Cavity2D
 examples_objects = [];
-examples_env.add_source_files(examples_objects, ['poiseulle_3d_gpu.cpp'], shared=False);
-examples_env.poiseulle_3d_gpu = examples_env.Program('#bin/poiseulle_3d_gpu', [examples_objects]);
+examples_env.add_source_files(examples_objects, ['sim.cpp'], shared=False);
+examples_env.poiseulle_2d_gpu = examples_env.Program('#bin/poiseulle_particles_3d_gpu', [examples_objects]);
 
 # Set Alias
 env.examples = [
-	examples_env.poiseulle_3d_gpu
+	examples_env.poiseulle_2d_gpu
 ];
 env.Alias('examples', env.examples);
 env.targets += ['examples'];

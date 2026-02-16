@@ -50,7 +50,9 @@ public:
 		auto& N = particle_N_f.at(index);
 		auto& D = particle_D_f.at(index);
 		// Convex combination of velocities
-		vel = vel * porosity + N * flip_porosity / D;
+		vel = vel * porosity + [&]() -> saw::data<sch::Vector<T,Descriptor::D>> {
+			return (D.at({}).get() > 0.0 ? N * flip_porosity / D : N);
+		}();
 		// Equilibrium
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
