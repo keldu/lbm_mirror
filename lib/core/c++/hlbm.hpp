@@ -38,7 +38,7 @@ public:
 		auto& vel_f = macros.template get<"velocity">();
 
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
-		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
+		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
 
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index), rho, vel);
 
