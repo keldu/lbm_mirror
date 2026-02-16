@@ -18,7 +18,7 @@ constexpr uint64_t particle_size = 128ul;
 namespace sch {
 using namespace saw::schema;
 
-using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
+using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y, dim_z>;
 
 template<typename T, typename Desc>
 using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y, dim_z>;
