@@ -150,6 +150,29 @@ SAW_TEST("Moving particles 2D"){
 	SAW_EXPECT(has_collided, "Expecting collision within those steps");
 }
 
+SAW_TEST("Particle Matrix Rotation"){
+	using namespace kel;
+
+	saw::data<sch::Particle<sch::T,2u>> part_a;
+	{
+		auto& body = part_a.template get<"rigid_body">();
+		auto& pos = body.template get<"position">();
+		auto& pos_old = body.template get<"position_old">();
+		auto& coll = part_a.template get<"collision">();
+		auto& radius = coll.template get<"radius">();
+		auto& acc = body.template get<"acceleration">();
+
+		radius.set(1.0);
+
+		pos.at({{0u}}) = -5.0;
+		pos.at({{1u}}) = 0.2;
+		pos_old = pos;
+	}
+
+	
+
+}
+
 SAW_TEST("Particle Collision Impulse"){
 	using namespace kel;
 

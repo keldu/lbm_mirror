@@ -222,9 +222,27 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,
 }
 
 template<typename Sch>
-saw::error_or<void> write_vtk_file(const std::filesystem::path& file_name, const saw::data<Sch>& field){
+saw::error_or<void> write_vtk_file(const std::filesystem::path& out_dir, const std::string_view& file_name, uint64_t d_t, const saw::data<Sch>& field){
 
-	std::ofstream vtk_file{file_name};
+	auto vtk_dir = out_dir / "vtk";
+	{
+		std::error_code ec;
+		std::filesystem::create_directories(vtk_dir,ec);
+		if(ec != std::errc{}){
+			return saw::make_error<saw::err::critical>("Could not create directory for write_vtk_file function");
+		}
+	}
+	std::string ft_name{file_name};
+
+	std::stringstream sstr;
+	sstr
+		<<file_name
+		<<"_"
+		<<d_t
+		<<".vtk"
+	;
+
+	std::ofstream vtk_file{vtk_dir / sstr.str() };
 
 	if( not vtk_file.is_open() ){
 		return saw::make_error<saw::err::critical>("Could not open file.");

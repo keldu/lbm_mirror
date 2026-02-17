@@ -180,6 +180,7 @@ public:
 
 	static constexpr std::array<std::array<int32_t, D>, Q> directions = {{
 		{ 0, 0, 0},  // 0
+		// Into 1D
 		{-1, 0, 0},  // 1
 		{ 1, 0, 0},  // 2
 		// Expand into 2D
@@ -212,14 +213,17 @@ public:
 
 	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
 		8./27.,
-		1./9.,
-		1./9.,
-		1./9.,
+		// 1D
+		2./27.,
+		2./27.,
+		// 2D
+		2./27.,
 		1./9.,
 		1./36.,
 		1./36.,
 		1./36.,
 		1./36.,
+		// 3D
 		8./27.,
 		1./9.,
 		1./9.,

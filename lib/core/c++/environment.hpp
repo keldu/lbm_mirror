@@ -20,5 +20,6 @@ saw::error_or<std::filesystem::path> output_directory(){
 
 	return std::filesystem::path{home_dir} / ".lbm";
 }
+
 }
 }

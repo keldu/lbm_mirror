@@ -9,6 +9,7 @@ saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<sch::Scalar<T
 	using dfi = df_info<T, Descriptor>;
 
 	saw::data<sch::FixedArray<T,Descriptor::Q>> eq;
+	// Brain broken, here's an owl
 	//   ^
 	//  0.0
 	//  / \
@@ -23,7 +24,7 @@ saw::data<sch::FixedArray<T, Descriptor::Q>> equilibrium(saw::data<sch::Scalar<T
 	/**
 	 * Calculate equilibrium
 	 */
-	for(uint64_t i = 0u; i < eq.template get_dim_size<0u>(); ++i){
+	for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 		saw::data<T> vel_c{};
 		for(uint64_t j = 0u; j < Descriptor::D; ++j){
 			// <vel,c_i>_2

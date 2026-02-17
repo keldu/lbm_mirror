@@ -265,16 +265,20 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	converter<sch::Float64> conv {
+	converter<T> conv {
 		// delta_x
 		{{1.0}},
 		// delta_t
 		{{1.0}}
 	};
 
+	print_lbm_meta<T,Desc>(conv,{0.01});
+
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
 	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>>();
+	
+	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
@@ -335,10 +339,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
 			{
-				std::string file_name = "t_";
-				file_name += std::to_string(i.get());
-				file_name += ".vtk";
-				auto eov = write_vtk_file(out_dir/file_name, *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,"t",i.get(),*lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -380,10 +381,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	sycl_q.wait();
 	{
-		std::string file_name = "t_";
-		file_name += std::to_string(time_steps.get());
-		file_name += ".vtk";
-		auto eov = write_vtk_file(out_dir/file_name, *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,"t",time_steps.get(),*lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
