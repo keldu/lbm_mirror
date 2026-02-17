@@ -255,7 +255,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
+	auto out_dir = lbm_dir / "poiseulle_particles_3d_gpu";
 
 	{
 		std::error_code ec;
@@ -272,7 +272,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		{{1.0}}
 	};
 
-	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
 	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>>();

@@ -41,9 +41,18 @@ elif [[ -f /etc/pki/tls/certs/ca-bundle.crt ]]; then
     HOST_CA_BUNDLE="/etc/pki/tls/certs/ca-bundle.crt"
 fi
 
+TIMESTAMP=$(date +%s)       # e.g. 1763452799
+HOST_LBM_BASE="$HOME/.lbm"
+HOST_LBM_RUN_DIR="$HOST_LBM_BASE/$TIMESTAMP"
+
+mkdir -p "$HOST_LBM_RUN_DIR"
+
+echo "📁 Using host LBM directory: $HOST_LBM_RUN_DIR"
+
 # --- Run build + packaging inside container ---
 podman run --rm -it \
     -v "$GIT_ROOT":/workspace \
+		-v "$HOST_LBM_RUN_DIR":/root/.lbm \
     -v "$NIX_STORE_VOL":/nix/store \
     -v "$NIX_STATE_VOL":/nix/var \
     -v /etc/ssl/certs:/etc/ssl/certs:ro \
