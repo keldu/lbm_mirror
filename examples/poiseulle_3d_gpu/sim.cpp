@@ -59,6 +59,7 @@ using MacroStruct = Struct<
 
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
+		converter<T>& conv,
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
 		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>& particles
@@ -148,6 +149,7 @@ saw::error_or<void> setup_initial_conditions(
 
 template<typename T, typename Desc>
 saw::error_or<void> step(
+		converter<T>& conv,
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::UInt64> t_i,
@@ -159,7 +161,7 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.6};
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{conv.template kinematic_viscosity_si_to_tau<Desc>({0.1}).handle()};
 		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
@@ -255,7 +257,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_3d_gpu";
+	auto out_dir = lbm_dir / "poiseulle_3d_gpu";
 
 	{
 		std::error_code ec;
@@ -302,7 +304,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -355,7 +357,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}*/
 		}
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			auto eov = step<T,Desc>(conv,lsd_view,lsdm_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}

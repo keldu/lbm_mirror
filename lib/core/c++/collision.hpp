@@ -18,12 +18,17 @@ struct BGKGuo {};
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::BGK, Encode> {
 private:
-	typename saw::native_data_type<T>::type relaxation_;
+	saw::data<T> relaxation_;
 	saw::data<T> frequency_;
 public:
 	component(typename saw::native_data_type<T>::type relaxation__):
+		relaxation_{{relaxation__}},
+		frequency_{saw::data<T>{1} / relaxation_}
+	{}
+	
+	component(const saw::data<T>& relaxation__):
 		relaxation_{relaxation__},
-		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_}
+		frequency_{saw::data<T>{1} / relaxation_}
 	{}
 
 	using Component = cmpt::BGK;

@@ -46,13 +46,13 @@ SAW_TEST("Memory Estimate Scalar"){
 SAW_TEST("Memory Estimate Chunk"){
 	using namespace kel::lbm;
 	
-	SAW_EXPECT((memory_estimate<sch::TChunk>().get() == 480u), std::string{"TChunk isn't 480 bytes "} + std::to_string(memory_estimate<sch::TChunk>().get()) );
+	SAW_EXPECT((memory_estimate<sch::TChunk>().get() == 480u), std::string{"TChunk isn't 480 bytes, but is "} + std::to_string(memory_estimate<sch::TChunk>().get()) );
 }
 
 SAW_TEST("Memory Estimate Struct of Chunk"){
 	using namespace kel::lbm;
 	
-	SAW_EXPECT((memory_estimate<sch::TChunkStruct>().get() == 960u), std::string{"TChunk isn't 480 bytes "} + std::to_string(memory_estimate<sch::TChunk>().get()) );
+	SAW_EXPECT((memory_estimate<sch::TChunkStruct>().get() == 960u), std::string{"TChunkStruct isn't 960 bytes, but is "} + std::to_string(memory_estimate<sch::TChunk>().get()) );
 }
 
 }

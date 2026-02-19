@@ -54,6 +54,22 @@ struct CellFieldStruct {
 template<typename T, typename Desc>
 class df_info{};
 
+/*
+namespace impl {
+template<typename Desc>
+struct df_ct_helper {
+	template<uint64_t i>
+	static constexpr uint64_t apply_i(const std::array<std::array<int32_t,Desc::D>,Desc::Q>& dirs, const std::array<T,Desc::D+1u>& inp){
+		if constexpr ( i < Desc::Q ){
+			for(uint64_t j = 0u; j < Desc::D; ++j){
+			}
+		}
+		return 0u;
+	}
+};
+}
+*/
+
 template<typename T> 
 class df_info<T,sch::Descriptor<1,3>> {
 public:
@@ -214,34 +230,34 @@ public:
 	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
 		8./27.,
 		// 1D
-		2./27.,
-		2./27.,
+		1./36.,
+		1./36.,
 		// 2D
-		2./27.,
-		1./9.,
 		1./36.,
+		1./54.,
+		1./54.,
 		1./36.,
-		1./36.,
-		1./36.,
+		1./54.,
+		1./54.,
 		// 3D
-		8./27.,
-		1./9.,
-		1./9.,
-		1./9.,
-		1./9.,
 		1./36.,
+		1./54.,
+		1./54.,
+		1./54.,
+		1./216.,
+		1./216.,
+		1./54.,
+		1./216.,
+		1./216.,
 		1./36.,
-		1./36.,
-		1./36.,
-		8./27.,
-		1./9.,
-		1./9.,
-		1./9.,
-		1./9.,
-		1./36.,
-		1./36.,
-		1./36.,
-		1./36.
+		1./54.,
+		1./54.,
+		1./54.,
+		1./216.,
+		1./216.,
+		1./54.,
+		1./216.,
+		1./216.
 	};
 
 	static constexpr std::array<uint64_t,Q> opposite_index = {
