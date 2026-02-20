@@ -12,7 +12,7 @@ namespace lbm {
 
 constexpr uint64_t dim_x = 1024ul;
 constexpr uint64_t dim_y = 512ul;
-constexpr uint64_t particle_size = 128ul;
+constexpr uint64_t particle_size = 1ul;
 
 namespace sch {
 using namespace saw::schema;
@@ -63,6 +63,7 @@ saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>& particles
 ){
 	auto& info_f = fields.template get<"info">();
+	auto& porous_f = macros.template get<"porosity">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -137,9 +138,41 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
+	
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
+			middle.at({{0u}}) = dim_x * 0.5;
+			middle.at({{1u}}) = dim_y * 0.5;
+
+			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
+			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
+
+			auto dist = middle - ind_vec;
+			auto dist_2 = saw::math::dot(dist,dist);
+			if(dist_2.at({}).get() < 128*128){
+				porous_f.at(index).at({}) = 0.0;
+			}
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
 
 	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{particle_size}; ++i){
 		auto& part = particles.at(i);
+
+		saw::data<sch::Vector<T,Desc::D>> pos;
+		pos.at({{0u}}) = dim_x * 0.5;
+		pos.at({{1u}}) = dim_y * 0.5;
+		saw::data<sch::Scalar<T>> rad, dense, dt;
+		rad.at({}) = dim_y * 0.2;
+		dense.at({}) = 1.0;
+		dt.at({}) = 1.0;
+		part = create_spheroid_particle(
+			pos,{},{},
+			{},{},{},
+			rad, dense,dt
+		);
 	}
 
 	return saw::make_void();
@@ -149,11 +182,21 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
+	auto& porous_f = macros.template get<"porosity">();
+
+	{
+		auto& p = particles.at({{0u}});
+
+		auto& p_coll = p.template get<"collision">();
+		auto& p_rad = p_coll.template get<"radius">();
+	}
+
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
@@ -179,6 +222,7 @@ saw::error_or<void> step(
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -334,7 +378,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{2048ul};
+	saw::data<sch::UInt64> time_steps{1024ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
@@ -344,18 +388,9 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 					return eov;
 				}
 			}
-			/*{
-				std::string file_name = "p_";
-				file_name += std::to_string(i.get());
-				file_name += ".json";
-				auto eov = saw::easy::encode_and_write_file<sch::FixedArray<sch::Particle<T,Desc::D>,particle_size>,saw::encode::Json>(out_dir, *lbm_particle_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}*/
 		}
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,*lbm_particle_data_ptr,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
@@ -386,16 +421,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
-
-	/*
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			std::cout<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<" "<<lbm_data.get<"info">().at(index).template cast_to<sch::UInt16>().get()<<"\n";
-		},
-		{{0u,0u}},
-		{{dim_x, dim_y}}
-	);
-	*/
 
 	sycl_q.wait();
 	return saw::make_void();

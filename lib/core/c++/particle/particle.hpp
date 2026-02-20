@@ -40,19 +40,21 @@ using ParticleRigidBody = Struct<
 
 template<typename T>
 using ParticleCollisionSpheroid = Struct<
-	Member<T, "radius">
+	Member<Scalar<T>, "radius">
 >;
 
 template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
 	Member<CollisionType, "collision">,
-	Member<T, "mass">
+	// Problem is that dynamic data would two layered
+	// Member<FixedArray<Float64,D,D,D>, "mask">, 
+	Member<Scalar<T>, "mass">
 >;
 }
 
 template<typename T, uint64_t D>
-saw::data<sch::Particle<T,D>, sch::ParticleCollisionSpheroid<T>> create_spheroid_particle(
+saw::data<sch::Particle<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid_particle(
 		saw::data<sch::Vector<T,D>> pos_p,
 		saw::data<sch::Vector<T,D>> vec_p,
 		saw::data<sch::Vector<T,D>> acc_p,
@@ -175,9 +177,11 @@ constexpr auto broadphase_collision_distance_squared = [](saw::data<sch::Particl
 
 	auto norm_2 = saw::math::dot(pos_dist,pos_dist);
 
-	auto rad_ab_2 = rad_l * rad_l + rad_r * rad_r + rad_r * rad_l * static_cast<saw::native_data_type<T>::type>(2);
+	saw::data<sch::Scalar<T>> two;
+	two.at({}) = 2.0;
+	auto rad_ab_2 = rad_l * rad_l + rad_r * rad_r + rad_r * rad_l * two;
 
-	return std::make_pair((norm_2.at({}).get() < rad_ab_2.get()), norm_2);
+	return std::make_pair((norm_2.at({}).get() < rad_ab_2.at({}).get()), norm_2);
 };
 /**
 *

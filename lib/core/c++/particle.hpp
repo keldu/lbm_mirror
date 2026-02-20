@@ -24,8 +24,8 @@ public:
 		verlet_step_lambda<T,Descriptor::D>(p,{1.0});  
 
 		// Update porosity over lattice nodes
+	
 		
-
 	}
 };
 }

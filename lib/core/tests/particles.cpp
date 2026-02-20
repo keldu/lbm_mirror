@@ -40,7 +40,7 @@ SAW_TEST("No Collision Spheroid 2D"){
 		auto& coll = part_a.template get<"collision">();
 		auto& radius = coll.template get<"radius">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = 0.1;
 		pos.at({{1u}}) = 0.2;
@@ -53,7 +53,7 @@ SAW_TEST("No Collision Spheroid 2D"){
 		auto& coll = part_b.template get<"collision">();
 		auto& radius = coll.template get<"radius">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 		
 		pos.at({{0u}}) = -2.1;
 		pos.at({{1u}}) = 0.0;
@@ -73,7 +73,7 @@ SAW_TEST("Collision Spheroid 2D"){
 		auto& coll = part_a.template get<"collision">();
 		auto& radius = coll.template get<"radius">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = 0.1;
 		pos.at({{1u}}) = 0.2;
@@ -86,7 +86,7 @@ SAW_TEST("Collision Spheroid 2D"){
 		auto& coll = part_b.template get<"collision">();
 		auto& radius = coll.template get<"radius">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 		
 		pos.at({{0u}}) = -1.5;
 		pos.at({{1u}}) = 0.0;
@@ -108,7 +108,7 @@ SAW_TEST("Moving particles 2D"){
 		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = -5.0;
 		pos.at({{1u}}) = 0.2;
@@ -125,7 +125,7 @@ SAW_TEST("Moving particles 2D"){
 		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 		
 		pos.at({{0u}}) = 5.0;
 		pos.at({{1u}}) = 0.0;
@@ -162,7 +162,7 @@ SAW_TEST("Particle Matrix Rotation"){
 		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = -5.0;
 		pos.at({{1u}}) = 0.2;
@@ -185,7 +185,7 @@ SAW_TEST("Particle Collision Impulse"){
 		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
 
-		radius.set(1.0);
+		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = -5.0;
 		pos.at({{1u}}) = 0.2;
@@ -202,7 +202,7 @@ SAW_TEST("Particle Collision Impulse"){
 		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
 
-		radius.set(1.5);
+		radius.at({}).set(1.5);
 		
 		pos.at({{0u}}) = 5.0;
 		pos.at({{1u}}) = 0.0;
