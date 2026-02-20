@@ -118,19 +118,19 @@ public:
 	template<typename CellFieldSchema>
 	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
 		bool is_even = ((time_step.get() % 2) == 0);
-		auto& cell = field(index);
 
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-		// auto& dfs = (not is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		auto& dfs = dfs_old_f.at(index);
 
 		saw::data<sch::Scalar<T>> rho;
 		saw::data<sch::Vector<T,Descriptor::D>> vel;
-		compute_rho_u<T,Descriptor>(dfs_old,rho,vel);
+		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		using dfi = df_info<T,Descriptor>;
 
-		auto& force = cell.template get<"force">();
+		auto& force_f = field.template get<"force">();
+		auto& force = force_f.at(index);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			// saw::data<T> ci_min_u{0};
@@ -143,11 +143,11 @@ public:
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){
 				F_i = F_i +
 					saw::data<T>{dfi::weights[i]} * ((saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])}
-					- vel.at({d}) ) * dfi::inv_cs2 + ci_dot_u * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])} * dfi::inv_cs2  * dfi::inv_cs2 ) * force({d});
+					- vel.at({d}) ) * dfi::inv_cs2 + ci_dot_u * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])} * dfi::inv_cs2  * dfi::inv_cs2 ) * force.at({d});
 			}
 
 
-			dfs_old({i}) = dfs_old({i}) + frequency_ * (eq.at(i) - dfs_old({i}) ) + F_i * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
+			dfs.at({i}) = dfs.at({i}) + frequency_ * (eq.at(i) - dfs.at({i}) ) + F_i * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
 		}
 	}
 };
