@@ -15,6 +15,7 @@
 #include "hlbm.hpp"
 #include "macroscopic.hpp"
 #include "memory.hpp"
+#include "psm.hpp"
 #include "stream.hpp"
 #include "write_vtk.hpp"
 #include "util.hpp"

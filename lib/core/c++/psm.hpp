@@ -20,7 +20,7 @@ private:
 	saw::data<sch::Scalar<T>> frequency_;
 public:
 	component(
-		saw::data<sch::Scalar<T>> relaxation__
+		typename saw::native_data_type<T>::type relaxation__
 	):
 		relaxation_{relaxation__}
 	{

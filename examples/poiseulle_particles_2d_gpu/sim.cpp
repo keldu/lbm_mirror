@@ -89,7 +89,7 @@ saw::error_or<void> setup_initial_conditions(
 			info_f.at(index).set(3u);
 		},
 		{{0u,0u}},
-		{{1u, dim_y}},
+		{{1u,dim_y}},
 		{{0u,1u}}
 	);
 	
@@ -129,7 +129,7 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.1;
+			vel.at({{0u}}) = 0.0;
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
@@ -202,7 +202,8 @@ saw::error_or<void> step(
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
 		// component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.6};
-		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
+		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
+		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		saw::data<sch::Scalar<T>> rho_b;
@@ -378,7 +379,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{1024ul};
+	saw::data<sch::UInt64> time_steps{8096ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
@@ -397,12 +398,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 		{
 			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-			if(eov.is_error()){
-				return eov;
-			}
-		}
-		{
-			auto eov = dev.copy_to_host(lbm_sycl_data,*lbm_data_ptr);
 			if(eov.is_error()){
 				return eov;
 			}

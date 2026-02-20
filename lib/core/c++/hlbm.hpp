@@ -60,7 +60,7 @@ public:
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 
-		porosity.at({}) = 1.0;
+		// porosity.at({}) = 1.0;
 		D.at({}) = 0.0;
 	}
 };
