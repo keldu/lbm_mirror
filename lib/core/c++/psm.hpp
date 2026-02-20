@@ -14,17 +14,18 @@ struct PSM {};
  * PSM collision operator for LBM
  */
 template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::PSM> {
+class component<T, Descriptor, cmpt::PSM, Encode> {
 private:
-	saw::data<sch::Scalar<T>> relaxation_;
-	saw::data<sch::Scalar<T>> frequency_;
+	saw::data<T> relaxation_;
+	saw::data<T> frequency_;
 public:
 	component(
 		typename saw::native_data_type<T>::type relaxation__
 	):
 		relaxation_{relaxation__}
 	{
-		saw::data<sch::Scalar<T>> one;
+		saw::data<T> one;
+		one = 1.0;
 		frequency_ = one / relaxation_;
 	}
 
@@ -35,7 +36,7 @@ public:
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
-		auto& porous = field.template get<"porosity">();
+		auto& porous_f = macros.template get<"porosity">();
 
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"velocity">();
@@ -47,9 +48,9 @@ public:
 		
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
-		saw::data<sch::Scalar<T>> one;
-		one.at({}) = 1.0;
-		auto flip_porous = one - porous;
+		saw::data<T> one{1.0};
+		auto& porous = porous_f.at(index);
+		auto flip_porous = one - porous.at({});
 
 		auto& dfs = dfs_old_f.at(index);
 
@@ -57,7 +58,7 @@ public:
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			uint64_t i_opp = dfi::opposite_index[i];
-			dfs.at({i}) = dfs_cpy.at({i}) + frequency_ * (eq.at(i) - dfs_cpy.at({i})) * flip_porous + (dfs_cpy.at({i_opp}) - dfs_cpy.at({i}) ) * porous;
+			dfs.at({i}) = dfs_cpy.at({i}) + frequency_ * (eq.at(i) - dfs_cpy.at({i})) * porous.at({}) + (dfs_cpy.at({i_opp}) - dfs_cpy.at({i}) ) * flip_porous;
 		}
 	}
 };
