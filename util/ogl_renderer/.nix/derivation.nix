@@ -6,7 +6,7 @@
 , pname
 , version
 , forstio
-, kel-lbm
+, kel
 , libGL
 , kel-glad
 , sdl3
@@ -28,7 +28,7 @@ stdenv.mkDerivation {
 		forstio.codec
 		forstio.codec-json
 		forstio.codec-unit
-		kel-lbm.core
+		kel.lbm.core
 		libGL
 		kel-glad
 		sdl3
