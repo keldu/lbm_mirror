@@ -10,9 +10,9 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_x = 512ul;
-constexpr uint64_t dim_y = 128ul;
-constexpr uint64_t dim_z = 128ul;
+constexpr uint64_t dim_x = 1024ul;
+constexpr uint64_t dim_y = 256ul;
+constexpr uint64_t dim_z = 256ul;
 constexpr uint64_t particle_size = 128ul;
 
 namespace sch {
