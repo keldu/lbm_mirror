@@ -6,7 +6,16 @@
 , boost
 , llvmPackages
 , lld
+, libffi
+, libxml2
 , python3
+, config ? {
+    rocm = false;
+  }
+, rocmPackages
+, spirv-tools
+, spirv-headers
+, spirv-llvm-translator
 }:
 
 let
@@ -33,6 +42,14 @@ in stdenv.mkDerivation {
 		llvmPackages.libclang
 		llvmPackages.llvm
 		python3
+	] ++ lib.optionals config.rocm [
+		rocmPackages.clr
+		rocmPackages.rocm-runtime
+		libffi
+		libxml2
+		spirv-tools
+		spirv-headers
+		spirv-llvm-translator
 	];
 
   cmakeFlags = [
@@ -52,6 +69,8 @@ in stdenv.mkDerivation {
       --prefix PATH : ${lib.makeBinPath [ lld python3 ]} \
       --add-flags "-L${llvmPackages.openmp}/lib" \
       --add-flags "-I${llvmPackages.openmp.dev}/include" \
+  '' + lib.optionalString config.rocm ''
+    --add-flags "--rocm-device-lib-path=${rocmPackages.rocm-device-libs}/amdgcn/bitcode"
   '';
 
   postPatch = ''

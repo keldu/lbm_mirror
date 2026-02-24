@@ -1,5 +1,6 @@
 { pkgs ? (import <nixpkgs> {})
-, llvmPackages ? pkgs.llvmPackages_19
+, llvmPackages ? pkgs.llvmPackages_18
+, lld ? pkgs.lld_18
 , stdenv ? llvmPackages.stdenv
 , clang-tools ? llvmPackages.clang-tools
 }:
@@ -29,12 +30,14 @@ let
 		installPhase = ''
 			mv glad_out $out
 		'';
-   };
+	};
 
 	adaptive-cpp = pkgs.callPackage .nix/adaptive-cpp.nix {
-		inherit stdenv;
-		llvmPackages = pkgs.llvmPackages_19;
-		lld = pkgs.lld_19;
+		inherit stdenv llvmPackages lld;
+
+		config = {
+			rocm = false;
+		};
 	};
 
 	sci_tools = let
