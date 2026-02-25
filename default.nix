@@ -132,7 +132,7 @@ in rec {
 			inherit kel;
 		};
 
-		meta_2d = pkgs.callPackage ./examples/meta_2d/.nix/derivation.nix {
+		meta = pkgs.callPackage ./examples/meta/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
 			inherit kel;
 		};

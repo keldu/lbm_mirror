@@ -20,8 +20,8 @@ env.headers += examples_env.headers;
 
 # Cavity2D
 examples_objects = [];
-examples_env.add_source_files(examples_objects, ['meta_2d.cpp'], shared=False);
-examples_env.meta_2d = examples_env.Program('#bin/meta_2d', [examples_objects]);
+examples_env.add_source_files(examples_objects, ['meta.cpp'], shared=False);
+examples_env.meta_2d = examples_env.Program('#bin/meta', [examples_objects]);
 
 # Set Alias
 env.examples = [

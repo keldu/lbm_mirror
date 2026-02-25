@@ -274,7 +274,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		{{1.0}}
 	};
 
-	print_lbm_meta<T,Desc>(conv,{0.1});
+	print_lbm_meta<T,Desc>(conv,{0.1},{0.01},{1024.0});
 
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
