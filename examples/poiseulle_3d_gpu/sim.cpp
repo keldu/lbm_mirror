@@ -130,7 +130,7 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.1;
+			vel.at({{0u}}) = 0.01;
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
@@ -168,7 +168,7 @@ saw::error_or<void> step(
 		saw::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
 		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.1;
+		vel_b.at({{0u}}) = 0.01;
 
 		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
 
@@ -274,7 +274,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		{{1.0}}
 	};
 
-	print_lbm_meta<T,Desc>(conv,{0.01});
+	print_lbm_meta<T,Desc>(conv,{0.1});
 
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
