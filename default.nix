@@ -187,6 +187,7 @@ in rec {
 			paths = [
 				kel.lbm.core
 				kel.lbm.sycl
+				examples.meta
 				examples.poiseulle_particles_2d_gpu
 				examples.poiseulle_3d_gpu
 			];

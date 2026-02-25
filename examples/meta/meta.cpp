@@ -1,7 +1,11 @@
 #include <kel/lbm/lbm.hpp>
 
+#include <forstio/codec/args.hpp>
+
 #include <iostream>
 
+namespace kel {
+namespace lbm {
 namespace sch {
 using namespace saw::schema;
 
@@ -17,9 +21,24 @@ using MetaArgs = Args<
 	MetaArgsStruct,
 	Tuple<UInt64,UInt64>
 >;
+
+using Prec = Float64;
+}
+}
 }
 
-template<
+template<typename T, typename Desc>
+saw::error_or<void> meta_lbm_info(const saw::data<kel::lbm::sch::MetaArgsStruct>& args_str){
+	using namespace kel::lbm;
+	converter<T> conv{
+		{args_str.template get<"dx">()},
+		{args_str.template get<"dt">()}
+	};
+	print_lbm_meta<T,Desc>(conv, {args_str.template get<"kin_vis">()},{args_str.template get<"char_vel">()},{args_str.template get<"char_len">()});
+	
+	return saw::make_void();
+}
+
 
 saw::error_or<void> meta_main(int argc, char** argv){
 	using namespace kel::lbm;
@@ -29,35 +48,36 @@ saw::error_or<void> meta_main(int argc, char** argv){
 		cfg_file_name = argv[1];
 	}
 
-	saw::data<MetaArgs> args_dat;
+	saw::data<sch::MetaArgs> args_dat;
 	{
-		saw::data<MetaArgs, saw::encode::Args> args_enc{argc,argv};
-		saw::codec<MetaArgs, saw::encode::Args> args_codec;
+		saw::data<sch::MetaArgs, saw::encode::Args> args_enc{argc,argv};
+		saw::codec<sch::MetaArgs, saw::encode::Args> args_codec;
 
 		auto eov = args_codec.decode(args_enc,args_dat);
 		if(eov.is_error()){
 			return eov;
+		}
 	}
 
 	auto& args_str = args_dat.template get<"args">();
 	auto& args_pos = args_dat.template get<"positionals">();
 
-	converter<sch::Float64> conv{
-		{args_str.template get<"delta_x">()},
-		{args_str.template get<"delta_t">()}
-	};
 
 	switch(args_pos.get<0u>().get()){
 	case 1u:
 		{
+			assert(false);
+			return saw::make_error<saw::err::not_implemented>();
 		}
 		break;
 	case 2u:
 		{
 			switch(args_pos.get<1u>().get()){
 			case 5u:
+				meta_lbm_info<sch::Prec,sch::Descriptor<2u,5u>>(args_str);
 				break;
 			case 9u:
+				meta_lbm_info<sch::Prec,sch::Descriptor<2u,9u>>(args_str);
 				break;
 			default:
 				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
@@ -66,13 +86,18 @@ saw::error_or<void> meta_main(int argc, char** argv){
 		break;
 	case 3u:
 		{
-
+			switch(args_pos.get<1u>().get()){
+			case 27u:
+				meta_lbm_info<sch::Prec,sch::Descriptor<3u,27u>>(args_str);
+				break;
+			default:
+				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
+			}
 		}
 		break;
 	default:
 		return saw::make_error<saw::err::critical>("First positional needs to be Dimension 1,2 or 3");
 	}
-	print_lbm_meta<sch::Float64,sch::Descriptor<2,9>>(conv, {args_str.template get<"kinematic_viscosity">()},{args_str.template get<"char_vel">()},{args_str.template get<"char_len">()});
 
 	return saw::make_void();
 }
