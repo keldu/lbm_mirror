@@ -10,7 +10,7 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_y = 512ul;
+constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
 constexpr uint64_t particle_amount = 1ul;
@@ -130,7 +130,9 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.0;
+			if(info_f.at(index).get() == 2u){
+				vel.at({{0u}}) = 0.01;
+			}
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
@@ -203,24 +205,24 @@ saw::error_or<void> step(
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
 		// component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.6};
-		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
-		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.6};
+		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		// component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		saw::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
 		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.1;
+		vel_b.at({{0u}}) = 0.015;
 
 		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
-				uint64_t target_t_i = 256u;
+				uint64_t target_t_i = 64u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.001 / target_t_i) * t_i.get();
+					return 1.0 + (0.015 / target_t_i) * t_i.get();
 				}
-				return 1.001;
+				return 1.015;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
@@ -238,19 +240,11 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					bb.apply(fields,index,t_i);
+					// bb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					collision.apply(fields,macros,index,t_i);
-				break;
 				case 3u:
-					equi.apply(fields,index,t_i);
-					// flow_in.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-				break;
 				case 4u:
-					equi.apply(fields,index,t_i);
-					// flow_out.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
@@ -272,6 +266,24 @@ saw::error_or<void> step(
 			
 			if(info.get() > 0u){
 				stream.apply(fields,index,t_i);
+			}
+		});
+	}).wait();
+	
+	q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			switch(info.get()){
+				case 1u:
+					bb.apply(fields,index,t_i);
+				break;
+				case 3u:
+					// equi.apply(fields,index,t_i);
+					flow_in.apply(fields,index,t_i);
+				break;
+				case 4u:
+					// equi.apply(fields,index,t_i);
+					flow_out.apply(fields,index,t_i);
+				break;
 			}
 		});
 	}).wait();
@@ -317,7 +329,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		{{1.0}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{0.01},{0.01},{0.4 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{0.05},{0.01},{0.4 * dim_y});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
@@ -380,7 +392,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{8096ul};
+	saw::data<sch::UInt64> time_steps{4096ul};
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
