@@ -50,6 +50,9 @@ saw::error_or<void> meta_main(int argc, char** argv){
 
 	saw::data<sch::MetaArgs> args_dat;
 	{
+		{
+			
+		}
 		saw::data<sch::MetaArgs, saw::encode::Args> args_enc{argc,argv};
 		saw::codec<sch::MetaArgs, saw::encode::Args> args_codec;
 
@@ -66,8 +69,13 @@ saw::error_or<void> meta_main(int argc, char** argv){
 	switch(args_pos.get<0u>().get()){
 	case 1u:
 		{
-			assert(false);
-			return saw::make_error<saw::err::not_implemented>();
+			switch(args_pos.get<1u>().get()){
+			case 3u:
+				meta_lbm_info<sch::Prec,sch::Descriptor<1u,3u>>(args_str);
+				break;
+			default:
+				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
+			}
 		}
 		break;
 	case 2u:
@@ -87,6 +95,14 @@ saw::error_or<void> meta_main(int argc, char** argv){
 	case 3u:
 		{
 			switch(args_pos.get<1u>().get()){
+			case 7u:
+				return saw::make_error<saw::err::not_implemented>("D3Q7 Velocity Set is not implemented");
+				// meta_lbm_info<sch::Prec,sch::Descriptor<3u,19u>>(args_str);
+				break;
+			case 19u:
+				return saw::make_error<saw::err::not_implemented>("D3Q17 Velocity Set is not implemented");
+				// meta_lbm_info<sch::Prec,sch::Descriptor<3u,19u>>(args_str);
+				break;
 			case 27u:
 				meta_lbm_info<sch::Prec,sch::Descriptor<3u,27u>>(args_str);
 				break;

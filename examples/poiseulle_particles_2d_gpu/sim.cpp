@@ -10,9 +10,10 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_x = 1024ul;
 constexpr uint64_t dim_y = 512ul;
-constexpr uint64_t particle_size = 1ul;
+constexpr uint64_t dim_x = dim_y * 20ul;
+
+constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;
@@ -60,7 +61,7 @@ template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>& particles
+		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles
 ){
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
@@ -158,14 +159,14 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims()
 	);
 
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{particle_size}; ++i){
+	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{particle_amount}; ++i){
 		auto& part = particles.at(i);
 
 		saw::data<sch::Vector<T,Desc::D>> pos;
-		pos.at({{0u}}) = dim_x * 0.5;
+		pos.at({{0u}}) = dim_x * 0.25;
 		pos.at({{1u}}) = dim_y * 0.5;
 		saw::data<sch::Scalar<T>> rad, dense, dt;
-		rad.at({}) = dim_y * 0.2;
+		rad.at({}) = dim_y * 0.1;
 		dense.at({}) = 1.0;
 		dt.at({}) = 1.0;
 		part = create_spheroid_particle(
@@ -182,7 +183,7 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>& particles,
+		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){
@@ -321,7 +322,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>>>();
+	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>>();
 	
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -355,7 +356,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
+	saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
