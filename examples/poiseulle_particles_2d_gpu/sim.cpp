@@ -143,7 +143,7 @@ saw::error_or<void> setup_initial_conditions(
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.5;
+			middle.at({{0u}}) = dim_x * 0.25;
 			middle.at({{1u}}) = dim_y * 0.5;
 
 			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
@@ -151,7 +151,7 @@ saw::error_or<void> setup_initial_conditions(
 
 			auto dist = middle - ind_vec;
 			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < 128*128){
+			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
 				porous_f.at(index).at({}) = 0.0;
 			}
 		},
@@ -317,7 +317,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		{{1.0}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{0.01},{0.1},{1024.0});
+	print_lbm_meta<T,Desc>(conv,{0.01},{0.01},{0.4 * dim_y});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
