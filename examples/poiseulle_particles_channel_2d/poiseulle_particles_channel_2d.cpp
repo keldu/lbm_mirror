@@ -603,7 +603,7 @@ void lbm_step(
 }
 
 /**
- * 2-Way coupling through trinlinearity
+ * 2-Way coupling through bilinearity (n-linearity)
  * o -- o
  * |    |
  * |    |
