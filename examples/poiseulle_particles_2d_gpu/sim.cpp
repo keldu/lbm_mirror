@@ -220,9 +220,9 @@ saw::error_or<void> step(
 			[&](){
 				uint64_t target_t_i = 64u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.015 / target_t_i) * t_i.get();
+					return 1.0 + (0.0015 / target_t_i) * t_i.get();
 				}
-				return 1.015;
+				return 1.0015;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
@@ -240,10 +240,16 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					// bb.apply(fields,index,t_i);
+					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
+					flow_in.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+					break;
 				case 3u:
+					flow_out.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+					break;
 				case 4u:
 					collision.apply(fields,macros,index,t_i);
 				break;
@@ -270,24 +276,6 @@ saw::error_or<void> step(
 		});
 	}).wait();
 	
-	q.submit([&](acpp::sycl::handler& h){
-		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-			switch(info.get()){
-				case 1u:
-					bb.apply(fields,index,t_i);
-				break;
-				case 3u:
-					// equi.apply(fields,index,t_i);
-					flow_in.apply(fields,index,t_i);
-				break;
-				case 4u:
-					// equi.apply(fields,index,t_i);
-					flow_out.apply(fields,index,t_i);
-				break;
-			}
-		});
-	}).wait();
-
 	// Step
 	/*
 	q.submit([&](acpp::sycl::handler& h){
@@ -396,6 +384,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		{
+			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
+		{
 			{
 				auto eov = write_vtk_file(out_dir,"t",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
@@ -409,13 +403,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				return eov;
 			}
 		}
-		{
-			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-			if(eov.is_error()){
-				return eov;
-			}
-		}
-
 		wait.poll();
 		if(print_status){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
