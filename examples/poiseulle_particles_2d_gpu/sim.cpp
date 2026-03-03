@@ -337,6 +337,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
+	{
+		auto eov = write_vtk_file(out_dir,"initial_state",0u,*lbm_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
@@ -364,9 +370,9 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{128ul};
+	saw::data<sch::UInt64> time_steps{32ul};
 
-	auto& info_f = lbm_sycl_data.template get<"info">();
+	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
@@ -378,15 +384,31 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 		sycl_q.wait();
 		{
-			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-			if(eov.is_error()){
-				return eov;
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
 			}
 		}
 		{
-			auto eov = write_vtk_file(out_dir,"t",time_steps.get(), *lbm_macro_data_ptr);
-			if(eov.is_error()){
-				return eov;
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_data,*lbm_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_csv_file(out_dir,"lbm",i.get(), *lbm_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
 			}
 		}
 		// Stream
@@ -402,7 +424,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				auto info = info_f.at(index);
 				
 				if(info.get() > 0u){
-					stream.apply(fields,index,t_i);
+					stream.apply(lsd_view,index,i);
 				}
 			});
 		}).wait();
@@ -416,7 +438,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// After Loop
 	sycl_q.wait();
 	{
-		auto eov = write_vtk_file(out_dir,"t",time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

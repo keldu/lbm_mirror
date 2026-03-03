@@ -17,6 +17,7 @@
 #include "memory.hpp"
 #include "psm.hpp"
 #include "stream.hpp"
+#include "write_csv.hpp"
 #include "write_vtk.hpp"
 #include "util.hpp"
 
