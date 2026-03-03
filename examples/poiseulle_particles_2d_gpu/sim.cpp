@@ -259,22 +259,6 @@ saw::error_or<void> step(
 		});
 	}).wait();
 
-	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
-
-		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
-			for(uint64_t i = 0u; i < Desc::D; ++i){
-				index.at({{i}}).set(idx[i]);
-			}
-			
-			auto info = info_f.at(index);
-			
-			if(info.get() > 0u){
-				stream.apply(fields,index,t_i);
-			}
-		});
-	}).wait();
 	
 	// Step
 	/*
@@ -380,9 +364,19 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{4096ul};
+	saw::data<sch::UInt64> time_steps{128ul};
+
+	auto& info_f = lbm_sycl_data.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
+		// BC + Collision
+		{
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,*lbm_particle_data_ptr,i,dev);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
+		sycl_q.wait();
 		{
 			auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 			if(eov.is_error()){
@@ -390,25 +384,36 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		{
-			{
-				auto eov = write_vtk_file(out_dir,"t",i.get(), *lbm_macro_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-		}
-		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,*lbm_particle_data_ptr,i,dev);
+			auto eov = write_vtk_file(out_dir,"t",time_steps.get(), *lbm_macro_data_ptr);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
+		// Stream
+		sycl_q.submit([&](acpp::sycl::handler& h){
+			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
+
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				for(uint64_t i = 0u; i < Desc::D; ++i){
+					index.at({{i}}).set(idx[i]);
+				}
+				
+				auto info = info_f.at(index);
+				
+				if(info.get() > 0u){
+					stream.apply(fields,index,t_i);
+				}
+			});
+		}).wait();
 		wait.poll();
 		if(print_status){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
 			print_status = false;
 		}
 	}
+
+	// After Loop
 	sycl_q.wait();
 	{
 		auto eov = write_vtk_file(out_dir,"t",time_steps.get(), *lbm_macro_data_ptr);

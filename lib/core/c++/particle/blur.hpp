@@ -31,7 +31,6 @@ void blur_mask(saw::data<sch::Array<T,D>>& p_mask){
 
 		p_mask = blurred_mask;
 	}
-
 }
 }
 }
