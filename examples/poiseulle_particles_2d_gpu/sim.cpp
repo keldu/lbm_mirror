@@ -131,7 +131,7 @@ saw::error_or<void> setup_initial_conditions(
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.01;
+				vel.at({{0u}}) = 0.0;
 			}
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
@@ -433,6 +433,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
 			print_status = false;
 		}
+		print_progress_bar(i.get(), time_steps.get()-1u);
 	}
 
 	// After Loop
