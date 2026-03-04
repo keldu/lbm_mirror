@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+import csv
+import sys
+from itertools import islice
+
+def sum_csv_line(filename, line_number):
+    """Return the sum of a specific line in a CSV file."""
+    try:
+        with open(filename, newline="") as file:
+            reader = csv.reader(file)
+            row = next(islice(reader, line_number - 1, None))
+        # Convert values to float and sum
+        return sum(float(x) for x in row)
+    except StopIteration:
+        raise ValueError(f"Line {line_number} exceeds file length")
+    except ValueError as e:
+        raise ValueError(f"Non-numeric value encountered: {e}")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <filename> <line_number>")
+        sys.exit(1)
+
+    filename = sys.argv[1]
+    try:
+        line_number = int(sys.argv[2])
+    except ValueError:
+        print("Line number must be an integer.")
+        sys.exit(1)
+
+    try:
+        total = sum_csv_line(filename, line_number)
+        print(f"Sum of line {line_number}: {total}")
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
