@@ -204,8 +204,8 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		// component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.6};
-		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.65};
+		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
 		// component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
@@ -243,14 +243,14 @@ saw::error_or<void> step(
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					flow_in.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
-					flow_out.apply(fields,index,t_i);
+					flow_in.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
+					flow_out.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
@@ -370,7 +370,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{32ul};
+	saw::data<sch::UInt64> time_steps{4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
@@ -397,6 +397,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		/*
 		{
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_data,*lbm_data_ptr);
@@ -411,6 +412,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;

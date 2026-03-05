@@ -135,7 +135,7 @@ public:
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
 
-			if(c_k[0u]*known_dir >= 0){
+			if(c_k[0u]*known_dir <= 0){
 				sum_df += dfs_old.at({k});
 			}
 		}
@@ -147,7 +147,7 @@ public:
 
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
-			if(c_k[0u]*known_dir > 0){
+			if(c_k[0u]*known_dir < 0){
 				sum_unknown_dfs += dfs_old.at({k}) * c_k[0u];
 			}
 		}
