@@ -14,7 +14,10 @@ struct ZouHeHorizontal{};
 struct Equilibrium {};
 
 template<bool North>
-struct ZouHeVertical{};
+struct ZouHePressureY{};
+
+template<bool East>
+struct ZouHeVelocityX {};
 }
 
 /**
@@ -167,5 +170,30 @@ public:
 		}
 	}
 };
+
+/*
+template<typename FP, typename Descriptor, bool East, typename Encode>
+class component<FP, Descriptor, cmpt::ZouHeVelocityX<East>, Encode> final {
+private:
+	saw::data<sch::Vector<FP,Descriptor::D>> velocity_;
+public:
+	component(
+		saw::data<sch::Vector<FP,Descriptor::D>> velocity__
+	):
+		velocity_{velocity__}
+	{}
+
+	template<typename CellFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step) const {
+		
+		bool is_even = ((time_step.get() % 2u) == 0u);
+		using dfi = df_info<FP,Descriptor>;
+		
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+	}
+};
+*/
+
 }
 }

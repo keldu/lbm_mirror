@@ -147,7 +147,17 @@ in rec {
 			inherit kel;
 		};
 		
-		poiseulle_particles_2d_gpu = pkgs.callPackage ./examples/poiseulle_particles_2d_gpu/.nix/derivation.nix {
+		poiseulle_particles_2d_psm_gpu = pkgs.callPackage ./examples/poiseulle_particles_2d_psm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+		
+		poiseulle_particles_2d_hlbm_gpu = pkgs.callPackage ./examples/poiseulle_particles_2d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+		
+		poiseulle_particles_2d_bgk_gpu = pkgs.callPackage ./examples/poiseulle_particles_2d_bgk_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};

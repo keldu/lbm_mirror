@@ -246,11 +246,13 @@ saw::error_or<void> step(
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
-					flow_in.apply(fields,index,t_i);
+					//flow_in.apply(fields,index,t_i);
+					equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
-					flow_out.apply(fields,index,t_i);
+					// flow_out.apply(fields,index,t_i);
+					equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
