@@ -8,6 +8,9 @@ namespace lbm {
 namespace cmpt {
 struct BounceBack {};
 
+template<uint64_t i>
+struct AntiBounceBack {};
+
 template<bool East>
 struct ZouHeHorizontal{};
 
@@ -42,6 +45,55 @@ public:
 	 * Thoughts regarding automating order setup
 	 */
 	static constexpr saw::string_literal name = "full_way_bounce_back";
+	static constexpr saw::string_literal after = "";
+	static constexpr saw::string_literal before = "streaming";
+
+	/**
+	 * Raw setup
+	 */
+	template<typename CellFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
+		bool is_even = ((time_step.get() % 2u) == 0u);
+
+		// This is a ref
+
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+		using dfi = df_info<T,Descriptor>;
+
+		// Technically use .copy()
+		auto& dfs_old = dfs_old_f.at(index);
+		auto df_cpy = dfs_old;
+
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			dfs_old.at({i}) = df_cpy.at({dfi::opposite_index.at(i)});
+		}
+	}
+};
+
+/**
+ * Anti Full-Way BounceBack.
+ */
+template<typename T, typename Descriptor, uint64_t D, typename Encode>
+class component<T, Descriptor, cmpt::AntiBounceBack<D>, Encode> {
+private:
+public:
+	component() = default;
+
+	using Component = cmpt::AntiBounceBack<D>;
+
+	/**
+	 * Thoughts regarding automating order setup
+	 */
+	using access = cmpt::access_tuple<
+		cmpt::access<"dfs", 1, true, true, true>
+	>;
+
+	/**
+	 * Thoughts regarding automating order setup
+	 */
+	static constexpr saw::string_literal name = "full_way_anti_bounce_back";
 	static constexpr saw::string_literal after = "";
 	static constexpr saw::string_literal before = "streaming";
 
