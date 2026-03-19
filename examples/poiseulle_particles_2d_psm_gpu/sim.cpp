@@ -286,7 +286,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
+	auto out_dir = lbm_dir / "poiseulle_particles_2d_psm_gpu";
 
 	{
 		std::error_code ec;
@@ -385,6 +385,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
+		/*
 		{
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -399,6 +400,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		/*
 		{
 			{
@@ -442,6 +444,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	// After Loop
 	sycl_q.wait();
+	{
+		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	{
 		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
