@@ -30,9 +30,15 @@ SAW_TEST("Math/Floor Index from Pos"){
 		pos.at({{1u}}) = -50.0;
 	}
 
-	auto ind = lbm::floor_index_from_position(pos);
+	auto ind_frac = lbm::position_to_index_and_fraction(pos);
+	auto& ind = ind_frac.template get<0u>();
 	for(uint64_t i = 0u; i < 2u; ++i){
 		std::cout<<ind.at({{i}}).get()<<" ";
+	}
+	std::cout<<std::endl;
+	auto& frac = ind_frac.template get<1u>();
+	for(uint64_t i = 0u; i < 2u; ++i){
+		std::cout<<frac.at({{i}}).get()<<" ";
 	}
 	std::cout<<std::endl;
 

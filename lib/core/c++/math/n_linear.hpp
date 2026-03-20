@@ -33,7 +33,7 @@ saw::data<sch::Tuple<sch::Vector<sch::UInt64,D>,sch::Vector<T,D>>> position_to_i
 		ind.at({{i}}) = pos_cpy.at({{i}}).template cast_to<sch::UInt64>();
 	}
 
-	frac = pos - ind.template cast_to<T>();
+	frac = pos_cpy - ind.template cast_to<T>();
 
 	return sep;
 }
