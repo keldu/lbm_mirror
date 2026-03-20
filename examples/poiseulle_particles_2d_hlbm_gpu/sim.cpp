@@ -200,14 +200,11 @@ saw::error_or<void> step(
 		auto& p_rad = p_coll.template get<"radius">();
 	}
 
-
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.65};
-		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
-		// component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
 		saw::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
@@ -240,7 +237,7 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					bb.apply(fields,index,t_i);
+					abb.apply(fields,index,t_i);
 				break;
 				case 2u:
 					collision.apply(fields,macros,index,t_i);
@@ -286,7 +283,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
+	auto out_dir = lbm_dir / "poiseulle_particles_2d_hlbm_gpu";
 
 	{
 		std::error_code ec;
@@ -372,8 +369,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
-	saw::data<sch::UInt64> time_steps{4096ul};
-
+	saw::data<sch::UInt64> time_steps{16u*4096ul};
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
@@ -385,20 +381,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
-		{
-			{
-				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-			{
-				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-		}
 		/*
 		{
 			{
@@ -442,6 +424,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	// After Loop
 	sycl_q.wait();
+	{
+		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	{
 		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){

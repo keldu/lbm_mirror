@@ -114,10 +114,18 @@ public:
 		// Technically use .copy()
 		auto& dfs_old = dfs_old_f.at(index);
 		auto df_cpy = dfs_old;
+		
+		static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
 
-		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			dfs_old.at({i}) = df_cpy.at({dfi::opposite_index.at(i)});
-		}
+		dfs_old.at({0u}) = df_cpy.at({0u});
+		dfs_old.at({1u}) = df_cpy.at({1u});
+		dfs_old.at({2u}) = df_cpy.at({2u});
+		dfs_old.at({3u}) = df_cpy.at({4u});
+		dfs_old.at({4u}) = df_cpy.at({3u});
+		dfs_old.at({5u}) = df_cpy.at({7u});
+		dfs_old.at({6u}) = df_cpy.at({8u});
+		dfs_old.at({7u}) = df_cpy.at({5u});
+		dfs_old.at({8u}) = df_cpy.at({6u});
 	}
 };
 

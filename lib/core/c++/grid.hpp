@@ -27,8 +27,8 @@ public:
 	}
 };
 
+template<typename Schema>
 void clean_grid(saw::data<Schema>& info_field){
-
 }
 }
 }

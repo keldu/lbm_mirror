@@ -181,9 +181,8 @@ saw::error_or<void> step(
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.65};
-		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
-		// component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
 		saw::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
@@ -216,7 +215,7 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					bb.apply(fields,index,t_i);
+					abb.apply(fields,index,t_i);
 				break;
 				case 2u:
 					collision.apply(fields,macros,index,t_i);
