@@ -43,6 +43,25 @@ auto floor_index_from_position(const saw::data<sch::Vector<T,D>>& pos){
 	return position_to_index_and_fraction(pos).template get<0u>();
 }
 
+template<typename T, uint64_t D>
+saw::data<sch::Tuple<sch::Vector<sch::UInt64,D>,sch::Vector<T,D>>> position_to_index_and_fraction_bounded(
+	const saw::data<sch::Vector<T,D>>& pos,
+	const saw::data<sch::Vector<sch::UInt64,D>>& bound)
+{
+	auto infr = position_to_index_and_fraction(pos);
+	auto& ind = infr.template get<0u>();
+	auto& fra = infr.template get<1u>();
+	for(uint64_t i = 0u; i < D; ++i){
+		// If index is higher than bound. Set to bound and reset fraction
+		if((ind.at({{i}}).get()+1u) >= bound.at({{i}}).get()){
+			ind.at({{i}}).set(bound.at({{i}}).get()-1u);
+			fra.at({{i}}) = {};
+		}
+	}
+	return infr;
+}
+
+
 template<typename FieldSchema, typename T, uint64_t D>
 auto n_linear_interpolate(
 		const saw::data<FieldSchema>& field, const saw::data<sch::Vector<T,D>>& pos){
