@@ -146,15 +146,15 @@ public:
 	static constexpr uint64_t Q = 9u;
 
 	static constexpr std::array<std::array<int32_t, D>, Q> directions = {{
-		{ 0, 0},
-		{-1, 0},
-		{ 1, 0},
-		{ 0,-1},
-		{ 0, 1},
-		{-1,-1},
-		{ 1, 1},
-		{-1, 1},
-		{ 1,-1}
+		{ 0, 0}, // 0
+		{-1, 0}, // 1
+		{ 1, 0}, // 2
+		{ 0,-1}, // 3
+		{ 0, 1}, // 4
+		{-1,-1}, // 5
+		{ 1, 1}, // 6
+		{-1, 1}, // 7
+		{ 1,-1}  // 8
 	}};
 
 	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {

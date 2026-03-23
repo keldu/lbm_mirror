@@ -206,16 +206,17 @@ public:
 		/**
 		 * Get the sum of the unknown dfs and precalculate the direction
 		 */
-		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
+		auto sum_unknown_dfs = (rho_setting_ - sum_df);
+		auto unknown_dfs_dir = sum_unknown_dfs * saw::data<FP>{known_dir};
 
 		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
 			if(c_k[0u]*known_dir < 0){
-				sum_unknown_dfs += dfs_old.at({k}) * c_k[0u];
+				unknown_dfs_dir += dfs_old.at({k}) * c_k[0u];
 			}
 		}
 
-		auto vel_x = sum_unknown_dfs / rho_setting_;
+		auto vel_x = unknown_dfs_dir / rho_setting_;
 
 		static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
 

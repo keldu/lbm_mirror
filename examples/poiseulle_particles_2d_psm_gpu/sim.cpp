@@ -202,7 +202,7 @@ saw::error_or<void> step(
 
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
@@ -243,13 +243,13 @@ saw::error_or<void> step(
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
-					//flow_in.apply(fields,index,t_i);
-					equi.apply(fields,index,t_i);
+					flow_in.apply(fields,index,t_i);
+					//equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
-					// flow_out.apply(fields,index,t_i);
-					equi.apply(fields,index,t_i);
+					flow_out.apply(fields,index,t_i);
+					// equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
@@ -295,12 +295,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{{1e-3}},
 		// delta_t
-		{{1.0}}
+		{{1e-06}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{0.05},{0.01},{0.4 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{0.1},{1e-2},{0.4 * dim_y *1e-3});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
@@ -382,8 +382,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
-		/*
-		{
+		if(i.get() %  1 == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
@@ -397,7 +396,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
-		*/
 		/*
 		{
 			{
