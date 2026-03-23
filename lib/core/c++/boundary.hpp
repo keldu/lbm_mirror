@@ -192,8 +192,8 @@ public:
 
 		auto& dfs_old = dfs_old_f.at(index);
 
-		auto rho_vel_x = [&](){
-			if constexpr (Dir) -> saw::data<FP> {
+		auto rho_vel_x = [&]() -> saw::data<FP> {
+			if constexpr (Dir){
 				auto S = dfs_old.at({0u})
 					+ dfs_old.at({3u}) + dfs_old.at({4u})
 					+ (dfs_old.at({1u}) + dfs_old.at({5u}) + dfs_old.at({7u})) * 2u;
