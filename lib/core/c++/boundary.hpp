@@ -174,14 +174,13 @@ class component<FP, Descriptor, cmpt::ZouHeHorizontal<Dir>, Encode> final {
 private:
 	saw::data<FP> rho_setting_;
 public:
-	component(const saw::data<FP>& density_setting__):
-		rho_setting_{density_setting__}
+	component(const saw::data<FP>& rho_setting__):
+		rho_setting_{rho_setting__}
 	{}
 
 	template<typename CellFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
 		using dfi = df_info<FP,Descriptor>;
-		constexpr int known_dir = Dir ? 1 : -1;
 
 		bool is_even = ((time_step.get() % 2) == 0);
 

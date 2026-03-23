@@ -83,7 +83,24 @@ saw::error_or<void> setup_initial_conditions(
 		info_f.get_dims(),
 		{{1u,1u}}
 	);
-	
+	// Corners
+	/// Inflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(5u);
+		},
+		{{0u,0u}},
+		{{1u,dim_y}}
+	);
+	/// Outflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(5u);
+		},
+		{{dim_x-1u,0u}},
+		{{dim_x, dim_y}}
+	);
+	// Overwrite with
 	// Inflow
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -251,7 +268,11 @@ saw::error_or<void> step(
 					flow_out.apply(fields,index,t_i);
 					// equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
-				break;
+					break;
+				case 5u:
+					// Corners
+					bb.apply(fields,index,t_i);
+					break;
 				default:
 				break;
 			}
