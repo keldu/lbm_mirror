@@ -191,43 +191,33 @@ public:
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& dfs_old = dfs_old_f.at(index);
-		/**
-		 * Sum all known DFs
-		 */
-		saw::data<FP> sum_df{0};
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
 
-			if(c_k[0u]*known_dir <= 0){
-				sum_df += dfs_old.at({k});
+		auto rho_vel_x = [&](){
+			if constexpr (Dir) -> saw::data<FP> {
+				auto S = dfs_old.at({0u})
+					+ dfs_old.at({3u}) + dfs_old.at({4u})
+					+ (dfs_old.at({1u}) + dfs_old.at({5u}) + dfs_old.at({7u})) * 2u;
+				return rho_setting_ - S;
 			}
-		}
-
-		/**
-		 * Get the sum of the unknown dfs and precalculate the direction
-		 */
-		auto sum_unknown_dfs = (rho_setting_ - sum_df);
-		auto unknown_dfs_dir = sum_unknown_dfs * saw::data<FP>{known_dir};
-
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
-			if(c_k[0u]*known_dir < 0){
-				unknown_dfs_dir += dfs_old.at({k}) * c_k[0u];
+			else if constexpr (not Dir) {
+				auto S = dfs_old.at({0u})
+					+ dfs_old.at({3u}) + dfs_old.at({4u})
+					+ (dfs_old.at({2u}) + dfs_old.at({6u}) + dfs_old.at({8u})) * 2u;
+				return S - rho_setting_;
 			}
-		}
-
-		auto vel_x = unknown_dfs_dir / rho_setting_;
+			return {};
+		}();
 
 		static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
 
 		if constexpr (Dir) {
-			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
-			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
 		}else if constexpr (not Dir){
-			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
-			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
 		}
 	}
 };
