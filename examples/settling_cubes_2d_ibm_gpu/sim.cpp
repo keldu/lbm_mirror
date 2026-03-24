@@ -103,6 +103,11 @@ saw::error_or<void> setup_initial_conditions(
 }
 
 template<typename T, typename Desc>
+void add_particles(saw::data<sch::Array<sch::Particle<T,Desc::D>>>& particles){
+	////// TODO
+}
+
+template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
@@ -148,6 +153,8 @@ saw::error_or<void> step(
 				break;
 			}
 		});
+
+
 	}).wait();
 
 	

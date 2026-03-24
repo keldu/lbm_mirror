@@ -95,10 +95,21 @@ class component<T, Descriptor, cmpt::BGKGuo, Encode> {
 private:
 	typename saw::native_data_type<T>::type relaxation_;
 	saw::data<T> frequency_;
+	saw::data<sch::Vector<T,Descriptor::D>> global_force_;
 public:
 	component(typename saw::native_data_type<T>::type relaxation__):
 		relaxation_{relaxation__},
-		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_}
+		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_},
+		global_force_{}
+	{}
+
+	component(
+		typename saw::native_data_type<T>::type relaxation__,
+		saw::data<sch::Vector<T,Descriptor::D>>& global_force__
+	):
+		relaxation_{relaxation__},
+		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_},
+		global_force_{global_force__}
 	{}
 
 	using Component = cmpt::BGKGuo;
@@ -153,7 +164,7 @@ public:
 			saw::data<sch::Scalar<T>> w;
 			w.at({}).set(dfi::weights[i]);
 
-			auto F_i_d = saw::math::dot(force * w, (ci - vel * dfi_inv_cs2 + ci * ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2 ));
+			auto F_i_d = saw::math::dot((force+global_force_) * w, (ci - vel * dfi_inv_cs2 + ci * ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2 ));
 			/*
 			saw::data<sch::Scalar<T>> F_i_sum;
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){

@@ -43,12 +43,15 @@ using ParticleCollisionSpheroid = Struct<
 	Member<Scalar<T>, "radius">
 >;
 
+tem
+
 template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using Particle = Struct<
 	Member<ParticleRigidBody<T,D>, "rigid_body">,
 	Member<CollisionType, "collision">,
 	// Problem is that dynamic data would two layered
-	// Member<FixedArray<Float64,D,D,D>, "mask">, 
+	// Member<Array<Float64,D>, "mask">, 
+	Member<UInt64, "mask_id">,
 	Member<Scalar<T>, "mass">
 >;
 }
