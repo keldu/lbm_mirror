@@ -26,8 +26,8 @@ saw::error_or<environment> lbm_directory(){
 
 	{
 		env.data_dir = env.lbm_dir / "data";
-		// LBM
-		auto lbm_dir_config = lbm_dir / "data_dir_location.txt";
+		// LBM Data Location
+		auto lbm_dir_config = env.lbm_dir / "data_dir_location.txt";
 		if( fs::exists(lbm_dir_config) && fs::is_regular_file(lbm_dir_config) ){
 			std::ifstream file{lbm_dir_config};
 

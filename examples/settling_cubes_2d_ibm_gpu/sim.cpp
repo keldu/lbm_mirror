@@ -180,7 +180,7 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
@@ -255,13 +255,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_dir = output_directory();
+	auto eo_lbm_dir = lbm_directory();
 	if(eo_lbm_dir.is_error()){
 		return std::move(eo_lbm_dir.get_error());
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_bgk_gpu";
+	auto out_dir = lbm_dir / "settling_cubes_2d_ibm_gpu";
 
 	{
 		std::error_code ec;

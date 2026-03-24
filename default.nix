@@ -171,6 +171,11 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+		
+		settling_cubes_2d_ibm_gpu = pkgs.callPackage ./examples/settling_cubes_2d_ibm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
 
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
