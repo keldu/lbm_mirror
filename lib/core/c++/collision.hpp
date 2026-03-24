@@ -115,39 +115,56 @@ public:
 	static constexpr saw::string_literal after = "";
 	static constexpr saw::string_literal before = "streaming";
 
-	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+	template<typename CellFieldSchema, typename MacroFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	// void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 		auto& dfs = dfs_old_f.at(index);
 
-		saw::data<sch::Scalar<T>> rho;
-		saw::data<sch::Vector<T,Descriptor::D>> vel;
+		auto& rho_f = macros.template get<"density">();
+		auto& vel_f = macros.template get<"velocity">();
+	
+		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		using dfi = df_info<T,Descriptor>;
 
-		auto& force_f = field.template get<"force">();
+		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
+		
+		saw::data<sch::Scalar<T>> dfi_inv_cs2;
+		dfi_inv_cs2.at({}).set(dfi::inv_cs2);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			// saw::data<T> ci_min_u{0};
-			saw::data<T> ci_dot_u{0};
+			saw::data<sch::Vector<T,Descriptor::D>> ci;
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){
-				ci_dot_u = ci_dot_u + vel.at({{d}}) * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])};
+				ci.at({{d}}).set(static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d]));
 			}
-			saw::data<T> F_i{0};// = saw::data<T>{dfi::weights[i]} * (ci_dot_F * dfi::inv_cs2 + ci_dot_u * ci_dot_F * (dfi::inv_cs2 * dfi::inv_cs2));
+			auto ci_dot_u = saw::math::dot(ci,vel);
 
+			// saw::data<sch::Vector<T,Descriptor::D>> F_i;
+			// F_i = f * (c_i - u * ics2  + <c_i,u> * c_i * ics2 * ics2) * w_i;
+			saw::data<sch::Scalar<T>> w;
+			w.at({}).set(dfi::weights[i]);
+
+			auto F_i_d = saw::math::dot(force * w, (ci - vel * dfi_inv_cs2 + ci * ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2 ));
+			/*
+			saw::data<sch::Scalar<T>> F_i_sum;
 			for(uint64_t d = 0u; d < Descriptor::D; ++d){
-				F_i = F_i +
-					saw::data<T>{dfi::weights[i]} * ((saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])}
-					- vel.at({d}) ) * dfi::inv_cs2 + ci_dot_u * saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d])} * dfi::inv_cs2  * dfi::inv_cs2 ) * force.at({d});
+				saw::data<sch::Scalar<T>> F_i_d;
+				F_i_d.at({}) = F_i.at({{d}});
+				F_i_sum = F_i_sum + F_i_d;
 			}
+			*/
 
 
-			dfs.at({i}) = dfs.at({i}) + frequency_ * (eq.at(i) - dfs.at({i}) ) + F_i * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
+			dfs.at({i}) = dfs.at({i}) + frequency_ * (eq.at(i) - dfs.at({i}) ) + F_i_d.at({}) * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
 		}
 	}
 };

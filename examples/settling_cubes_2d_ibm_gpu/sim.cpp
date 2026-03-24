@@ -45,7 +45,8 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
-	Member<RhoChunk<T>, "density">
+	Member<RhoChunk<T>, "density">,
+	Member<VectorChunk<T,Desc>, "force">
 >;
 
 //template<typename T, typename Desc>
@@ -79,26 +80,6 @@ saw::error_or<void> setup_initial_conditions(
 		info_f.get_dims(),
 		{{1u,1u}}
 	);
-	
-	// Inflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(3u);
-		},
-		{{0u,0u}},
-		{{1u,dim_y}},
-		{{0u,1u}}
-	);
-	
-	// Outflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(4u);
-		},
-		{{dim_x-1u,0u}},
-		{{dim_x, dim_y}},
-		{{0u,1u}}
-	);
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
@@ -113,43 +94,6 @@ saw::error_or<void> setup_initial_conditions(
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
-
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			auto& df = df_f.at(index);
-			auto& rho = rho_f.at(index);
-			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.0;
-			}
-			auto eq = equilibrium<T,Desc>(rho,vel);
-
-			df = eq;
-		},
-		{},// 0-index
-		df_f.get_dims(),
-		{{1u,1u}}
-	);
-	
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.25;
-			middle.at({{1u}}) = dim_y * 0.5;
-
-			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
-			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
-
-			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				info_f.at(index) = 1u;
-			}
 		},
 		{},// 0-index
 		df_f.get_dims()
@@ -180,28 +124,8 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
-
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.015;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
-
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-			[&](){
-				uint64_t target_t_i = 64u;
-				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0015 / target_t_i) * t_i.get();
-				}
-				return 1.0015;
-			}()
-		};
-		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -215,21 +139,11 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					abb.apply(fields,index,t_i);
+					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
 					collision.apply(fields,macros,index,t_i);
 					break;
-				case 3u:
-					//flow_in.apply(fields,index,t_i);
-					equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-					break;
-				case 4u:
-					// flow_out.apply(fields,index,t_i);
-					equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-				break;
 				default:
 				break;
 			}
@@ -255,13 +169,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_dir = lbm_directory();
-	if(eo_lbm_dir.is_error()){
-		return std::move(eo_lbm_dir.get_error());
+	auto eo_lbm_env = lbm_directory();
+	if(eo_lbm_env.is_error()){
+		return std::move(eo_lbm_env.get_error());
 	}
-	auto& lbm_dir = eo_lbm_dir.get_value();
+	auto& lbm_env = eo_lbm_env.get_value();
 
-	auto out_dir = lbm_dir / "settling_cubes_2d_ibm_gpu";
+	auto out_dir = lbm_env.data_dir / "settling_cubes_2d_ibm_gpu";
 
 	{
 		std::error_code ec;
