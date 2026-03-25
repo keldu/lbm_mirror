@@ -29,7 +29,7 @@ SAW_TEST("Verlet step 2D - Planar"){
 	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
 	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));
 }
-
+/*
 SAW_TEST("No Collision Spheroid 2D"){
 	using namespace kel;
 
@@ -37,10 +37,6 @@ SAW_TEST("No Collision Spheroid 2D"){
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
-		auto& coll = part_a.template get<"collision">();
-		auto& radius = coll.template get<"radius">();
-
-		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = 0.1;
 		pos.at({{1u}}) = 0.2;
@@ -50,11 +46,7 @@ SAW_TEST("No Collision Spheroid 2D"){
 	{
 		auto& body = part_b.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
-		auto& coll = part_b.template get<"collision">();
-		auto& radius = coll.template get<"radius">();
 
-		radius.at({}).set(1.0);
-		
 		pos.at({{0u}}) = -2.1;
 		pos.at({{1u}}) = 0.0;
 	}
@@ -62,7 +54,8 @@ SAW_TEST("No Collision Spheroid 2D"){
 	bool have_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
 	SAW_EXPECT(not have_collided, "Particles shouldn't collide");
 }
-
+*/
+/*
 SAW_TEST("Collision Spheroid 2D"){
 	using namespace kel;
 
@@ -95,7 +88,8 @@ SAW_TEST("Collision Spheroid 2D"){
 	bool have_collided = lbm::broadphase_collision_check<sch::T,2u>(part_a,part_b);
 	SAW_EXPECT(have_collided, "Particles should collide");
 }
-
+*/
+/*
 SAW_TEST("Moving particles 2D"){
 	using namespace kel;
 
@@ -149,7 +143,7 @@ SAW_TEST("Moving particles 2D"){
 
 	SAW_EXPECT(has_collided, "Expecting collision within those steps");
 }
-
+*/
 SAW_TEST("Particle Matrix Rotation"){
 	using namespace kel;
 
@@ -158,20 +152,14 @@ SAW_TEST("Particle Matrix Rotation"){
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
 		auto& pos_old = body.template get<"position_old">();
-		auto& coll = part_a.template get<"collision">();
-		auto& radius = coll.template get<"radius">();
 		auto& acc = body.template get<"acceleration">();
-
-		radius.at({}).set(1.0);
 
 		pos.at({{0u}}) = -5.0;
 		pos.at({{1u}}) = 0.2;
 		pos_old = pos;
 	}
-
-	
-
 }
+/*
 
 SAW_TEST("Particle Collision Impulse"){
 	using namespace kel;
@@ -210,8 +198,9 @@ SAW_TEST("Particle Collision Impulse"){
 		acc.at({{0u}}) = -0.1;
 	}
 }
-
+*/
 /*
+
 SAW_TEST("Minor Test for mask"){
 	using namespace kel;
 

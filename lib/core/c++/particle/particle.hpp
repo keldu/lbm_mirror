@@ -43,19 +43,59 @@ using ParticleCollisionSpheroid = Struct<
 	Member<Scalar<T>, "radius">
 >;
 
-tem
-
-template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
+template<typename T, uint64_t D>
 using Particle = Struct<
-	Member<ParticleRigidBody<T,D>, "rigid_body">,
-	Member<CollisionType, "collision">,
+	Member<ParticleRigidBody<T,D>, "rigid_body">
 	// Problem is that dynamic data would two layered
 	// Member<Array<Float64,D>, "mask">, 
-	Member<UInt64, "mask_id">,
-	Member<Scalar<T>, "mass">
 >;
+
+template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
+using ParticleGroup = Struct<
+	Member<Array<Float64,D>, "mask">,
+	Member<CollisionType, "collision">,
+	Member<Scalar<T>, "mass">,
+	Member<Array<Particle<T,D>>, "particles">
+>;
+
+template<typename... PartGroups>
+using ParticleGroupTuple = Tuple<
+	PartGroups...
+>;
+
 }
 
+template<typename T, uint64_t D>
+saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid_particle_group(
+		saw::data<sch::Scalar<T>> rad_p,
+		saw::data<sch::Scalar<T>> density_p
+){
+	saw::data<sch::ParticleGroup<T,D>,sch::ParticleCollisionSpheroid<T>> part;
+
+	auto& mask = part.template get<"mask">();
+	auto& collision = part.template get<"collision">();
+	auto& mass = part.template get<"mass">();
+
+	if constexpr ( D == 1u ){
+		saw::data<sch::Scalar<T>> c;
+		c.at({}).set(2.0);
+		mass = rad_p * c * density_p;
+	} else if constexpr ( D == 2u){
+		saw::data<sch::Scalar<T>> pi;
+		pi.at({}).set(3.14159);
+		mass = rad_p * rad_p * pi * density_p;
+	} else if constexpr ( D == 3u ){
+		saw::data<sch::Scalar<T>> c;
+		c.at({}).set(3.14159 * 4.0 / 3.0);
+		mass = rad_p * rad_p * rad_p * c * density_p;
+	} else {
+		static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
+	}
+
+	return part;
+}
+
+/*
 template<typename T, uint64_t D>
 saw::data<sch::Particle<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid_particle(
 		saw::data<sch::Vector<T,D>> pos_p,
@@ -106,6 +146,7 @@ saw::data<sch::Particle<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid
 
 	return part;
 }
+*/
 
 template<typename T,uint64_t D>
 constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, saw::data<sch::Scalar<T>> time_step_delta){
@@ -142,18 +183,20 @@ constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, 
 };
 
 template<typename T, uint64_t D>
-constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right, saw::data<sch::Vector<T,D>> unit_pos_rel, saw::data<sch::Vector<T,D>> vel_rel, saw::data<sch::Scalar<T>> d_t)
-{
+constexpr auto handle_collision = [](
+		saw::data<sch::Particle<T,D>>& left, const saw::data<sch::Scalar<T>>& mass_l,
+		saw::data<sch::Particle<T,D>>& right, const saw::data<sch::Scalar<T>>& mass_r,
+		saw::data<sch::Vector<T,D>> unit_pos_rel, saw::data<sch::Vector<T,D>> vel_rel,
+		saw::data<sch::Scalar<T>> d_t
+){
 	auto& rb_l = left.template get<"rigid_body">();
 	auto& pos_l = rb_l.template get<"position">();
 	auto& pos_old_l = rb_l.template get<"position_old">();
-	auto& mass_l = left.template get<"mass">();
 	auto vel_l = (pos_l-pos_old_l)/d_t;
 
 	auto& rb_r = right.template get<"rigid_body">();
 	auto& pos_r = rb_r.template get<"position">();
 	auto& pos_old_r = rb_r.template get<"position_old">();
-	auto& mass_r = left.template get<"mass">();
 	auto vel_r = (pos_r-pos_old_r)/d_t;
 
 	auto vel_pos_rel_dot = saw::math::dot(unit_pos_rel,vel_rel);
@@ -165,10 +208,16 @@ constexpr auto handle_collision = [](saw::data<sch::Particle<T,D>>& left, saw::d
 };
 
 
-template<typename T, uint64_t D>
-constexpr auto broadphase_collision_distance_squared = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> std::pair<bool,saw::data<sch::Scalar<T>>>{
-	auto rad_l = left.template get<"collision">().template get<"radius">();
-	auto rad_r = right.template get<"collision">().template get<"radius">();
+template<typename T, uint64_t D, typename Collision>
+constexpr auto broadphase_collision_distance_squared = [](
+	saw::data<sch::Particle<T,D>>& left,
+	const saw::data<Collision>& coll_l,
+	saw::data<sch::Particle<T,D>>& right,
+	const saw::data<Collision>& coll_r
+) -> std::pair<bool,saw::data<sch::Scalar<T>>>{
+
+	auto rad_l = coll_l.template get<"radius">();
+	auto rad_r = coll_r.template get<"radius">();
 
 	auto& rb_l = left.template get<"rigid_body">();
 	auto& rb_r = right.template get<"rigid_body">();
@@ -190,9 +239,14 @@ constexpr auto broadphase_collision_distance_squared = [](saw::data<sch::Particl
 *
 *
 */
-template<typename T, uint64_t D>
-constexpr auto broadphase_collision_check = [](saw::data<sch::Particle<T,D>>& left, saw::data<sch::Particle<T,D>>& right) -> bool{
-	return broadphase_collision_distance_squared<T,D>(left,right).first;
+template<typename T, uint64_t D, typename Collision>
+constexpr auto broadphase_collision_check = [](
+	saw::data<sch::Particle<T,D>>& left,
+	const saw::data<Collision>& coll_l,
+	saw::data<sch::Particle<T,D>>& right,
+	const saw::data<Collision>& coll_r
+) -> bool{
+	return broadphase_collision_distance_squared<T,D,Collision>(left,coll_l,right,coll_r).first;
 };
 }
 }
