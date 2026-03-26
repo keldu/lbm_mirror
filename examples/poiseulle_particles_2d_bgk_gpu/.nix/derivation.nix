@@ -11,7 +11,7 @@
 }:
 
 stdenv.mkDerivation {
-	pname = pname + "-examples-" + "poiseulle_2d_gpu";
+	pname = pname + "-examples-" + "poiseulle_particles_2d_bgk_gpu";
 	inherit version;
 	src = ./..;
 

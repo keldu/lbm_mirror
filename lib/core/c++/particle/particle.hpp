@@ -1,8 +1,10 @@
 #pragma once
 
-#include <forstio/codec/data.hpp>
-#include <forstio/codec/data_math.hpp>
 #include <forstio/codec/math.hpp>
+#include <forstio/codec/data_math.hpp>
+#include <forstio/codec/data.hpp>
+
+#include "../iterator.hpp"
 
 namespace kel {
 namespace lbm {
@@ -52,25 +54,20 @@ using Particle = Struct<
 
 template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using ParticleGroup = Struct<
-	Member<Array<Float64,D>, "mask">,
+	Member<Array<T,D>, "mask">,
 	Member<CollisionType, "collision">,
 	Member<Scalar<T>, "mass">,
 	Member<Array<Particle<T,D>>, "particles">
 >;
-
-template<typename... PartGroups>
-using ParticleGroupTuple = Tuple<
-	PartGroups...
->;
-
 }
 
 template<typename T, uint64_t D>
 saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid_particle_group(
 		saw::data<sch::Scalar<T>> rad_p,
-		saw::data<sch::Scalar<T>> density_p
+		saw::data<sch::Scalar<T>> density_p,
+		const saw::data<sch::UInt64>& mask_resolution
 ){
-	saw::data<sch::ParticleGroup<T,D>,sch::ParticleCollisionSpheroid<T>> part;
+	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T>>> part;
 
 	auto& mask = part.template get<"mask">();
 	auto& collision = part.template get<"collision">();
@@ -91,6 +88,16 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T>>> create_sph
 	} else {
 		static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
 	}
+
+	saw::data<sch::FixedArray<sch::UInt64,D>> mask_dims;
+	for(uint64_t i = 0u; i < D; ++i){
+		mask_dims.at({i}) = mask_resolution;
+	}
+
+	mask = {mask_dims};
+	iterator<D>::apply([&](const auto& index){
+		
+	},{},mask_dims);
 
 	return part;
 }

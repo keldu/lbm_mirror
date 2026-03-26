@@ -60,8 +60,7 @@ using MacroStruct = Struct<
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles
+		saw::data<sch::MacroStruct<T,Desc>>& macros
 ){
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
@@ -178,23 +177,6 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims()
 	);
 
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{particle_amount}; ++i){
-		auto& part = particles.at(i);
-
-		saw::data<sch::Vector<T,Desc::D>> pos;
-		pos.at({{0u}}) = dim_x * 0.25;
-		pos.at({{1u}}) = dim_y * 0.5;
-		saw::data<sch::Scalar<T>> rad, dense, dt;
-		rad.at({}) = dim_y * 0.1;
-		dense.at({}) = 1.0;
-		dt.at({}) = 1.0;
-		part = create_spheroid_particle(
-			pos,{},{},
-			{},{},{},
-			rad, dense,dt
-		);
-	}
-
 	return saw::make_void();
 }
 
@@ -202,21 +184,12 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
-
-	{
-		auto& p = particles.at({{0u}});
-
-		auto& p_coll = p.template get<"collision">();
-		auto& p_rad = p_coll.template get<"radius">();
-	}
-
 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
@@ -326,7 +299,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>>();
 	
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -352,7 +324,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -366,7 +338,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
@@ -383,12 +354,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
-	{
-		auto eov = dev.copy_to_device(*lbm_particle_data_ptr,lbm_sycl_particle_data);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
 	sycl_q.wait();
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 
@@ -397,13 +362,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,*lbm_particle_data_ptr,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
 		sycl_q.wait();
-		if(i.get() %  1 == 0u){
+		if(i.get() %  32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){

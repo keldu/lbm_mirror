@@ -57,8 +57,7 @@ using MacroStruct = Struct<
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles
+		saw::data<sch::MacroStruct<T,Desc>>& macros
 ){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
@@ -162,20 +161,11 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
-
-	{
-		auto& p = particles.at({{0u}});
-
-		auto& p_coll = p.template get<"collision">();
-		auto& p_rad = p_coll.template get<"radius">();
-	}
-
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
@@ -283,7 +273,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>>>();
 	
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -309,7 +298,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -323,7 +312,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_amount>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
@@ -340,12 +328,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
-	{
-		auto eov = dev.copy_to_device(*lbm_particle_data_ptr,lbm_sycl_particle_data);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
 	sycl_q.wait();
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 
@@ -354,7 +336,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,*lbm_particle_data_ptr,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}

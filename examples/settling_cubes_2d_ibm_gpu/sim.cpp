@@ -49,15 +49,10 @@ using MacroStruct = Struct<
 	Member<VectorChunk<T,Desc>, "force">
 >;
 
-//template<typename T, typename Desc>
-//using ParticleArray = Array<
-//	Particle<T,Desc::D>
-//>;
-
 template<typename T, typename Desc>
 using ParticleGroups = Tuple<
 	ParticleGroup<
-		T,Desc::D
+		T,Desc::D,sch::ParticleCollisionSpheroid<T>
 	>
 >;
 }
@@ -65,7 +60,8 @@ using ParticleGroups = Tuple<
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros
+		saw::data<sch::MacroStruct<T,Desc>>& macros,
+		saw::data<sch::ParticleGroups<T,Desc>>& particles
 ){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
@@ -105,12 +101,20 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims()
 	);
 
-	return saw::make_void();
-}
+	// Particles
+	{
+		saw::data<sch::Scalar<T>> rad_p, dense_p;
+		rad_p.at({}).set(2.0);
+		dense_p.at({}).set(1);
+		auto& spheroid_group = particles.template get<0u>();
+		spheroid_group = create_spheroid_particle_group<T,Desc::D>(
+			rad_p,
+			dense_p,
+			{64u}
+		);
+	}
 
-template<typename T, typename Desc>
-void add_particles(saw::data<sch::Array<sch::Particle<T,Desc::D>>>& particles){
-	////// TODO
+	return saw::make_void();
 }
 
 template<typename T, typename Desc>
@@ -129,6 +133,8 @@ saw::error_or<void> step(
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
+		saw::data<sch::Vector<T,Desc::D>> force;
+		force.at({{1}}).set(-1.0);
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
@@ -205,7 +211,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	
+	auto lbm_particles_data = saw::data<sch::ParticleGroups<T,Desc>>();
+
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
@@ -230,7 +237,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,lbm_particles_data);
 		if(eov.is_error()){
 			return eov;
 		}
