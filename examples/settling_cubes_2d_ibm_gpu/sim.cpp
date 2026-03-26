@@ -164,7 +164,6 @@ saw::error_or<void> step(
 
 	}).wait();
 
-	
 	// Step
 	/*
 	q.submit([&](acpp::sycl::handler& h){
