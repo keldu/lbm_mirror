@@ -74,10 +74,10 @@ podman run --rm -it \
         nix-store --verify --check-contents || true
 
         # Build
-        nix-build default.nix -A release.examples --out-link result
+        nix-build default.nix -A release.examples --out-link /tmp/result
 
-				        # --- Interactive binary selection ---
-        BIN_DIR=./result/bin
+			# --- Interactive binary selection ---
+        BIN_DIR=/tmp/result/bin
         mapfile -t BINARIES < <(ls -1 \$BIN_DIR)
         if (( \${#BINARIES[@]} == 0 )); then
             echo 'No binaries found in result/bin'
