@@ -121,6 +121,7 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+		saw::data<sch::Ptr<sch::ParticleGroup<T,Desc>, encode::Sycl<saw::encode::Native>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){
@@ -129,7 +130,6 @@ saw::error_or<void> step(
 
 	{
 	}
-
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
@@ -164,6 +164,10 @@ saw::error_or<void> step(
 
 	}).wait();
 
+	q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x}, [=](acpp::sycl::id<Desc::D> idx){
+		});
+	}).wait();
 	// Step
 	/*
 	q.submit([&](acpp::sycl::handler& h){
@@ -210,7 +214,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particles_data = saw::data<sch::ParticleGroups<T,Desc>>();
+	auto lbm_particle_data = saw::heap<saw::data<sch::ParticleGroups<T,Desc>>>();
 
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -236,7 +240,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,lbm_particles_data);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,lbm_particle_data);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -250,10 +254,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
+	saw::data<sch::ParticleGroups<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
 	auto lsdm_view = make_chunk_struct_view(lbm_sycl_macro_data);
+	auto lsdp_view = make_chunk_struct_view(lbm_sycl_particle_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){
@@ -266,6 +272,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
+	{
+		auto eov = dev.copy_to_device(*lbm_particle_data_ptr,lbm_sycl_particle_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	sycl_q.wait();
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 
@@ -274,7 +286,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,lsdp_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
