@@ -55,14 +55,13 @@ using Particle = Struct<
 template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
-	Member<CollisionType, "collision">,
-	Member<Scalar<T>, "mass">,
+	Member<FixedArray<Scalar<T>,1u>, "density">,
 	Member<Array<Particle<T,D>>, "particles">
 >;
 }
 
-template<typename T, uint64_t D>
-saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid_particle_group(
+template<typename T, uint64_t D, T radius>
+saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> create_spheroid_particle_group(
 		saw::data<sch::Scalar<T>> rad_p,
 		saw::data<sch::Scalar<T>> density_p,
 		const saw::data<sch::UInt64>& mask_resolution
@@ -71,23 +70,10 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T>>> create_sph
 
 	auto& mask = part.template get<"mask">();
 	auto& collision = part.template get<"collision">();
-	auto& mass = part.template get<"mass">();
+	auto& density = part.template get<"density">().at({{0u}});
 
-	if constexpr ( D == 1u ){
-		saw::data<sch::Scalar<T>> c;
-		c.at({}).set(2.0);
-		mass = rad_p * c * density_p;
-	} else if constexpr ( D == 2u){
-		saw::data<sch::Scalar<T>> pi;
-		pi.at({}).set(3.14159);
-		mass = rad_p * rad_p * pi * density_p;
-	} else if constexpr ( D == 3u ){
-		saw::data<sch::Scalar<T>> c;
-		c.at({}).set(3.14159 * 4.0 / 3.0);
-		mass = rad_p * rad_p * rad_p * c * density_p;
-	} else {
-		static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
-	}
+	static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
+	density = density_p;
 
 	saw::data<sch::FixedArray<sch::UInt64,D>> mask_dims;
 	for(uint64_t i = 0u; i < D; ++i){

@@ -52,7 +52,7 @@ using MacroStruct = Struct<
 template<typename T, typename Desc>
 using ParticleGroups = Tuple<
 	ParticleGroup<
-		T,Desc::D,sch::ParticleCollisionSpheroid<T>
+		T,Desc::D,sch::ParticleCollisionSpheroid<T,2.0>
 	>
 >;
 }
@@ -119,11 +119,11 @@ saw::error_or<void> setup_initial_conditions(
 
 template<typename T, typename Desc>
 saw::error_or<void> step(
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::Ptr<sch::ParticleGroup<T,Desc>, encode::Sycl<saw::encode::Native>>& particles,
-		saw::data<sch::UInt64> t_i,
-		device& dev
+	saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
+	saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+	saw::data<sch::Ptr<sch::ParticleGroups<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
+	saw::data<sch::UInt64> t_i,
+	device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
@@ -214,7 +214,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data = saw::heap<saw::data<sch::ParticleGroups<T,Desc>>>();
+	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleGroups<T,Desc>>>();
 
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -240,7 +240,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,lbm_particle_data);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
