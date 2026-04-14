@@ -71,7 +71,7 @@ let
 
 		 src = builtins.fetchurl {
 			url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-			sha256 = "sha256:026scvd9015blphbj49d0cv5wfrxh1szzdv3p212wzk4iw643akj";
+			sha256 = "sha256:1bpglvf0h90dqdm25kp3h1rvk3f7fyasp43xsgki09n1yp55iw9w";
 		 };
 
 		 phases = [ "unpackPhase" "installPhase" ];

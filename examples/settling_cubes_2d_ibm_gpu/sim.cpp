@@ -52,7 +52,7 @@ using MacroStruct = Struct<
 template<typename T, typename Desc>
 using ParticleGroups = Tuple<
 	ParticleGroup<
-		T,Desc::D,sch::ParticleCollisionSpheroid<T,2.0>
+		T,Desc::D,sch::ParticleCollisionSpheroid<T,2.0f>
 	>
 >;
 }
@@ -103,12 +103,10 @@ saw::error_or<void> setup_initial_conditions(
 
 	// Particles
 	{
-		saw::data<sch::Scalar<T>> rad_p, dense_p;
-		rad_p.at({}).set(2.0);
+		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		auto& spheroid_group = particles.template get<0u>();
-		spheroid_group = create_spheroid_particle_group<T,Desc::D>(
-			rad_p,
+		spheroid_group = create_spheroid_particle_group<T,Desc::D,2.0f>(
 			dense_p,
 			{64u}
 		);
@@ -165,7 +163,7 @@ saw::error_or<void> step(
 	}).wait();
 
 	q.submit([&](acpp::sycl::handler& h){
-		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x}, [=](acpp::sycl::id<Desc::D> idx){
+		h.parallel_for(acpp::sycl::range<1u>{dim_x}, [=](acpp::sycl::id<1u> idx){
 		});
 	}).wait();
 	// Step
@@ -257,9 +255,9 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	saw::data<sch::ParticleGroups<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
-	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
-	auto lsdm_view = make_chunk_struct_view(lbm_sycl_macro_data);
-	auto lsdp_view = make_chunk_struct_view(lbm_sycl_particle_data);
+	auto lsd_view = make_view(lbm_sycl_data);
+	auto lsdm_view = make_view(lbm_sycl_macro_data);
+	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){

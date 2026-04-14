@@ -40,9 +40,8 @@ using ParticleRigidBody = Struct<
 	Member<typename impl::rotation_type_helper<T,D>::Schema, "angular_acceleration">
 >;
 
-template<typename T>
+template<typename T, typename saw::native_data_type<T>::type radius = 1.0f>
 using ParticleCollisionSpheroid = Struct<
-	Member<Scalar<T>, "radius">
 >;
 
 template<typename T, uint64_t D>
@@ -52,7 +51,7 @@ using Particle = Struct<
 	// Member<Array<Float64,D>, "mask">, 
 >;
 
-template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
+template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T,2.0f>>
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
 	Member<FixedArray<Scalar<T>,1u>, "density">,
@@ -60,19 +59,17 @@ using ParticleGroup = Struct<
 >;
 }
 
-template<typename T, uint64_t D, T radius>
+template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius>
 saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> create_spheroid_particle_group(
-		saw::data<sch::Scalar<T>> rad_p,
 		saw::data<sch::Scalar<T>> density_p,
 		const saw::data<sch::UInt64>& mask_resolution
 ){
-	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T>>> part;
+	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,2.0f>>> part;
 
 	auto& mask = part.template get<"mask">();
-	auto& collision = part.template get<"collision">();
 	auto& density = part.template get<"density">().at({{0u}});
 
-	static_assert(D == 0u or D > 3u, "Dimensions only supported for Dim 1,2 & 3.");
+	static_assert(D >= 1u and D <= 3u, "Dimensions only supported for Dim 1,2 & 3.");
 	density = density_p;
 
 	saw::data<sch::FixedArray<sch::UInt64,D>> mask_dims;
