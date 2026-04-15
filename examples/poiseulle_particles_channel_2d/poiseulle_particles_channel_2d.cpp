@@ -461,6 +461,8 @@ void couple_particles_to_lattice(
 
 				p_acc = p_acc + p_pos_rel_vec;
 			}
+
+
 			/* So I want to include the relative velocity from both particles, but this is a bit hard considering I just assumed 0 velocity from the other party
 			else if(n_macro_cell_particle.get() != (i.get() + 1u) and n_macro_cell_particle.get() > 0u){
 				// Generally compare
@@ -478,6 +480,7 @@ void couple_particles_to_lattice(
 				auto& n_info = n_cell.template get<"info">()({0u});
 				auto& n_macro_cell = macros.at(n_p_cell_pos);
 				auto& n_macro_cell_particle = n_macro_cell.template get<"particle">();
+				l
 
 				// If neighbour is wall, then add force pushing the particle away
 				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != (i.get()+1u) and n_macro_cell_particle.get() > 0u) ) {

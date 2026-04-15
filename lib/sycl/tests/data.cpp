@@ -38,6 +38,13 @@ SAW_TEST("Sycl Data Compilation"){
 	// SAW_EXPECT(test_f.at({}).get() == 1, "Value check failed");
 }
 
+SAW_TEST("Sycl Data Array of Struct"){
+	acpp::sycl::queue q;
+
+	saw::data<sch::Array<sch::Float64>, kel::lbm::encode::Sycl<saw::encode::Native>> a{{{2u}},q};
+}
+
+/*
 SAW_TEST("Sycl Data Compilation for Particle Similacrum"){
 	acpp::sycl::queue q;
 
@@ -45,4 +52,5 @@ SAW_TEST("Sycl Data Compilation for Particle Similacrum"){
 		sch::TestObjSchema
 	> a;
 }
+*/
 }

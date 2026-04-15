@@ -131,16 +131,12 @@ private:
 	SAW_FORBID_MOVE(data);
 public:
 	data(const data<typename meta_schema<Schema>::MetaSchema>& meta__, acpp::sycl::queue& q__):
-		q_{&q__},
-		values_{nullptr}
+		values_{nullptr},
+		meta_{meta__},
+		q_{&q__}
 	{
 		SAW_ASSERT(q_);
-		/// TODO use meta
-		data<schema::UInt64> m{1u};
-		for(uint64_t i = 0u; i < Dims; ++i){
-			m = m * meta__.at({i});
-		}
-		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(m.get(),*q_);
+		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(flat_size().get(),*q_);
 		SAW_ASSERT(values_);
 	}
 
@@ -150,16 +146,6 @@ public:
 		q_{&q__}
 	{
 		SAW_ASSERT(q_);
-	}
-
-	data(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& meta__,acpp::sycl::queue& q__):
-		values_{nullptr},
-		meta_{meta__},
-		q_{&q__}
-	{
-		SAW_ASSERT(q_);
-		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(flat_size().get(),*q_);
-		SAW_ASSERT(values_);
 	}
 
 	~data(){
@@ -182,6 +168,19 @@ public:
 
 	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& index) const{
 		return values_[kel::lbm::flatten_index<schema::UInt64,Dims>::apply(index,meta()).get()];
+	}
+
+	constexpr error_or<void> reset_to(const data<typename meta_schema<Schema>::MetaSchema>& meta_arg){
+		SAW_ASSERT(q_);
+		meta_ = meta_arg;
+
+		if(values_){
+			acpp::sycl::free(values_,*q_);
+		}
+		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(flat_size().get(),*q_);
+		SAW_ASSERT(q_);
+
+		return make_void();
 	}
 
 	constexpr data<Sch,Encode>* flat_data() const {
@@ -391,10 +390,11 @@ private:
 		members_{(static_cast<void>(Is), q)...}
 	{}
 public:
+	/*
 	data(data<typename meta_schema<Schema>::MetaSchema>& meta__, acpp::sycl::queue& q__):
 		data{q__, std::make_index_sequence<sizeof...(Members)>{}}
-	{
-	}
+	{}
+	*/
 
 	data(acpp::sycl::queue& q__):
 		data{q__, std::make_index_sequence<sizeof...(Members)>{}}
@@ -754,6 +754,7 @@ struct sycl_copy_helper<sch::Array<Sch,Dims>, Encode> final {
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
+		SAW_ASSERT(host_data.flat_size() == sycl_data.flat_size());
 		q.submit([&](acpp::sycl::handler& h){
 			h.copy(sycl_ptr,host_ptr, host_data.flat_size().get());
 		}).wait();
@@ -761,14 +762,27 @@ struct sycl_copy_helper<sch::Array<Sch,Dims>, Encode> final {
 	}
 
 	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+
+		{
+			auto hm = host_data.meta();
+			auto sm = sycl_data.meta();
+			bool equ{true};
+			for(uint64_t i{0u}; i < Dims; ++i){
+				equ &= (hm.at({i}).get() == sm.at({i}).get());
+			}
+			if(not equ){
+				sycl_data.reset_to(hm);
+			}
+		}
+
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
-
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
 		q.submit([&](acpp::sycl::handler& h){
 			h.copy(host_ptr,sycl_ptr, host_data.flat_size().get());
 		}).wait();
+
 		return saw::make_void();
 	}
 

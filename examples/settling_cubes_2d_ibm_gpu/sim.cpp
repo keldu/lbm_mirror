@@ -6,6 +6,7 @@
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
 #include <forstio/codec/simple.hpp>
+#include <forstio/codec/math.hpp>
 
 namespace kel {
 namespace lbm {
@@ -50,18 +51,25 @@ using MacroStruct = Struct<
 >;
 
 template<typename T, typename Desc>
-using ParticleGroups = Tuple<
-	ParticleGroup<
-		T,Desc::D,sch::ParticleCollisionSpheroid<T,2.0f>
-	>
+using ParticleSpheroidGroup = ParticleGroup<
+	T,
+	Desc::D,
+	sch::ParticleCollisionSpheroid<T,2.0f>
 >;
+
+template<typename T, typename Desc>
+using ParticleGroups = Tuple<
+	ParticleSpheroidGroup<T,Desc>
+>;
+
+
 }
 
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::ParticleGroups<T,Desc>>& particles
+		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
@@ -105,11 +113,39 @@ saw::error_or<void> setup_initial_conditions(
 	{
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
-		auto& spheroid_group = particles.template get<0u>();
+		// auto& spheroid_group = particles.template get<0u>();
+		auto& spheroid_group = particles;
+
 		spheroid_group = create_spheroid_particle_group<T,Desc::D,2.0f>(
 			dense_p,
 			{64u}
 		);
+
+		{
+			auto& p = spheroid_group.template get<"particles">();
+
+			p = {{{16u}}};
+
+			iterator<1u>::apply(
+				[&](auto& index){
+					// Set Pos here?
+					auto& p_ind = p.at(index);
+
+					auto& p_rb = p_ind.template get<"rigid_body">();
+					auto& p_pos = p_rb.template get<"position">();
+
+					// TODO CONTINUE HERE NEED to init pos here !!!!
+
+					auto& p_pos_old = p_rb.template get<"position_old">();
+					p_pos_old = p_pos;
+				},
+				{},
+				p.meta()
+			);
+		}
+	}
+	// Particle in hacky flavour
+	{
 	}
 
 	return saw::make_void();
@@ -119,20 +155,98 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 	saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 	saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-	saw::data<sch::Ptr<sch::ParticleGroups<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
+	saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& p_group,
 	saw::data<sch::UInt64> t_i,
 	device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 
-	{
-	}
+	auto& parts = p_group.template get<"particles">();
+	auto& p_mask = p_group.template get<"mask">();
+	auto& vels = macros.template get<"velocity">();
+	auto& forces = macros.template get<"force">();
+
+	auto p_meta = parts.meta();
+	q.submit([&](acpp::sycl::handler& h){
+
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			// Reset the force to zero
+			forces.at(index) = {};
+		});
+	}).wait();
+
+	q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<1u>{p_meta.at({0u}).get()}, [=](acpp::sycl::id<1u> idx){
+
+			saw::data<sch::FixedArray<sch::UInt64,1u>> index;
+			for(uint64_t i = 0u; i < 1u; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			auto& p = parts.at(index);
+			auto& p_rb = p.template get<"rigid_body">();
+			saw::data<sch::Scalar<T>> delta_t;
+			delta_t.at({}).set(1.0f);
+
+			auto& p_pos = p_rb.template get<"position">();
+			auto& p_rot = p_rb.template get<"rotation">();
+
+			iterator<Desc::D>::apply(
+				[&](auto& m_ind){
+					saw::data<sch::Vector<T,Desc::D>> index_shift;
+					for(uint64_t i{0u}; i < Desc::D; ++i){
+						index_shift.at({{i}}) = m_ind.at({i}).template cast_to<T>() - (p_mask.meta().at({i})+1u).template cast_to<T>() * 0.5;
+					}
+
+					saw::data<sch::Vector<T,Desc::D>> transformed_pos;
+					for(uint64_t i{0u}; i < Desc::D; ++i){
+						// TODO add rotation, scaling here.
+						transformed_pos.at({{i}}) = index_shift.at({{i}});
+					}
+
+					// Lagrange indicator position
+					auto p_pos_lag = p_pos + transformed_pos;
+
+					// Pick the closest velocity
+					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> p_cell_pos;
+					saw::data<sch::Vector<sch::UInt64,Desc::D>> p_cell_pos_vec;
+					for(uint64_t i{0u}; i < Desc::D; ++i){
+						p_cell_pos.at({{i}}) = (p_pos_lag.at({{i}}) + 0.5).template cast_to<sch::UInt64>();
+						p_cell_pos.at({{i}}).set(std::max(1ul,std::min(p_cell_pos.at({{i}}).get(), p_meta.at({{i}}).get() - 2ul)));
+						p_cell_pos_vec.at({{i}}) = p_cell_pos.at({{i}});
+					}
+
+					auto& u_fluid = vels.at(p_cell_pos);
+
+					// this is our relative position to the particle
+					auto rel_cell_to_part_pos = p_cell_pos_vec.template cast_to<T>() - p_pos;
+
+					auto p_vel = (p_pos - p_rb.template get<"position_old">()) * delta_t;
+					auto u_solid = p_vel + saw::math::cross(p_rot,rel_cell_to_part_pos);
+
+
+					// Force
+					auto force = (u_solid - u_fluid) / delta_t;
+
+					// TODO HERE ATOMIC! !!!!
+					forces.at(p_cell_pos) = forces.at(p_cell_pos) + force;
+				},
+				{},
+				p_mask.meta()
+			);
+
+			verlet_step_lambda<T,Desc::D>(p,delta_t);
+		});
+	}).wait();
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		saw::data<sch::Vector<T,Desc::D>> force;
-		force.at({{1}}).set(-1.0);
 		// Need nicer things to handle the flow. I see improvement here
 		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
@@ -157,15 +271,10 @@ saw::error_or<void> step(
 				default:
 				break;
 			}
-		});
 
-
-	}).wait();
-
-	q.submit([&](acpp::sycl::handler& h){
-		h.parallel_for(acpp::sycl::range<1u>{dim_x}, [=](acpp::sycl::id<1u> idx){
 		});
 	}).wait();
+
 	// Step
 	/*
 	q.submit([&](acpp::sycl::handler& h){
@@ -212,9 +321,11 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleGroups<T,Desc>>>();
+	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
+	// auto lbm_particles_ptr = saw::heap<saw::data<sch::FixedArray<sch::ParticleRigidBody<T,Desc::D>,part_count>>>();
+	// saw::data<sch::Array<T,Desc::D>> p_mask;
 
-	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
+	std::cout<<"Estimated Bytes of LBM Fields: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
@@ -252,14 +363,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::ParticleGroups<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
-	{
-		auto eov = dev.malloc_on_device(*lbm_particle_data_ptr,lbm_sycl_particle_data);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
-	sycl_q.wait();
+	saw::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
@@ -285,7 +389,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 
-	saw::data<sch::UInt64> time_steps{16u*4096ul};
+	saw::data<sch::UInt64> time_steps{4u*4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
