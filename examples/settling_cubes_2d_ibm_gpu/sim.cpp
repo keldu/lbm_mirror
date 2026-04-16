@@ -201,7 +201,7 @@ saw::error_or<void> step(
 				[&](auto& m_ind){
 					saw::data<sch::Vector<T,Desc::D>> index_shift;
 					for(uint64_t i{0u}; i < Desc::D; ++i){
-						index_shift.at({{i}}) = m_ind.at({i}).template cast_to<T>() - (p_mask.meta().at({i})+1u).template cast_to<T>() * 0.5;
+						index_shift.at({{i}}) = m_ind.at({i}).template cast_to<T>() - (vels.meta().at({i})+1u).template cast_to<T>() * 0.5;
 					}
 
 					saw::data<sch::Vector<T,Desc::D>> transformed_pos;
@@ -213,12 +213,12 @@ saw::error_or<void> step(
 					// Lagrange indicator position
 					auto p_pos_lag = p_pos + transformed_pos;
 
-					// Pick the closest velocity
+					// Pick the closest velocity and clamp it
 					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> p_cell_pos;
 					saw::data<sch::Vector<sch::UInt64,Desc::D>> p_cell_pos_vec;
 					for(uint64_t i{0u}; i < Desc::D; ++i){
 						p_cell_pos.at({{i}}) = (p_pos_lag.at({{i}}) + 0.5).template cast_to<sch::UInt64>();
-						p_cell_pos.at({{i}}).set(std::max(1ul,std::min(p_cell_pos.at({{i}}).get(), p_meta.at({{i}}).get() - 2ul)));
+						p_cell_pos.at({{i}}).set(std::max(0ul,std::min(p_cell_pos.at({{i}}).get(), vels.meta().at({{i}}).get() - 2ul)));
 						p_cell_pos_vec.at({{i}}) = p_cell_pos.at({{i}});
 					}
 
@@ -228,14 +228,16 @@ saw::error_or<void> step(
 					auto rel_cell_to_part_pos = p_cell_pos_vec.template cast_to<T>() - p_pos;
 
 					auto p_vel = (p_pos - p_rb.template get<"position_old">()) * delta_t;
-					auto u_solid = p_vel + saw::math::cross(p_rot,rel_cell_to_part_pos);
 
+					auto u_solid = p_vel + saw::math::cross(p_rot,rel_cell_to_part_pos);
 
 					// Force
 					auto force = (u_solid - u_fluid) / delta_t;
 
 					// TODO HERE ATOMIC! !!!!
 					forces.at(p_cell_pos) = forces.at(p_cell_pos) + force;
+
+					// TODO APPLY FORCE TO PARTICLE
 				},
 				{},
 				p_mask.meta()
@@ -248,7 +250,7 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -271,7 +273,6 @@ saw::error_or<void> step(
 				default:
 				break;
 			}
-
 		});
 	}).wait();
 
@@ -389,6 +390,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 
+	{
+		auto eov = write_vtk_file(out_dir,"ms",0u, *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
@@ -402,7 +409,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
-		if(i.get()%32u ==0u){
+		if(i.get()%1u ==0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){

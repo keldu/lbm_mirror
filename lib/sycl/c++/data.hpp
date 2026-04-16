@@ -278,6 +278,10 @@ public:
 		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::get_dims();
 	}
 
+	static constexpr auto ghost_meta() {
+		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::meta();
+	}
+
 	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
@@ -295,6 +299,10 @@ public:
 	}
 
 	static constexpr auto get_dims(){
+		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+	}
+
+	static constexpr auto meta(){
 		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
@@ -345,6 +353,10 @@ public:
 		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::get_dims();
 	}
 
+	static constexpr auto ghost_meta() {
+		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::meta();
+	}
+
 	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
@@ -359,6 +371,10 @@ public:
 			ind.at({i}) = index.at({i}) + Ghost;
 		}
 		return values_.at(ind);
+	}
+
+	static constexpr auto meta(){
+		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	static constexpr auto get_dims(){
