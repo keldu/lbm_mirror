@@ -315,8 +315,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	saw::data<sch::FixedArray<sch::Particle<T,Desc::D>, particle_size>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
-	auto lsd_view = make_chunk_struct_view(lbm_sycl_data);
-	auto lsdm_view = make_chunk_struct_view(lbm_sycl_macro_data);
+	auto lsd_view = make_view(lbm_sycl_data);
+	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){

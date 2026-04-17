@@ -268,7 +268,7 @@ saw::error_or<void> step(
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					collision.apply(fields,macros,index,t_i);
+					// collision.apply(fields,macros,index,t_i);
 					break;
 				default:
 				break;
