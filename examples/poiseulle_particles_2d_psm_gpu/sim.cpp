@@ -340,8 +340,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
 	sycl_q.wait();
 
-	auto lsd_view = make_view(lbm_sycl_data);
-	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	{
 		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
 		if(eov.is_error()){
@@ -355,6 +353,9 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
+	auto lsd_view = make_view(lbm_sycl_data);
+	auto lsdm_view = make_view(lbm_sycl_macro_data);
+
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
@@ -368,6 +369,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
+		/*
 		if(i.get() %  32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -382,6 +384,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		/*
 		{
 			{
