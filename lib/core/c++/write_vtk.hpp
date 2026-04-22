@@ -136,7 +136,7 @@ struct lbm_vtk_writer<sch::Vector<T,D>> {
 template<typename T>
 struct lbm_vtk_writer<sch::Scalar<T>> {
 	static saw::error_or<void> apply_header(std::ostream& vtk_file, std::string_view name){
-		vtk_file<<"SCALARS "<<name<<" float\n";
+		vtk_file<<"SCALARS "<<name<<" float 1\n";
 		vtk_file<<"LOOKUP_TABLE default\n";
 		return saw::make_void();
 	}
@@ -206,7 +206,7 @@ struct lbm_vtk_writer<sch::Struct<sch::Member<sch::Chunk<MemberT,Ghost,Dims...>,
 		if constexpr (sizeof...(MemberT) > 0u){
 			// POINT DATA
 			{
-				vtk_file << "POINT_DATA " << pd_size.get() <<"\n";
+				vtk_file << "\nPOINT_DATA " << pd_size.get() <<"\n";
 			}
 
 			// HEADER TO BODY

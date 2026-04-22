@@ -381,7 +381,7 @@ public:
 		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
-	auto flat_data(){
+	auto flat_data() const {
 		return values_.flat_data();
 	}
 
@@ -741,8 +741,10 @@ struct sycl_copy_helper<sch::Chunk<Sch,Ghost,Dims...>, Encode> final {
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
+		auto flat_size = host_data.flat_size();
+
 		q.submit([&](acpp::sycl::handler& h){
-			h.copy(sycl_ptr,host_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+			h.copy(sycl_ptr,host_ptr, flat_size.get());
 		}).wait();
 		return saw::make_void();
 	}
@@ -753,8 +755,10 @@ struct sycl_copy_helper<sch::Chunk<Sch,Ghost,Dims...>, Encode> final {
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
+		auto flat_size = host_data.flat_size();
+
 		q.submit([&](acpp::sycl::handler& h){
-			h.copy(host_ptr,sycl_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+			h.copy(host_ptr,sycl_ptr, flat_size.get());
 		}).wait();
 		return saw::make_void();
 	}

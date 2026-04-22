@@ -207,9 +207,9 @@ saw::error_or<void> step(
 			[&](){
 				uint64_t target_t_i = 64u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0015 / target_t_i) * t_i.get();
+					return 1.0 + (0.0002 / target_t_i) * t_i.get();
 				}
-				return 1.0015;
+				return 1.0002;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
@@ -227,7 +227,7 @@ saw::error_or<void> step(
 				case 0u:
 				break;
 				case 1u:
-					abb.apply(fields,index,t_i);
+					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
 					collision.apply(fields,macros,index,t_i);
@@ -289,12 +289,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1e-3}},
+		{{1.0}},
 		// delta_t
-		{{1e-06}}
+		{{1.0}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{0.1},{1e-2},{0.4 * dim_y *1e-3});
+	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
