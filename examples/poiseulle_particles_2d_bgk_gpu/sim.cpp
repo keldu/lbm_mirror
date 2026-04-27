@@ -6,6 +6,7 @@
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
 #include <forstio/codec/simple.hpp>
+#include <forstio/codec/args.hpp>
 
 namespace kel {
 namespace lbm {
@@ -241,6 +242,14 @@ saw::error_or<void> step(
 template<typename T, typename Desc>
 saw::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
+
+	/*
+	auto eo_lbm_args = setup_lbm_env<sch::Args<sch::Struct<>,sch::Tuple<>>>(argc,argv);
+	if(eo_lbm_args.is_error()){
+		return std::move(eo_lbm_args.get_error());
+	}
+	auto& lbm_args = eo_lbm_args.get_value();
+	*/
 
 	using dfi = df_info<T,Desc>;
 

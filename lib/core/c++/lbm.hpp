@@ -1,5 +1,6 @@
 #pragma once
 
+#include "args.hpp"
 #include "schema.hpp"
 #include "flatten.hpp"
 #include "chunk.hpp"
