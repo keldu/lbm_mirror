@@ -347,22 +347,20 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
-		/*
-		{
+		if(i.get() % 32u == 0u){
 			{
-				auto eov = dev.copy_to_host(lbm_sycl_data,*lbm_data_ptr);
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
 			{
-				auto eov = write_csv_file(out_dir,"lbm",i.get(), *lbm_data_ptr);
+				auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
 		}
-		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
