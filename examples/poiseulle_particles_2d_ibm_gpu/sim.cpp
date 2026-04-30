@@ -46,7 +46,8 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
-	Member<RhoChunk<T>, "density">
+	Member<RhoChunk<T>, "density">,
+	Member<VelChunk<T,Desc>, "force">
 >;
 
 //template<typename T, typename Desc>
@@ -171,7 +172,10 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65};
+			saw::data<sch::Vector<T,Desc::D>> f;
+			f.at({{0u}}) = 0.0;
+			f.at({{1u}}) = -1.0;
+		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65,f};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
