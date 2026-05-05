@@ -143,6 +143,7 @@ public:
 		auto& force = force_f.at(index);
 
 		auto total_force = force + global_force_;
+
 		saw::data<sch::Scalar<T>> half;
 		half.at({}).set(0.5);
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index) + total_force * ( half / rho );
@@ -168,7 +169,7 @@ public:
 			auto ci_dot_u = saw::math::dot(ci,vel);
 
 			// saw::data<sch::Vector<T,Descriptor::D>> F_i;
-			// F_i = f * (c_i - u * ics2  + <c_i,u> * c_i * ics2 * ics2) * w_i;
+			// F_i = f * ((c_i - u) * ics2  + <c_i,u> * c_i * ics2 * ics2) * w_i;
 			saw::data<sch::Scalar<T>> w;
 			w.at({}).set(dfi::weights[i]);
 
@@ -187,7 +188,11 @@ public:
 
 			auto F_i = w * force_projection;
 
-			dfs.at({i}) = dfs.at({i}) + frequency_ * (eq.at(i) - dfs.at({i}) ) + F_i.at({}) * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
+			dfs.at({i}) = dfs.at({i})
+										+ frequency_
+											* (eq.at(i) - dfs.at({i}) )
+										+ F_i.at({})
+											* (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
 		}
 	}
 };

@@ -2,8 +2,6 @@
 
 #include "args.hpp"
 #include "schema.hpp"
-#include "flatten.hpp"
-#include "chunk.hpp"
 #include "descriptor.hpp"
 #include "boundary.hpp"
 #include "converter.hpp"
@@ -12,6 +10,9 @@
 #include "component.hpp"
 #include "environment.hpp"
 #include "equilibrium.hpp"
+#include "flatten.hpp"
+#include "fplbm.hpp"
+#include "chunk.hpp"
 #include "iterator.hpp"
 #include "hlbm.hpp"
 #include "macroscopic.hpp"

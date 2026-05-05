@@ -45,6 +45,9 @@ template<typename T>
 using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
+using ForceChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
@@ -112,7 +115,7 @@ saw::error_or<void> setup_initial_conditions(
 		[&](auto& index){
 			auto& df = df_f.at(index);
 			auto& rho = rho_f.at(index);
-			por_f.at(index).at({}) = {1};
+			por_f.at(index).at({}) = {0};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			auto eq = equilibrium<T,Desc>(rho,vel);
@@ -153,7 +156,7 @@ saw::error_or<void> setup_initial_conditions(
 			auto dist = middle - ind_vec;
 			auto dist_2 = saw::math::dot(dist,dist);
 			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 0.0;
+				porous_f.at(index).at({}) = 1.0;
 			}
 		},
 		{},// 0-index
@@ -176,7 +179,7 @@ saw::error_or<void> step(
 
 	// auto coll_ev =
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::FpLbmOneParticleNoVelocity,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
