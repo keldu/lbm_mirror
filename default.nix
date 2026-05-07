@@ -211,6 +211,7 @@ in rec {
 				examples.poiseulle_particles_2d_bgk_gpu
 				examples.poiseulle_particles_2d_psm_gpu
 				examples.poiseulle_particles_2d_hlbm_gpu
+				examples.poiseulle_particles_2d_fplbm_gpu
 				examples.poiseulle_3d_gpu
 			];
 		};
