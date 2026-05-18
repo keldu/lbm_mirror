@@ -20,6 +20,23 @@ SAW_TEST("Old Iterate"){
 	}, start, end);
 }
 
+SAW_TEST("CT Tuple Iterator"){
+	using namespace kel;
+
+	saw::data<
+		sch::Tuple<
+			sch::Float32,
+			sch::Int16,
+			sch::Float64,
+			sch::UInt32
+		>
+	> tup;
+
+	lbm::ct_tuple_iterator<std::decay_t<decltype(tup)>::Schema>::apply([](auto& val) -> saw::error_or<void> {
+		return saw::make_void();
+	},tup);
+}
+
 SAW_TEST("Old Iterate with Distance 1"){
 	using namespace kel;
 

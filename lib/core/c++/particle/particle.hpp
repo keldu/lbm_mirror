@@ -238,5 +238,12 @@ constexpr auto broadphase_collision_check = [](
 ) -> bool{
 	return broadphase_collision_distance_squared<T,D,Collision>(left,coll_l,right,coll_r).first;
 };
+
+
+
+namespace impl {
+
+}
+
 }
 }

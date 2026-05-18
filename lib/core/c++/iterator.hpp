@@ -50,6 +50,34 @@ public:
 	}
 };
 
+template<typename... Tup>
+struct ct_tuple_iterator final {
+private:
+	template<typename Func, uint64_t i>
+	static constexpr saw::error_or<void> apply_i(
+		Func& func,
+		saw::data<sch::Tuple<Tup...>>& tup
+	){
+		if constexpr ( i < sizeof...(Tup) ){
+			auto eov = func(tup.template get<i>());
+			if(eov.is_error()){
+				return eov;
+			}
+			return apply_i<Func,i+1u>(func,tup);
+		}
+
+		return saw::make_void();
+	}
+public:
+	template<typename Func>
+	static constexpr saw::error_or<void> apply(
+		Func&& func,
+		saw::data<sch::Tuple<Tup...>>& tup
+	){
+		return apply_i<Func,0u>(func,tup);
+	}
+};
+
 /* Ambiguous
 template<typename Func>
 void iterate_over(Func&& func, const saw::data<sch::FixedArray<sch::UInt64,3u>>& start, const saw::data<sch::FixedArray<sch::UInt64,3u>>& end, const saw::data<sch::FixedArray<sch::UInt64,3u>>& dist = {{{0u,0u,0u}}}){
