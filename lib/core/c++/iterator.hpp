@@ -50,8 +50,11 @@ public:
 	}
 };
 
+template<typename Tupl>
+struct ct_tuple_iterator;
+
 template<typename... Tup>
-struct ct_tuple_iterator final {
+struct ct_tuple_iterator<sch::Tuple<Tup...>> final {
 private:
 	template<typename Func, uint64_t i>
 	static constexpr saw::error_or<void> apply_i(

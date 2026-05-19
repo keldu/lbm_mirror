@@ -145,8 +145,7 @@ saw::error_or<void> setup_initial_conditions(
 		}
 	}
 	// Particle in hacky flavour
-	{
-	}
+	{}
 
 	return saw::make_void();
 }
@@ -197,6 +196,8 @@ saw::error_or<void> step(
 			auto& p_pos = p_rb.template get<"position">();
 			auto& p_rot = p_rb.template get<"rotation">();
 
+			auto& p_acc = p_rb.template get<"acceleration">();
+
 			iterator<Desc::D>::apply(
 				[&](auto& m_ind){
 					saw::data<sch::Vector<T,Desc::D>> index_shift;
@@ -238,6 +239,7 @@ saw::error_or<void> step(
 					forces.at(p_cell_pos) = forces.at(p_cell_pos) + force;
 
 					// TODO APPLY FORCE TO PARTICLE
+					p_acc = p_acc + force; // TODO divide by mass
 				},
 				{},
 				p_mask.meta()
