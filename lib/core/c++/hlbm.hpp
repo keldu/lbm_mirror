@@ -8,6 +8,7 @@ namespace kel {
 namespace lbm {
 namespace cmpt {
 struct HLBM {};
+struct HlbmParticle {};
 }
 
 /**
@@ -65,5 +66,29 @@ public:
 	}
 };
 
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::HlbmParticle, Encode> final {
+private:
+	typename saw::native_data_type<T>::type relaxation_;
+	saw::data<T> frequency_;
+public:
+
+	template<typename CellFieldSchema, typename MacroFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& particles, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+		/// Figure out how to access the particle list
+		auto& p = particles.at(i);
+
+		/// Iterate over the grid bounds
+		auto& grid = p.template get<"grid">();
+
+		iterator<Descriptor::D>::apply([&](const auto& index){
+			auto& g_i = grid.at(index);
+
+			/// Pick up forces and calculate to rigid body TODO
+
+		});
+
+	}
+};
 }
 }
