@@ -122,6 +122,9 @@ auto n_linear_interpolate(
 		}
 
 	}, {}, ones_ind);
+
+	/// TODO I need to actually calc stuff
+	return field.at({});
 }
 
 template<typename FieldSchema, typename T>

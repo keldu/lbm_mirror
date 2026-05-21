@@ -176,7 +176,7 @@ saw::error_or<void> step(
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.65};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 

@@ -55,6 +55,8 @@ template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpher
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
 	Member<FixedArray<Scalar<T>,1u>, "density">,
+	Member<Vector<T,D>, "center_of_mass">,
+	Member<Scalar<T>, "total_mass">,
 	Member<Array<Particle<T,D>>, "particles">
 >;
 }
@@ -76,10 +78,20 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	for(uint64_t i = 0u; i < D; ++i){
 		mask_dims.at({i}) = mask_resolution;
 	}
+	saw::data<sch::Scalar<T>> mask_step;
+	saw::data<T> dia_d{radius*2};
+	mask_step.at({}) = dia_d / mask_resolution.template cast_to<T>();
 
 	mask = {mask_dims};
+
+	auto& com = part.template get<"center_of_mass">();
+	for(uint64_t i = 0u; i < D; ++i){
+		com.at({{i}}) = {};
+	}
+	saw::data<sch::UInt64> ele_ctr{0u};
 	iterator<D>::apply([&](const auto& index){
-		
+		++ele_ctr;
+
 	},{},mask_dims);
 
 	return part;

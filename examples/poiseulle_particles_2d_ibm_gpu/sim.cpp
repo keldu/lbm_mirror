@@ -1,6 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 #include <kel/lbm/particle.hpp>
+#include <kel/lbm/math/n_linear.hpp>
 
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
@@ -266,7 +267,39 @@ saw::error_or<void> step(
 	*/
 	q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
-				
+			auto& vel = macros.template get<"velocity">();
+
+			auto& ps = particles;
+			auto& mask = ps.template get<"mask">();
+			auto& dense = ps.template get<"density">().at({});
+			auto& com = ps.template get<"center_of_mass">();
+
+			auto& parts = ps.template get<"particles">();
+
+			auto& p_i = parts.at({{0u}});
+
+			auto& p_i_rb = p_i.template get<"rigid_body">();
+			/// 0. Iterate over mask and calculate position in LBM grid
+			/// In this case it's simple since I'm too lazy to do scaling and rotation
+			/// Technically scale => rotate => translate
+			/// Here it's only translate
+			auto& p_i_rb_pos = p_i_rb.template get<"position">();
+
+			iterator<Desc::D>::apply([&](const auto& index){
+				/// Calculate the shift from the mask
+				saw::data<sch::Vector<T,Desc::D>> index_shift;
+				for(uint64_t i = 0u; i < Desc::D; ++i){
+					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({{i}});
+				}
+
+
+				/// TODO 1. Calculate force pickup from neigbouring u_vel cells
+				auto inter_vel = n_linear_interpolate(vel,index_shift);
+
+				/// TODO 3. Distribute force to fluid
+
+
+			}, {}, mask.meta());
 		});
 	}).wait();
 
