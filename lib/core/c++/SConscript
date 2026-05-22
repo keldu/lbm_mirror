@@ -18,6 +18,8 @@ core_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
 core_env.particle_headers = sorted(glob.glob(dir_path + "/particle/*.hpp"));
 core_env.particle_geometry_headers = sorted(glob.glob(dir_path + "/particle/geometry/*.hpp"));
 
+core_env.math_headers = sorted(glob.glob(dir_path + "/math/*.hpp"));
+
 env.sources += core_env.sources;
 env.headers += core_env.headers;
 
@@ -30,3 +32,4 @@ env.Install('$prefix/lib/', env.library_static);
 env.Install('$prefix/include/kel/lbm/', core_env.headers);
 env.Install('$prefix/include/kel/lbm/particle/', core_env.particle_headers);
 env.Install('$prefix/include/kel/lbm/particle/geometry/', core_env.particle_geometry_headers);
+env.Install('$prefix/include/kel/lbm/math/', core_env.math_headers);

@@ -79,7 +79,8 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 		mask_dims.at({i}) = mask_resolution;
 	}
 	saw::data<sch::Scalar<T>> mask_step;
-	saw::data<T> dia_d{radius*2};
+	saw::data<T> rad_d{radius};
+	saw::data<T> dia_d = rad_d * 2;
 	mask_step.at({}) = dia_d / mask_resolution.template cast_to<T>();
 
 	mask = {mask_dims};
@@ -89,6 +90,16 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 		com.at({{i}}) = {};
 	}
 	saw::data<sch::UInt64> ele_ctr{0u};
+
+	// Radius ^ 2
+	saw::data<sch::Scalar<T>> rad_2_d;
+	rad_2_d.at({}) = rad_d * rad_d;
+
+	saw::data<sch::Vector<T,D>> center;
+	for(uint64_t i = 0u; i < D; ++i){
+		com.at({{i}}) = ;
+	}
+
 	iterator<D>::apply([&](const auto& index){
 		++ele_ctr;
 
