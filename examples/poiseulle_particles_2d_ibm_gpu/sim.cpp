@@ -289,7 +289,7 @@ saw::error_or<void> step(
 				/// Calculate the shift from the mask
 				saw::data<sch::Vector<T,Desc::D>> index_shift;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
-					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({{i}});
+					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({}).at({{i}});
 				}
 
 				/// TODO 1. Calculate force pickup from neigbouring u_vel cells
