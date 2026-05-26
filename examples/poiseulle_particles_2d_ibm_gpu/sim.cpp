@@ -292,12 +292,11 @@ saw::error_or<void> step(
 					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({{i}});
 				}
 
-
 				/// TODO 1. Calculate force pickup from neigbouring u_vel cells
-				auto inter_vel = n_linear_interpolate(vel,index_shift);
+				// auto inter_vel = n_linear_interpolate(vel,index_shift);
 
 				/// TODO 3. Distribute force to fluid
-
+				
 
 			}, {}, mask.meta());
 		});

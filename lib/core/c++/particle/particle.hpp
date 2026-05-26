@@ -71,6 +71,10 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	auto& mask = part.template get<"mask">();
 	auto& density = part.template get<"density">().at({{0u}});
 
+	auto& total_mass = part.template get<"total_mass">();
+	// Paranoia
+	total_mass.at({}) = {};
+
 	static_assert(D >= 1u and D <= 3u, "Dimensions only supported for Dim 1,2 & 3.");
 	density = density_p;
 
@@ -86,6 +90,7 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	mask = {mask_dims};
 
 	auto& com = part.template get<"center_of_mass">();
+	// Paranoia
 	for(uint64_t i = 0u; i < D; ++i){
 		com.at({{i}}) = {};
 	}
@@ -97,11 +102,23 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 
 	saw::data<sch::Vector<T,D>> center;
 	for(uint64_t i = 0u; i < D; ++i){
-		com.at({{i}}) = ;
+		center.at({{i}}).set(radius);
 	}
 
 	iterator<D>::apply([&](const auto& index){
 		++ele_ctr;
+
+		saw::data<sch::Vector<T,D>> offset_index = saw::math::vectorize_data(index).template cast_to<T>() - center;
+
+		
+
+		auto& dpi = mask.at(index);
+
+		for(uint64_t i = 0u; i < D; ++i){
+			com.at({{i}}) = com.at({{i}}) + index.at({i}).template cast_to<T>() * dpi.at({});
+		}
+
+		total_mass = total_mass + dpi;
 
 	},{},mask_dims);
 
