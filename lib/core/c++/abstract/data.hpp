@@ -48,4 +48,5 @@ template<typename Sch>
 struct schema {
 	using Type = Sch;
 };
+
 }

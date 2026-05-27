@@ -265,9 +265,13 @@ saw::error_or<void> step(
 		// h.depends_on(collision_ev);
 	}).wait();
 	*/
+
+	auto& force_f = macros.template get<"force">();
+
 	q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
-			auto& vel = macros.template get<"velocity">();
+			auto& vel_f = macros.template get<"velocity">();
+			auto& dense_f = macros.template get<"density">();
 
 			auto& ps = particles;
 			auto& mask = ps.template get<"mask">();
@@ -276,7 +280,7 @@ saw::error_or<void> step(
 
 			auto& parts = ps.template get<"particles">();
 
-			auto& p_i = parts.at({{0u}});
+			auto& p_i = parts.at({{idx[0u]}});
 
 			auto& p_i_rb = p_i.template get<"rigid_body">();
 			/// 0. Iterate over mask and calculate position in LBM grid
@@ -290,13 +294,26 @@ saw::error_or<void> step(
 				saw::data<sch::Vector<T,Desc::D>> index_shift;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({}).at({{i}});
+					// Scale to LBM Grid
+					index_shift.at({{i}}) = index_shift.at({{i}}) * ;
 				}
 
-				/// TODO 1. Calculate force pickup from neigbouring u_vel cells
-				// auto inter_vel = n_linear_interpolate(vel,index_shift);
+				// Shift our pos into the index
+				auto p_i_rb_pos_ind = p_i_rb_pos + index_shift;
+							
+				/// Calculate force pickup from neigbouring u_vel cells
+				// auto inter_vel_fluid = n_linear_interpolate(vel_f,p_i_rb_pos_ind);
+				auto inter_vel_fluid = n_closest_read(vel_f,p_i_rb_pos_ind);
 
-				/// TODO 3. Distribute force to fluid
-				
+				// Technically TODO to use moment
+				auto inter_moment_fluid = inter_vel_fluid;
+
+				// Technically Particles can have more timesteps than the fluid
+				auto force_response = -inter_moment_fluid;
+
+				/// Distribute force to fluid
+				// n_linear_spread(force_f,p_i_rb_pos_ind, force_response);
+				n_closest_add(force_f,p_i_rb_pos_ind, force_response);
 
 			}, {}, mask.meta());
 		});

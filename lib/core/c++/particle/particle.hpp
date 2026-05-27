@@ -51,22 +51,25 @@ using Particle = Struct<
 	// Member<Array<Float64,D>, "mask">, 
 >;
 
-template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T,2.0f>>
+template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
+	Member<FixedArray<Scalar<T>,1u>, "mask_step">,
 	Member<FixedArray<Scalar<T>,1u>, "density">,
 	Member<FixedArray<Vector<T,D>,1u>, "center_of_mass">,
 	Member<FixedArray<Scalar<T>,1u>, "total_mass">,
-	Member<Array<Particle<T,D>>, "particles">
+	Member<Array<Particle<T,D>,1u>, "particles">
 >;
 }
+
+
 
 template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius>
 saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> create_spheroid_particle_group(
 		saw::data<sch::Scalar<T>> density_p,
 		const saw::data<sch::UInt64>& mask_resolution
 ){
-	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,2.0f>>> part;
+	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,radius>>> part;
 
 	auto& mask = part.template get<"mask">();
 	auto& density = part.template get<"density">().at({{0u}});
@@ -82,12 +85,13 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	for(uint64_t i = 0u; i < D; ++i){
 		mask_dims.at({i}) = mask_resolution;
 	}
-	saw::data<sch::Scalar<T>> mask_step;
 	saw::data<T> rad_d{radius};
 	saw::data<T> dia_d = rad_d * 2;
-	mask_step.at({}) = dia_d / mask_resolution.template cast_to<T>();
 
 	mask = {mask_dims};
+
+	auto& mask_step = part.template get<"mask_step">().at({{0u}});
+	mask_step.at({}) = dia_d.at({}) / mask_resolution.template cast_to<T>();
 
 	auto& com = part.template get<"center_of_mass">().at({{0u}});
 	// Paranoia
@@ -109,8 +113,6 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 		++ele_ctr;
 
 		saw::data<sch::Vector<T,D>> offset_index = saw::math::vectorize_data(index).template cast_to<T>() - center;
-
-		
 
 		auto& dpi = mask.at(index);
 
