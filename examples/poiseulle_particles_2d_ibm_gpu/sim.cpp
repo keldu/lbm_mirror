@@ -1,7 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 #include <kel/lbm/particle.hpp>
-#include <kel/lbm/math/n_linear.hpp>
+#include <kel/lbm/math/math.hpp>
 
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
@@ -275,6 +275,7 @@ saw::error_or<void> step(
 
 			auto& ps = particles;
 			auto& mask = ps.template get<"mask">();
+			auto& mask_step = ps.template get<"mask_step">().at({});
 			auto& dense = ps.template get<"density">().at({});
 			auto& com = ps.template get<"center_of_mass">();
 
@@ -295,7 +296,7 @@ saw::error_or<void> step(
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index_shift.at({{i}}) = index.at({i}).template cast_to<T>() - com.at({}).at({{i}});
 					// Scale to LBM Grid
-					index_shift.at({{i}}) = index_shift.at({{i}}) * ;
+					index_shift.at({{i}}) = index_shift.at({{i}}) * mask_step.at({});
 				}
 
 				// Shift our pos into the index

@@ -23,6 +23,8 @@
 #include "write_vtk.hpp"
 #include "util.hpp"
 
+#include "math/math.hpp"
+
 #include <forstio/codec/unit/unit_print.hpp>
 #include <iostream>
 

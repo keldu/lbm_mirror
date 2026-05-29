@@ -46,7 +46,7 @@ let
 
 		 src = builtins.fetchurl {
 			url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-			sha256 = "sha256:1ra0z2z0hbhrc372kbs6bs7qh00xc9xj3b40pvs0cjfdpvcfb538";
+			sha256 = "sha256:0khnwmrhdric5i701wfbkbdrfzp9vrswg6raan4njmwlx146vbrf";
 		 };
 
 		 phases = [ "unpackPhase" "installPhase" ];
@@ -187,7 +187,7 @@ in rec {
 				examples.poiseulle_particles_2d_psm_gpu
 				examples.poiseulle_particles_2d_hlbm_gpu
 				examples.poiseulle_particles_2d_fplbm_gpu
-				examples.poiseulle_3d_gpu
+				examples.poiseulle_particles_2d_ibm_gpu
 			];
 		};
 	};

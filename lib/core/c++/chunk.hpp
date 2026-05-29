@@ -25,6 +25,7 @@ struct chunk_schema_type_helper<Sch, Ghost, saw::tmpl_value_group<uint64_t>, saw
 template<typename Sch, uint64_t Ghost, uint64_t... Sides>
 struct Chunk {
 	using InnerSchema = typename impl::chunk_schema_type_helper<Sch, Ghost, saw::tmpl_value_group<uint64_t,Sides...>>::Schema;
+	using StoredValueSchema = Sch;
 };
 
 // Not needed for now

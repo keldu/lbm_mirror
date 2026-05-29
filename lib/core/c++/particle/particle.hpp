@@ -91,7 +91,7 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	mask = {mask_dims};
 
 	auto& mask_step = part.template get<"mask_step">().at({{0u}});
-	mask_step.at({}) = dia_d.at({}) / mask_resolution.template cast_to<T>();
+	mask_step.at({}) = dia_d / mask_resolution.template cast_to<T>();
 
 	auto& com = part.template get<"center_of_mass">().at({{0u}});
 	// Paranoia
