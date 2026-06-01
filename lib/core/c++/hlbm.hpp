@@ -7,9 +7,38 @@
 namespace kel {
 namespace lbm {
 namespace cmpt {
+struct HlbmInit {}; 
 struct Hlbm {};
 struct HlbmParticle {};
 }
+
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::HlbmInit, Encode> final {
+private:
+	typename saw::native_data_type<T>::type relaxation_;
+	saw::data<T> frequency_;
+public:
+	component(typename saw::native_data_type<T>::type relaxation__):
+		relaxation_{relaxation__},
+		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_}
+	{}
+
+	template<typename CellFieldSchema, typename MacroFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+		auto& porosity_f = macros.template get<"porosity">();
+		auto& particle_N_f = field.template get<"particle_N">();
+		auto& particle_D_f = field.template get<"particle_D">();
+
+		auto& por = porosity_f.at(index);
+		por = {};
+
+		auto& pnf = particle_N_f.at(index);
+		pnf = {};
+
+		auto& pnd = particle_D_f.at(index);
+		pnd = {};
+	}
+};
 
 /**
  * HLBM collision operator for LBM
@@ -61,8 +90,9 @@ public:
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 
-		// porosity.at({}) = 1.0;
+		porosity.at({}) = 1.0;
 		D.at({}) = 0.0;
+		N = {};
 	}
 };
 
@@ -80,6 +110,7 @@ public:
 
 		/// Iterate over the grid bounds
 		// auto& grid = p.template get<"grid">();
+		
 
 	}
 };
