@@ -114,6 +114,7 @@ saw::error_or<void> setup_initial_conditions(
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
+	auto& force_f = macros.template get<"force">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -135,6 +136,9 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
+			auto& force = force_f.at(index);
+			force = {};
+
 			if(info_f.at(index).get() == 2u){
 				vel.at({{0u}}) = 0.0;
 			}
@@ -195,79 +199,23 @@ saw::error_or<void> step(
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
+	auto& force_f = macros.template get<"force">();
 
-	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		// Need nicer things to handle the flow. I see improvement here
-		saw::data<sch::Vector<T,Desc::D>> f;
-		f.at({{0u}}) = 0.0;
-		f.at({{1u}}) = -1.0;
-
-		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65,f};
-		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
-
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.015;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
-
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-			[&](){
-				uint64_t target_t_i = 32u;
-				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0002 / target_t_i) * t_i.get();
-				}
-				return 1.0002;
-			}()
-		};
-		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
-
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
 
-			auto info = info_f.at(index);
-			
-			switch(info.get()){
-				case 0u:
-				break;
-				case 1u:
-					bb.apply(fields,index,t_i);
-				break;
-				case 2u:
-					collision.apply(fields,macros,index,t_i);
-					break;
-				case 3u:
-					flow_in.apply(fields,index,t_i);
-					//equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-					break;
-				case 4u:
-					flow_out.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-				break;
-				default:
-				break;
+			auto& force = force_f.at(index);
+
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				force.at({{i}}) = 0.0;
 			}
 		});
 	}).wait();
-
-	
-	// Step
-	/*
-	q.submit([&](acpp::sycl::handler& h){
-		// h.depends_on(collision_ev);
-	}).wait();
-	*/
-
-	auto& force_f = macros.template get<"force">();
-
+			
 	q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
 			auto& vel_f = macros.template get<"velocity">();
@@ -276,7 +224,7 @@ saw::error_or<void> step(
 			auto& ps = particles;
 			auto& mask = ps.template get<"mask">();
 			auto& mask_step = ps.template get<"mask_step">().at({});
-			auto& dense = ps.template get<"density">().at({});
+			auto& p_dense = ps.template get<"density">().at({});
 			auto& com = ps.template get<"center_of_mass">();
 
 			auto& parts = ps.template get<"particles">();
@@ -320,6 +268,73 @@ saw::error_or<void> step(
 		});
 	}).wait();
 
+	// auto coll_ev = 
+	q.submit([&](acpp::sycl::handler& h){
+		// Need nicer things to handle the flow. I see improvement here
+		component<T,Desc,cmpt::BGKGuo, encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
+
+		saw::data<sch::Scalar<T>> rho_b;
+		rho_b.at({}) = 1.0;
+		saw::data<sch::Vector<T,Desc::D>> vel_b;
+		vel_b.at({{0u}}) = 0.015;
+
+		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
+			[&](){
+				uint64_t target_t_i = 32u;
+				if(t_i.get() < target_t_i){
+					return 1.0 + (0.0002 / target_t_i) * t_i.get();
+				}
+				return 1.0002;
+			}()
+		};
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+
+
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			auto info = info_f.at(index);
+						
+			switch(info.get()){
+				case 0u:
+				break;
+				case 1u:
+					bb.apply(fields,index,t_i);
+				break;
+				case 2u:
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 3u:
+					flow_in.apply(fields,index,t_i);
+					//equi.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 4u:
+					flow_out.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+				break;
+				default:
+				break;
+			}
+		});
+
+		
+	}).wait();
+
+	
+	// Step
+	/*
+	q.submit([&](acpp::sycl::handler& h){
+		// h.depends_on(collision_ev);
+	}).wait();
+	*/
 	return saw::make_void();
 }
 }
@@ -493,8 +508,21 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			});
 		}).wait();
 		wait.poll();
+
+		// PRINT STATUS ON SIGUSR1
 		if(print_status){
-			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
 			print_status = false;
 		}
 		print_progress_bar(i.get(), time_steps.get()-1u);

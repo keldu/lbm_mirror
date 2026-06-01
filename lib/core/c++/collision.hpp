@@ -146,7 +146,8 @@ public:
 
 		saw::data<sch::Scalar<T>> half;
 		half.at({}).set(0.5);
-		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index) + total_force * ( half / rho );
+		auto& vel = vel_f.at(index);
+		vel = vel + total_force * ( half / rho );
 
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
