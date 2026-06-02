@@ -96,20 +96,55 @@ public:
 	}
 };
 
-template<typename T, typename Descriptor, typename Encode>
+namespace impl {
+
+}
+
+template<typename T, typename Desc, typename Encode>
 class component<T, Descriptor, cmpt::HlbmParticle, Encode> final {
 private:
-	typename saw::native_data_type<T>::type relaxation_;
-	saw::data<T> frequency_;
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
+	void apply_i(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+		
+	}	
 public:
+	/*
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
+	void apply_i()
+	*/
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& particles, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		/// Figure out how to access the particle list
 		// auto& p = particles.at(i);
 
 		/// Iterate over the grid bounds
 		// auto& grid = p.template get<"grid">();
+
+		auto& part_spheroid_group = part_groups.template get<0>();
+		{
+			auto& parts = part_spheroid_group.template get<"particles">();
+			auto parts_size = parts.size();
+
+			auto& pi = parts.at(index);
+			auto& pirb = pi.template get<"rigid_body">();
+			auto& pirb_pos = pirb.template get<"position">();
+
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
+
+			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				
+			}
+
+			iterator<Desc::D>::apply([&](const auto& index){
+				// ask for the d_k value here.
+				// For every value im iterating over I need sth
+			},start,stop);
+
+			// Check
+		}
 		
 
 	}

@@ -77,6 +77,11 @@ public:
 		return values_.at(ind);
 	}
 
+	/*
+	const data<ValueSchema, Encode>& neighbour_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	}
+	*/
+
 	static constexpr auto get_dims(){
 		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
