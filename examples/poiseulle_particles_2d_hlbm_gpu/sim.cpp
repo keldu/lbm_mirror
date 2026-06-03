@@ -13,7 +13,7 @@ namespace lbm {
 constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
-constexpr uint64_t particle_amount = 1ul;
+// constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;
@@ -215,6 +215,21 @@ saw::error_or<void> step(
 				break;
 				case 2u:
 					collision.apply(fields,macros,index,t_i);
+					{
+						saw::data<sch::Vector<T,Desc::D>> middle;
+						middle.at({{0u}}) = dim_x * 0.25;
+						middle.at({{1u}}) = dim_y * 0.5;
+
+						saw::data<sch::Vector<T,Desc::D>> ind_vec;
+						ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
+						ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
+
+						auto dist = middle - ind_vec;
+						auto dist_2 = saw::math::dot(dist,dist);
+						if(dist_2.at({}).get() < dim_y*dim_y*0.01){
+							porous_f.at(index).at({}) = 0.0;
+						}
+					}
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
