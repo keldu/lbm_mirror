@@ -43,8 +43,8 @@ public:
 /**
  * HLBM collision operator for LBM
  */
-template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::Hlbm, Encode> final {
+template<typename T, typename Desc, typename Encode>
+class component<T, Desc, cmpt::Hlbm, Encode> final {
 private:
 	typename saw::native_data_type<T>::type relaxation_;
 	saw::data<T> frequency_;
@@ -55,7 +55,7 @@ public:
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index, saw::data<sch::UInt64> time_step) const {
 		
 		bool is_even = ((time_step.get() % 2) == 0);
 
@@ -68,9 +68,9 @@ public:
 		auto& vel_f = macros.template get<"velocity">();
 
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
-		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+		saw::data<sch::Vector<T,Desc::D>>& vel = vel_f.at(index);
 
-		compute_rho_u<T,Descriptor>(dfs_old_f.at(index), rho, vel);
+		compute_rho_u<T,Desc>(dfs_old_f.at(index), rho, vel);
 
 		auto& porosity = porosity_f.at(index);
 		saw::data<sch::Scalar<T>> one;
@@ -80,13 +80,13 @@ public:
 		auto& N = particle_N_f.at(index);
 		auto& D = particle_D_f.at(index);
 		// Convex combination of velocities
-		vel = vel * porosity + [&]() -> saw::data<sch::Vector<T,Descriptor::D>> {
+		vel = vel * porosity + [&]() -> saw::data<sch::Vector<T,Desc::D>> {
 			return (D.at({}).get() > 0.0 ? N * flip_porosity / D : N);
 		}();
 		// Equilibrium
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
+		auto eq = equilibrium<T,Desc>(rho,vel);
 
-		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+		for(uint64_t i = 0u; i < Desc::Q; ++i){
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 
@@ -96,20 +96,55 @@ public:
 	}
 };
 
-template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::HlbmParticle, Encode> final {
+namespace impl {
+
+}
+
+template<typename T, typename Desc, typename Encode>
+class component<T, Desc, cmpt::HlbmParticle, Encode> final {
 private:
-	typename saw::native_data_type<T>::type relaxation_;
-	saw::data<T> frequency_;
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
+	void apply_i(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+		
+	}	
 public:
+	/*
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
+	void apply_i()
+	*/
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& particles, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		/// Figure out how to access the particle list
 		// auto& p = particles.at(i);
 
 		/// Iterate over the grid bounds
 		// auto& grid = p.template get<"grid">();
+
+		auto& part_spheroid_group = part_groups.template get<0>();
+		{
+			auto& parts = part_spheroid_group.template get<"particles">();
+			auto parts_size = parts.size();
+
+			auto& pi = parts.at(index);
+			auto& pirb = pi.template get<"rigid_body">();
+			auto& pirb_pos = pirb.template get<"position">();
+
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
+
+			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				
+			}
+
+			iterator<Desc::D>::apply([&](const auto& index){
+				// ask for the d_k value here.
+				// For every value im iterating over I need sth
+			},start,stop);
+
+			// Check
+		}
 		
 
 	}

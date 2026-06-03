@@ -161,10 +161,22 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+		
+		settling_cubes_2d_hlbm_gpu = pkgs.callPackage ./examples/settling_spheres_2d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
 
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
+		};
+
+		settling_particles = pkgs.symlinkJoin {
+			name = "kel-lbm-settling_particles-${version}";
+			paths = [
+				examples.settling_cubes_2d_ibm_gpu
+			];
 		};
 	};
 
@@ -190,6 +202,8 @@ in rec {
 				examples.poiseulle_particles_2d_ibm_gpu
 			];
 		};
+
+
 	};
 
 	default = release.examples;
