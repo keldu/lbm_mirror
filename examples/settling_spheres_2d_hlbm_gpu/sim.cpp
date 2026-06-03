@@ -74,7 +74,7 @@ template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
+		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& p_group
 ){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
@@ -207,8 +207,6 @@ saw::error_or<void> step(
 			auto& p_rot = pirb.template get<"rotation">();
 			auto& p_acc = pirb.template get<"acceleration">();
 
-			
-
 			saw::data<sch::Scalar<T>> delta_t;
 			delta_t.at({}).set(1.0f);
 			verlet_step_lambda<T,Desc::D>(p,delta_t);
@@ -218,7 +216,7 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::Hlbm, encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -236,7 +234,7 @@ saw::error_or<void> step(
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					// collision.apply(fields,macros,index,t_i);
+					collision.apply(fields,macros,index,t_i);
 					break;
 				default:
 				break;
@@ -268,7 +266,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_env = eo_lbm_env.get_value();
 
-	auto out_dir = lbm_env.data_dir / "settling_cubes_2d_ibm_gpu";
+	auto out_dir = lbm_env.data_dir / "settling_spheres_2d_hlbm_gpu";
 
 	{
 		std::error_code ec;

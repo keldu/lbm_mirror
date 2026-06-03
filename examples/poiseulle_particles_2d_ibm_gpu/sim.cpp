@@ -15,7 +15,7 @@ namespace lbm {
 constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
-constexpr uint64_t particle_amount = 1ul;
+// constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;

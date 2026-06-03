@@ -122,6 +122,11 @@ in rec {
 			inherit kel;
 		};
 		
+		moving_poiseulle_particles_2d_hlbm_gpu = pkgs.callPackage ./examples/moving_poiseulle_particles_2d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+		
 		poiseulle_particles_2d_psm_gpu = pkgs.callPackage ./examples/poiseulle_particles_2d_psm_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
@@ -202,8 +207,6 @@ in rec {
 				examples.poiseulle_particles_2d_ibm_gpu
 			];
 		};
-
-
 	};
 
 	default = release.examples;
