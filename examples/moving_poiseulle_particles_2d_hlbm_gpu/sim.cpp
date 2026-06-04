@@ -55,6 +55,9 @@ using MacroStruct = Struct<
 //using ParticleArray = Array<
 //	Particle<T,Desc::D>
 //>;
+
+template<typename T, typename Desc>
+using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,ParticleCollisionSpheroid<T,2.0>>;
 }
 
 template<typename T, typename Desc>
@@ -171,7 +174,7 @@ template<typename T, typename Desc>
 saw::error_or<void> step(
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
+		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles
 		saw::data<sch::UInt64> t_i,
 		device& dev
 ){

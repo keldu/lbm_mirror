@@ -1,249 +1,6 @@
-#include <kel/lbm/sycl/lbm.hpp>
-#include <kel/lbm/lbm.hpp>
-#include <kel/lbm/particle.hpp>
-
-#include <forstio/io/io.hpp>
-#include <forstio/remote/filesystem/easy.hpp>
-#include <forstio/codec/json/json.hpp>
-#include <forstio/codec/simple.hpp>
-
-namespace kel {
-namespace lbm {
-
-constexpr uint64_t dim_y = 256ul;
-constexpr uint64_t dim_x = dim_y * 20ul;
-
-constexpr uint64_t particle_amount = 1ul;
-
-namespace sch {
-using namespace saw::schema;
-
-using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
-
-template<typename T, typename Desc>
-using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
-
-template<typename T, typename Desc>
-using ScalarChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
-
-template<typename T, typename Desc>
-using VectorChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
-
-template<typename T, typename Desc>
-using ChunkStruct = Struct<
-	Member<InfoChunk, "info">,
-	Member<DfChunk<T,Desc>, "dfs">,
-	Member<DfChunk<T,Desc>, "dfs_old">,
-	Member<VectorChunk<T,Desc>, "particle_N">,
-	Member<ScalarChunk<T,Desc>, "particle_D">
->;
-
-template<typename T, typename Desc>
-using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
-
-template<typename T>
-using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
-
-template<typename T, typename Desc>
-using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
-	Member<RhoChunk<T>, "density">,
-	Member<ScalarChunk<T,Desc>, "porosity">
->;
-
-//template<typename T, typename Desc>
-//using ParticleArray = Array<
-//	Particle<T,Desc::D>
-//>;
-}
-
-template<typename T, typename Desc>
-saw::error_or<void> setup_initial_conditions(
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros
-){
-	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
-	// Set everything as walls
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(1u);
-		},
-		{},
-		info_f.get_dims(),
-		{}
-	);
-	// Fluid
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(2u);
-		},
-		{},
-		info_f.get_dims(),
-		{{1u,1u}}
-	);
-	
-	// Inflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(3u);
-		},
-		{{0u,0u}},
-		{{1u,dim_y}},
-		{{0u,1u}}
-	);
-	
-	// Outflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(4u);
-		},
-		{{dim_x-1u,0u}},
-		{{dim_x, dim_y}},
-		{{0u,1u}}
-	);
-	//
-	auto& df_f = fields.template get<"dfs_old">();
-	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
-	auto& por_f = macros.template get<"porosity">();
-	
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			auto& df = df_f.at(index);
-			auto& rho = rho_f.at(index);
-			por_f.at(index).at({}) = {1};
-			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			auto eq = equilibrium<T,Desc>(rho,vel);
-
-			df = eq;
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
-
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			auto& df = df_f.at(index);
-			auto& rho = rho_f.at(index);
-			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.0;
-			}
-			auto eq = equilibrium<T,Desc>(rho,vel);
-
-			df = eq;
-		},
-		{},// 0-index
-		df_f.get_dims(),
-		{{1u,1u}}
-	);
-	
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.25;
-			middle.at({{1u}}) = dim_y * 0.5;
-
-			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
-			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
-
-			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 0.0;
-			}
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
-
-	return saw::make_void();
-}
-
-template<typename T, typename Desc>
-saw::error_or<void> step(
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::UInt64> t_i,
-		device& dev
-){
-	auto& q = dev.get_handle();
-	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
-
-	// auto coll_ev = 
-	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.65};
-		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
-
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.015;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
-
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-			[&](){
-				uint64_t target_t_i = 64u;
-				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0002 / target_t_i) * t_i.get();
-				}
-				return 1.0002;
-			}()
-		};
-		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
-
-		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
-			for(uint64_t i = 0u; i < Desc::D; ++i){
-				index.at({{i}}).set(idx[i]);
-			}
-
-			auto info = info_f.at(index);
-			
-			switch(info.get()){
-				case 0u:
-				break;
-				case 1u:
-					bb.apply(fields,index,t_i);
-				break;
-				case 2u:
-					collision.apply(fields,macros,index,t_i);
-					break;
-				case 3u:
-					flow_in.apply(fields,index,t_i);
-					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-					break;
-				case 4u:
-					flow_out.apply(fields,index,t_i);
-					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
-				break;
-				default:
-				break;
-			}
-		});
-	}).wait();
-
-	
-	// Step
-	/*
-	q.submit([&](acpp::sycl::handler& h){
-		// h.depends_on(collision_ev);
-	}).wait();
-	*/
-
-	return saw::make_void();
-}
-}
-}
+#include "common.hpp"
+#include "init.hpp"
+#include "step.hpp"
 
 template<typename T, typename Desc>
 saw::error_or<void> lbm_main(int argc, char** argv){
@@ -257,7 +14,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_hlbm_gpu";
+	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
 
 	{
 		std::error_code ec;
@@ -279,6 +36,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
+	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
 	
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
@@ -304,7 +62,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -318,6 +76,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
+	saw::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	{
@@ -335,13 +94,15 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
+	auto lsdp_view = make_view(lbm_sycl_particle_data);
+	
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,lsdp_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}

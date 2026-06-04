@@ -1,0 +1,90 @@
+#pragma once
+
+#include "common.hpp"
+
+namespace kel {
+namespace lbm {
+
+template<typename T, typename Desc>
+saw::error_or<void> step(
+		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
+		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
+		saw::data<sch::UInt64> t_i,
+		device& dev
+){
+	auto& q = dev.get_handle();
+	auto& info_f = fields.template get<"info">();
+	auto& porous_f = macros.template get<"porosity">();
+
+	// auto coll_ev = 
+	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
+
+		saw::data<sch::Scalar<T>> rho_b;
+		rho_b.at({}) = 1.0;
+		saw::data<sch::Vector<T,Desc::D>> vel_b;
+		vel_b.at({{0u}}) = 0.015;
+
+		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
+			[&](){
+				uint64_t target_t_i = 64u;
+				if(t_i.get() < target_t_i){
+					return 1.0 + (0.0002 / target_t_i) * t_i.get();
+				}
+				return 1.0002;
+			}()
+		};
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+
+
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			auto info = info_f.at(index);
+			
+			switch(info.get()){
+				case 0u:
+				break;
+				case 1u:
+					bb.apply(fields,index,t_i);
+				break;
+				case 2u:
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 3u:
+					flow_in.apply(fields,index,t_i);
+					// equi.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 4u:
+					flow_out.apply(fields,index,t_i);
+					// equi.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+				break;
+				default:
+				break;
+			}
+		});
+	}).wait();
+
+	
+	// Step
+	/*
+	q.submit([&](acpp::sycl::handler& h){
+		// h.depends_on(collision_ev);
+	}).wait();
+	*/
+
+	return saw::make_void();
+}
+
+}
+}
