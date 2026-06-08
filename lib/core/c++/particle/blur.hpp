@@ -13,6 +13,7 @@ void blur_mask(saw::data<sch::Array<T,D>>& p_mask){
 	auto meta = p_mask.dims();
 	saw::data<sch::Array<T,D>> blurred_mask{meta};
 
+	/* 1D blur into N-D Blur*/
 	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{D}; ++i){
 		iterator<D>::apply([&](const auto& index){
 			blurred_mask.at(index) = p_mask.at(index) * mid;
