@@ -14,7 +14,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu";
+	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu" / "hlbm";
 
 	{
 		std::error_code ec;

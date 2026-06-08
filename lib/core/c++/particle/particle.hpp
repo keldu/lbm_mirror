@@ -62,8 +62,6 @@ using ParticleGroup = Struct<
 >;
 }
 
-
-
 template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius>
 saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> create_spheroid_particle_group(
 		saw::data<sch::Scalar<T>> density_p,
@@ -287,7 +285,6 @@ constexpr auto broadphase_collision_check = [](
 
 
 namespace impl {
-
 }
 
 }
