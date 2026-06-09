@@ -2,6 +2,20 @@
 #include "init.hpp"
 #include "step.hpp"
 
+#include <forstio/codec/args.hpp>
+
+/**
+ * For deciding what parameters to use maybe?
+ */
+namespace sch {
+using namespace saw::schema;
+
+using LbmArgs = Args<
+	Struct<>,
+	Tuple<>
+>;
+}
+
 template<typename T, typename Desc>
 saw::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
