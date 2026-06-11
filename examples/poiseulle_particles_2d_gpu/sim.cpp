@@ -7,11 +7,16 @@
 /**
  * For deciding what parameters to use maybe?
  */
-namespace sch {
+namespace args {
 using namespace saw::schema;
 
+using LbmArgsStruct = Struct<
+	Member<UInt8,"use_slip">,
+	Member<String, "coupling">
+>;
+
 using LbmArgs = Args<
-	Struct<>,
+	LbmArgsStruct,
 	Tuple<>
 >;
 }
@@ -21,6 +26,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
 
 	using dfi = df_info<T,Desc>;
+
+	auto eo_args = saw::parse_args<args::LbmArgs>(argc,argv);
+	if(eo_args.is_error()){
+		return std::move(eo_args.get_error());
+	}
+	auto& args = eo_args.get_value();
+	(void)args;
 
 	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
@@ -51,7 +63,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
 	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
 	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
-	
+
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
@@ -76,7 +88,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -106,21 +118,24 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	sycl_q.wait();
+
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
 	saw::data<sch::UInt64> time_steps{16u*4096ul};
+
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,lsdp_view,i,dev);
+			auto eov = step<T,Desc>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
+
 		sycl_q.wait();
 		if(i.get() % 32u == 0u){
 			{
@@ -145,22 +160,22 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
-				
-				auto info = info_f.at(index);
-				
-				if(info.get() > 0u){
+
+				auto info = info_f.at(index).get();
+
+				if(info > 0u){
 					stream.apply(lsd_view,index,i);
 				}
 			});
 		}).wait();
 		wait.poll();
+
 		if(print_status){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
 			print_status = false;
 		}
 		print_progress_bar(i.get(), time_steps.get()-1u);
 	}
-
 	// After Loop
 	sycl_q.wait();
 	{

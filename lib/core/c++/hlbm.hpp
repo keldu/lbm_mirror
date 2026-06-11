@@ -4,6 +4,8 @@
 #include "component.hpp"
 #include "equilibrium.hpp"
 
+#include "particle/particle.hpp"
+
 namespace kel {
 namespace lbm {
 namespace cmpt {
@@ -114,14 +116,15 @@ public:
 	*/
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		/// Figure out how to access the particle list
 		// auto& p = particles.at(i);
 
 		/// Iterate over the grid bounds
 		// auto& grid = p.template get<"grid">();
 
-		auto& part_spheroid_group = part_groups.template get<0>();
+		auto& part_spheroid_group = part_group;
+		auto& mvel = macros.template get<"velocity">();
 		{
 			auto& parts = part_spheroid_group.template get<"particles">();
 			auto parts_size = parts.size();
@@ -133,10 +136,8 @@ public:
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
 
+			auto aabb = particle_aabb<ParticleSchema>::calculate(part_spheroid_group,index,mvel.meta());
 			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
-			for(uint64_t i{0u}; i < Desc::D; ++i){
-				
-			}
 
 			iterator<Desc::D>::apply([&](const auto& index){
 				// ask for the d_k value here.

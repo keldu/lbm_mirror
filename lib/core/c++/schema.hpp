@@ -3,9 +3,9 @@
 #include <forstio/codec/schema.hpp>
 
 namespace kel {
-	namespace lbm {
-		namespace sch {
-		using namespace saw::schema;
-		}
-	}
+namespace lbm {
+namespace sch {
+using namespace saw::schema;
+}
+}
 }

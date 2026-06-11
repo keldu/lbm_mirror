@@ -6,68 +6,22 @@
 
 #include "../iterator.hpp"
 
+#include "schema.hpp"
+#include "aabb.hpp"
+
 namespace kel {
 namespace lbm {
-namespace coll {
-struct Spheroid{};
-}
-namespace sch {
-using namespace saw::schema;
-
-namespace impl {
-template<typename T,uint64_t D>
-struct rotation_type_helper;
-
-template<typename T>
-struct rotation_type_helper<T,2u> {
-	using Schema = Scalar<T>;
-};
-
-template<typename T>
-struct rotation_type_helper<T,3u> {
-	using Schema = Vector<T,3u>;
-};
-}
 
 template<typename T, uint64_t D>
-using ParticleRigidBody = Struct<
-	Member<Vector<T,D>, "position">,
-	Member<Vector<T,D>, "position_old">,
-	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation">,
-	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation_old">,
-
-	Member<Vector<T,D>, "acceleration">,
-	Member<typename impl::rotation_type_helper<T,D>::Schema, "angular_acceleration">
->;
-
-template<typename T, typename saw::native_data_type<T>::type radius = 1.0f>
-using ParticleCollisionSpheroid = Struct<
->;
-
-template<typename T, uint64_t D>
-using Particle = Struct<
-	Member<ParticleRigidBody<T,D>, "rigid_body">
-	// Problem is that dynamic data would two layered
-	// Member<Array<Float64,D>, "mask">, 
->;
-
-template<typename T, uint64_t D, typename CollisionType = ParticleCollisionSpheroid<T>>
-using ParticleGroup = Struct<
-	Member<Array<T,D>, "mask">,
-	Member<FixedArray<Scalar<T>,1u>, "mask_step">,
-	Member<FixedArray<Scalar<T>,1u>, "density">,
-	Member<FixedArray<Vector<T,D>,1u>, "center_of_mass">,
-	Member<FixedArray<Scalar<T>,1u>, "total_mass">,
-	Member<Array<Particle<T,D>,1u>, "particles">
->;
-}
-
-template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius>
-saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> create_spheroid_particle_group(
+saw::data<sch::ParticleGroup<T,D, coll::Spheroid<T>>> create_spheroid_particle_group(
+		saw::data<sch::Scalar<T>> radius_p,
 		saw::data<sch::Scalar<T>> density_p,
 		const saw::data<sch::UInt64>& mask_resolution
 ){
-	saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,radius>>> part;
+	saw::data<sch::ParticleGroup<T,D,coll::Spheroid<T>>> part;
+
+	auto& rad_s = part.template get<"collision">().at({0u}).template get<"radius">();
+	rad_s = radius_p;
 
 	auto& mask = part.template get<"mask">();
 	auto& density = part.template get<"density">().at({{0u}});
@@ -83,7 +37,7 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 	for(uint64_t i = 0u; i < D; ++i){
 		mask_dims.at({i}) = mask_resolution;
 	}
-	saw::data<T> rad_d{radius};
+	saw::data<T> rad_d = radius_p.at({});
 	saw::data<T> dia_d = rad_d * 2;
 
 	mask = {mask_dims};
@@ -104,7 +58,7 @@ saw::data<sch::ParticleGroup<T,D, sch::ParticleCollisionSpheroid<T,radius>>> cre
 
 	saw::data<sch::Vector<T,D>> center;
 	for(uint64_t i = 0u; i < D; ++i){
-		center.at({{i}}).set(radius);
+		center.at({{i}}) = rad_d;
 	}
 
 	iterator<D>::apply([&](const auto& index){

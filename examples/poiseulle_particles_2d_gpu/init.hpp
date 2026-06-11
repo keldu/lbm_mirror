@@ -7,10 +7,13 @@ namespace lbm {
 
 template<typename T, typename Desc>
 saw::error_or<void> setup_initial_conditions(
+		const converter<T>& conv,
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
 		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
+	(void) conv;
+
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
 	// Set everything as walls
@@ -110,9 +113,11 @@ saw::error_or<void> setup_initial_conditions(
 	);
 
 	{
+		saw::data<sch::Scalar<T>> radius_p;
+		radius_p.at({}).set(2);
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
-		particles = create_spheroid_particle_group<T,Desc::D,2.0f>(dense_p, {{16u}});
+		particles = create_spheroid_particle_group<T,Desc::D>(radius_p, dense_p, {{16u}});
 	}
 
 	return saw::make_void();

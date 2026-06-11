@@ -7,6 +7,7 @@ namespace lbm {
 
 template<typename T, typename Desc>
 saw::error_or<void> step(
+		const converter<T>& conv,
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
@@ -19,7 +20,8 @@ saw::error_or<void> step(
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::HlbmParticle,encode::Sycl<saw::encode::Native>> particle;
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
@@ -32,7 +34,7 @@ saw::error_or<void> step(
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
-				uint64_t target_t_i = 64u;
+				uint64_t target_t_i = 16u;
 				if(t_i.get() < target_t_i){
 					return 1.0 + (0.0002 / target_t_i) * t_i.get();
 				}
@@ -40,7 +42,6 @@ saw::error_or<void> step(
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
