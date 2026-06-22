@@ -142,6 +142,7 @@ public:
 			iterator<Desc::D>::apply([&](const auto& index){
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
+					std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
 			},start,stop);
 
 			// Check

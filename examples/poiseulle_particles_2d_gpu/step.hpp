@@ -18,10 +18,11 @@ saw::error_or<void> step(
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
 
+	component<T,Desc,cmpt::HlbmParticle,encode::Sycl<saw::encode::Native>> particle;
+
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.8};
-		component<T,Desc,cmpt::HlbmParticle,encode::Sycl<saw::encode::Native>> particle;
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
@@ -76,6 +77,11 @@ saw::error_or<void> step(
 		});
 	}).wait();
 
+	q.submit([&](acpp::sycl::handler& h){
+		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
+			particle.apply(fields,macros,particles,{{0u}},t_i);
+		});
+	}).wait();
 	
 	// Step
 	/*

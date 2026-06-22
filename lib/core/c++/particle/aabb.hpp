@@ -7,6 +7,7 @@ namespace kel {
 namespace lbm {
 template<typename PGroup>
 class particle_aabb final {
+	static_assert(saw::always_false<PGroup>::value, "Not supported");
 };
 
 template<typename T, uint64_t D>
@@ -21,7 +22,8 @@ public:
 		sch::Member<sch::FixedArray<sch::UInt64,D>,"b">
 	>;
 public:
-	static constexpr saw::data<AABB> calculate(const saw::data<Schema>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	template<typename Encode>
+	static constexpr saw::data<AABB> calculate(const saw::data<Schema,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
 
 		saw::data<AABB> aabb;
 		auto& parts = p_grp.template get<"particles">();
