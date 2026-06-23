@@ -6,6 +6,8 @@
 
 #include "particle/particle.hpp"
 
+#include <iostream>
+
 namespace kel {
 namespace lbm {
 namespace cmpt {

@@ -7,7 +7,7 @@ namespace kel {
 namespace lbm {
 template<typename PGroup>
 class particle_aabb final {
-	static_assert(saw::always_false<PGroup>::value, "Not supported");
+	static_assert(saw::always_false<PGroup>, "Not supported");
 };
 
 template<typename T, uint64_t D>
