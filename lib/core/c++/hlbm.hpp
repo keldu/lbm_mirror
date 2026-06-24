@@ -129,7 +129,7 @@ public:
 		auto& mvel = macros.template get<"velocity">();
 		{
 			auto& parts = part_spheroid_group.template get<"particles">();
-			auto parts_size = parts.size();
+			auto parts_size = parts.meta().at({0u});
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
