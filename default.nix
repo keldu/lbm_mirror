@@ -157,6 +157,16 @@ in rec {
 			inherit kel;
 		};
 
+		stokes_drag_particle_2d_psm_gpu = pkgs.callPackage ./examples/stokes_drag_particle_2d_psm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
+		stokes_drag_particle_2d_hlbm_gpu = pkgs.callPackage ./examples/stokes_drag_particle_2d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
 		poiseulle_3d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;

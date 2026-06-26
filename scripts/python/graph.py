@@ -42,16 +42,18 @@ y_cos2 = np.sin((np.pi / 2.0) * x) ** 2
 
 y_cos2_shift = np.sin((np.pi / 2.0) * (x+0.125)/1.25) ** 2
 
+y_cos2_shift_15 = np.sin((np.pi / 2.0) * (x+0.25)/1.5) ** 2
 
 
 # Plot
 plt.figure(figsize=(8, 6))
 
-plt.plot(x, y_linear, label="y = x", linewidth=2)
-plt.step(x, y_step, where="post", label="PSM subgrid of 8", linewidth=2)
+plt.plot(x, y_linear, label="Real fill", linewidth=2)
+plt.step(x, y_step, where="post", label="PSM subgrid of 4", linewidth=2)
 plt.step(x, y_step2, where="post", label="PSM subgrid of 8", linewidth=2)
 plt.plot(x, y_cos2, label=r'HLBM e_h:cell size 1:1', linewidth=2)
 plt.plot(x, y_cos2_shift, label=r'HLBM e_h:cell size 1.25:1', linewidth=2)
+plt.plot(x, y_cos2_shift_15, label=r'HLBM e_h:cell size 1.5:1', linewidth=2)
 
 plt.xlim(0, 1)
 plt.ylim(0, 1)
@@ -60,6 +62,6 @@ plt.legend()
 
 plt.xlabel("x")
 plt.ylabel("y")
-plt.title("Linear + Step + Smooth Cos² Ramp")
+plt.title("Fill level depending on used method")
 
 plt.show()
