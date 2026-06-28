@@ -8,6 +8,7 @@
 
 #include "schema.hpp"
 #include "aabb.hpp"
+#include "particle_opa.hpp"
 
 namespace kel {
 namespace lbm {

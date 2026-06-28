@@ -199,7 +199,7 @@ saw::error_or<void> step(
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.0};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-		component<T,Desc,cmpt::OneParticleAt, encode::Sycl<saw::encode::Native>> opa;
+		component<T,Desc,cmpt::OneParticleAt, encode::Sycl<saw::encode::Native>> opa{{},{}};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
