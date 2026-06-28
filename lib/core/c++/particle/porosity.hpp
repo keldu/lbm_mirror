@@ -28,10 +28,17 @@ public:
 };
 
 
+
 template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius, typename saw::native_data_type<T>::type eps>
 class particle_porosity<T, D, coll::ParticleCollisionSpheroid<T,radius, eps>> final {
 public:
-	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,radius,eps> > >& part_group, uint64_t i, const saw::data<sch::Vector<T,D>>& lbm_pos){
+	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::Vector<T,D>>& lbm_pos, saw::data<sch::Scalar<T>> rad) const {
+		saw::data<sch::Scalar<T>> pos;
+		
+		
+	}
+
+	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,radius,eps> > >& part_group, uint64_t i, const saw::data<sch::Vector<T,D>>& lbm_pos) const {
 		saw::data<sch::Scalar<T>> por;
 		por.at({});
 
