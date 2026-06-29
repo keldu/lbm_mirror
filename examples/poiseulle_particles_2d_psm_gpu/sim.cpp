@@ -169,6 +169,7 @@ saw::error_or<void> setup_initial_conditions(
 		p_pos.at({{1u}}) = dim_y * 0.5;
 	}
 
+	/*
 	component<T,Desc,cmpt::OneParticleAt> opa{p_pos,rad,eps};
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -177,6 +178,7 @@ saw::error_or<void> setup_initial_conditions(
 		{},// 0-index
 		df_f.get_dims()
 	);
+	*/
 	
 	/*
 	iterator<Desc::D>::apply(

@@ -56,6 +56,7 @@ template<typename T, uint64_t D, typename CollisionType = coll::Spheroid<T>>
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
 	Member<FixedArray<typename CollisionType::Schema,1u>, "collision">,
+	Member<FixedArray<Scalar<T>,1u>, "epsilon">,
 	Member<FixedArray<Scalar<T>,1u>, "mask_step">,
 	Member<FixedArray<Scalar<T>,1u>, "density">,
 	Member<FixedArray<Vector<T,D>,1u>, "center_of_mass">,

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "common.hpp"
 #include "../component.hpp"
+#include "common.hpp"
+#include "schema.hpp"
+#include "porosity.hpp"
 
 namespace kel {
 namespace lbm {
@@ -37,12 +39,10 @@ public:
 
 		auto pos_ind = saw::math::vectorize_data(index);
 
-		auto diff = pos_ind - pos_;
-
 		// Write out value
 		auto diff = pos_ind.template cast_to<T>() - pos_;
 		auto diff_dot = saw::math::dot(diff,diff);
-		porous = particle_porosity<>::calculate(diff, rad_, eps_);
+		porous = particle_porosity<T,Descriptor::D,por::ParticleSpheroid<T>>::calculate(diff, rad_, eps_);
 	}
 };
 }
