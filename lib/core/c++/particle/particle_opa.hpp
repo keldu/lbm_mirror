@@ -35,12 +35,13 @@ public:
 
 		auto& porous = porous_f.at(index);
 
-
 		auto pos_ind = saw::math::vectorize_data(index);
 
 		auto diff = pos_ind - pos_;
 
 		// Write out value
+		auto diff = pos_ind.template cast_to<T>() - pos_;
+		auto diff_dot = saw::math::dot(diff,diff);
 		porous = particle_porosity<>::calculate(diff, rad_, eps_);
 	}
 };

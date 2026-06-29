@@ -1,6 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 #include <kel/lbm/particle.hpp>
+#include <kel/lbm/particle_opa.hpp>
 
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
@@ -157,25 +158,6 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
-	
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.5;
-			middle.at({{1u}}) = dim_y * 0.5;
-
-			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
-			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
-
-			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 0.0;
-			}
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
 
 	return saw::make_void();
 }
@@ -190,6 +172,8 @@ saw::error_or<void> step(
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
+	sch::data<sch::Scalar<T>> eps;
+	eps.at({}).set(1.5f);
 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
@@ -199,7 +183,7 @@ saw::error_or<void> step(
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.0};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-		component<T,Desc,cmpt::OneParticleAt, encode::Sycl<saw::encode::Native>> opa{{},{}};
+		component<T,Desc,cmpt::OneParticleAt, encode::Sycl<saw::encode::Native>> opa{{},{},eps};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -371,6 +355,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		*/
+		/*
 		if(i.get() % 32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -385,6 +370,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
@@ -420,6 +406,18 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	{
 		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

@@ -1,6 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 #include <kel/lbm/particle.hpp>
+#include <kel/lbm/particle/particle_opa.hpp>
 
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
@@ -157,7 +158,27 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
+
+	saw::data<sch::Scalar<T>> eps;
+	eps.at({}).set(1.5f);
+	saw::data<sch::Scalar<T>> rad;
+	rad.at({}).set(dim_y*0.1);
+	saw::data<sch::Vector<T,Desc::D>> p_pos;
+	{
+		p_pos.at({{0u}}) = dim_x * 0.25;
+		p_pos.at({{1u}}) = dim_y * 0.5;
+	}
+
+	component<T,Desc,cmpt::OneParticleAt> opa{p_pos,rad,eps};
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			opa.apply(macros,index,{});
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
 	
+	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
@@ -176,6 +197,7 @@ saw::error_or<void> setup_initial_conditions(
 		{},// 0-index
 		df_f.get_dims()
 	);
+	*/
 
 	return saw::make_void();
 }
@@ -202,6 +224,18 @@ saw::error_or<void> step(
 		vel_b.at({{0u}}) = 0.015;
 
 		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+
+
+		saw::data<sch::Scalar<T>> eps;
+		eps.at({}).set(1.5f);
+		saw::data<sch::Scalar<T>> rad;
+		rad.at({}).set(dim_y*0.1);
+		saw::data<sch::Vector<T,Desc::D>> p_pos;
+		{
+			p_pos.at({{0u}}) = dim_x * 0.25;
+			p_pos.at({{1u}}) = dim_y * 0.5;
+		}
+		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
@@ -230,6 +264,7 @@ saw::error_or<void> step(
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
+					opa.apply(macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
@@ -385,6 +420,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		*/
+		/*
 		if(i.get() % 32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -399,6 +435,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;

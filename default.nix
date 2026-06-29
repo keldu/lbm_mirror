@@ -151,6 +151,17 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+
+		poiseulle_particles_2d_all_gpu = pkgs.symlinkJoin {
+			name = "poiseulle_particles_2d_all_gpu";
+			paths = [
+				examples.poiseulle_particles_2d_bgk_gpu
+				examples.poiseulle_particles_2d_psm_gpu
+				examples.poiseulle_particles_2d_hlbm_gpu
+				examples.poiseulle_particles_2d_fplbm_gpu
+				examples.poiseulle_particles_2d_ibm_gpu
+			];
+		};
 		
 		poiseulle_moving_particle_2d_psm_gpu = pkgs.callPackage ./examples/poiseulle_moving_particle_2d_psm_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;

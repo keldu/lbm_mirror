@@ -366,6 +366,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		*/
+		/*
 		if(i.get() % 32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -380,6 +381,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
+		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
@@ -415,6 +417,18 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	{
 		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
