@@ -39,7 +39,9 @@ public:
 		auto pos_ind = saw::math::vectorize_data(index);
 
 		auto diff = pos_ind - pos_;
-		auto diff_dot = saw::math::dot(diff,diff);
+
+		// Write out value
+		porous = particle_porosity<>::calculate(diff, rad_, eps_);
 	}
 };
 }

@@ -9,7 +9,6 @@ template<typename T, uint64_t D, typename Coll>
 class particle_porosity {
 public:
 
-	
 	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,Coll>>& part_group, uint64_t p_i, const saw::data<sch::Vector<T,D>>& lbm_pos){
 		auto& mask = part_group.template get<"mask">();
 
@@ -32,10 +31,32 @@ public:
 template<typename T, uint64_t D, typename saw::native_data_type<T>::type radius, typename saw::native_data_type<T>::type eps>
 class particle_porosity<T, D, coll::ParticleCollisionSpheroid<T,radius, eps>> final {
 public:
-	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::Vector<T,D>>& lbm_pos, saw::data<sch::Scalar<T>> rad) const {
-		saw::data<sch::Scalar<T>> pos;
+	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::Vector<T,D>>& lbm_rel_dist, saw::data<sch::Scalar<T>> rad, saw::data<sch::Scalar<T>> eps) const {
+		saw::data<sch::Scalar<T>> por;
 		
-		
+		auto s_dist_2 = saw::math::dot(lbm_rel_dist,lbm_rel_dist);
+		auto s_dist = saw::math::sqrt(s_dist_2);
+
+		auto rad_low = rad - eps;
+		auto rad_high = rad + eps;
+
+		if(s_dist < rad_low){
+			por.at({}).set(1);
+			return por;
+		}
+		if(s_dist > rad_high){
+			por.at({}).set(0);
+			return por;
+		}
+
+		{
+			typename saw::native_data_type<T>::type inner = (std::pi / ( 2.0 * eps.at({}).get() )) * (s_dist - rad_low).at({}).get();
+			auto cos_inner = std::cos(inner);
+			auto cos_i_2 = cos_inner * cos_inner;
+			por.at({}).set(cos_i_2);
+		}
+
+		return por;
 	}
 
 	saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,sch::ParticleCollisionSpheroid<T,radius,eps> > >& part_group, uint64_t i, const saw::data<sch::Vector<T,D>>& lbm_pos) const {
@@ -51,11 +72,7 @@ public:
 		// Basically the queried position minus the center of the particle
 		auto dist = lbm_pos - pi_rb_pos;
 
-		saw::data<sch::Scalar<T>> dist_len;
-		for(uint64_t i{0u}; i < D; ++i){
-			auto& d_i = dist.at({{i}});
-			dist_len.at({}) = d_i * d_i;
-		}
+		saw::data<sch::Scalar<T>> dist_len = saw::math::dot(dist,dist);
 		dist_len.at({}).set(std::sqrt(dist_len.at({}).get());
 
 		saw::data<sch::Scalar<T>> rad_d{radius};
