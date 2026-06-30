@@ -173,7 +173,17 @@ in rec {
 			inherit kel;
 		};
 
+		stokes_drag_particle_2d_bgk_gpu = pkgs.callPackage ./examples/stokes_drag_particle_2d_bgk_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
 		stokes_drag_particle_2d_psm_gpu = pkgs.callPackage ./examples/stokes_drag_particle_2d_psm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
+		stokes_drag_particle_2d_fplbm_gpu = pkgs.callPackage ./examples/stokes_drag_particle_2d_fplbm_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};

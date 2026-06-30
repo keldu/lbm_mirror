@@ -1,6 +1,7 @@
 #include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
 #include <kel/lbm/particle.hpp>
+#include <kel/lbm/particle/particle_opa.hpp>
 
 #include <forstio/io/io.hpp>
 #include <forstio/remote/filesystem/easy.hpp>
@@ -13,7 +14,7 @@ namespace lbm {
 constexpr uint64_t dim_y = 1024ul;
 constexpr uint64_t dim_x = dim_y * 2ul;
 
-constexpr uint64_t particle_amount = 1ul;
+// constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;
@@ -158,11 +159,33 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
+
+	saw::data<sch::Scalar<T>> eps;
+	eps.at({}).set(1.5f);
+	saw::data<sch::Scalar<T>> rad;
+	rad.at({}).set(dim_y*0.1);
+	saw::data<sch::Vector<T,Desc::D>> p_pos;
+	{
+		p_pos.at({{0u}}) = dim_x * 0.25;
+		p_pos.at({{1u}}) = dim_y * 0.5;
+	}
+
+	/*
+	component<T,Desc,cmpt::OneParticleAt> opa{p_pos,rad,eps};
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			opa.apply(macros,index,{});
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
+	*/
 	
+	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.5;
+			middle.at({{0u}}) = dim_x * 0.25;
 			middle.at({{1u}}) = dim_y * 0.5;
 
 			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
@@ -177,6 +200,7 @@ saw::error_or<void> setup_initial_conditions(
 		{},// 0-index
 		df_f.get_dims()
 	);
+	*/
 
 	return saw::make_void();
 }
@@ -193,6 +217,7 @@ saw::error_or<void> step(
 	auto& porous_f = macros.template get<"porosity">();
 
 	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> bgk{0.8};
 		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
@@ -200,7 +225,7 @@ saw::error_or<void> step(
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}).set(1.5f);
 		saw::data<sch::Scalar<T>> rad;
-		rad.at({}).set(dim_y*0.1*0.25);
+		rad.at({}).set(dim_y*0.1 / 4.0);
 		saw::data<sch::Vector<T,Desc::D>> p_pos;
 		{
 			p_pos.at({{0u}}) = dim_x * 0.5;
@@ -219,6 +244,7 @@ saw::error_or<void> step(
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
+		component<T,Desc,cmpt::ForceGather, encode::Sycl<saw::encode::Native>> fg;
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -237,16 +263,17 @@ saw::error_or<void> step(
 				case 2u:
 					opa.apply(macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
+					fg.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
 					//equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
 					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 5u:
 					// Corners
@@ -391,6 +418,22 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		*/
+		/*
+		if(i.get() % 32u == 0u){
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+		}
+		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
@@ -430,12 +473,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
-	{
-		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
+
 	sycl_q.wait();
 	return saw::make_void();
 }

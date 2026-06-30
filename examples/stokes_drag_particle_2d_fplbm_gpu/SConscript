@@ -1,0 +1,34 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+examples_env = env.Clone();
+examples_env['CXX'] = 'syclcc-clang';
+examples_env['CXXFLAGS'] += ['-O3'];
+
+examples_env.sources = sorted(glob.glob(dir_path + "/*.cpp"))
+examples_env.headers = sorted(glob.glob(dir_path + "/*.hpp"))
+
+env.sources += examples_env.sources;
+env.headers += examples_env.headers;
+
+# Cavity2D
+examples_objects = [];
+examples_env.add_source_files(examples_objects, ['sim.cpp'], shared=False);
+examples_env.poiseulle_2d_gpu = examples_env.Program('#bin/stokes_drag_particle_2d_fplbm_gpu', [examples_objects]);
+
+# Set Alias
+env.examples = [
+	examples_env.poiseulle_2d_gpu
+];
+env.Alias('examples', env.examples);
+env.targets += ['examples'];
+env.Install('$prefix/bin/', env.examples);
