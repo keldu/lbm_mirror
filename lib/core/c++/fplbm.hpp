@@ -114,6 +114,19 @@ public:
 		auto& vel_f = macros.template get<"velocity">();
 		auto& por_f = macros.template get<"porosity">();
 
+		// Temporary find a better way
+		auto& force_f = macros.template get<"force">();
+
+
+		/**
+		 * The other methods all work with a flipped porosity.
+		 * For compat reasons this is also flipped
+		 */
+		auto porosity = por_f.at(index);
+		saw::data<sch::Scalar<T>> one;
+		one.at({}) = 1.0;
+		auto flip_porosity = one - porosity;
+
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 
 		saw::data<sch::Scalar<T>> half;
@@ -128,11 +141,12 @@ public:
 		saw::data<sch::Scalar<T>> min_two;
 		min_two.at({}).set(-2);
 
-		auto force = vel * rho * min_two * por_f.at(index);
+		// Maybe ? 
+		auto& force = force_f.at(index);
+		force = vel * rho * min_two * flip_porosity;
 
 		saw::data<sch::Scalar<T>> dfi_inv_cs2;
 		dfi_inv_cs2.at({}).set(dfi::inv_cs2);
-
 
 		// auto vel = vel_f.at(index);
 

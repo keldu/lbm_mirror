@@ -40,7 +40,7 @@ public:
 
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"velocity">();
-	
+		
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
 
@@ -60,6 +60,22 @@ public:
 			uint64_t i_opp = dfi::opposite_index[i];
 			dfs.at({i}) = dfs_cpy.at({i}) + frequency_ * (eq.at(i) - dfs_cpy.at({i})) * porous.at({}) + (dfs_cpy.at({i_opp}) - dfs_cpy.at({i}) ) * flip_porous;
 		}
+
+		auto& force_f = macros.template get<"force">();
+		auto& force = force_f.at(index);
+		for(uint64_t k{0u}; k < Descriptor::D; ++k){
+			force.at({{k}}).set(0);
+		}
+
+		for(uint64_t i{0u}; i < Descriptor::Q; ++i){
+			uint64_t i_opp = dfi::opposite_index[i];
+			auto dfs_diff = dfs.at({i}) - dfs.at({i_opp});
+			for(uint64_t k{0u}; k < Descriptor::D; ++k){
+				force.at({{k}}) = force.at({{k}}) + dfs_diff;
+			}
+		}
+
+		force = force * porous;
 	}
 };
 

@@ -48,17 +48,17 @@ public:
 		auto rad_high = rad + eps_h;
 
 		if(s_dist.at({}) <= rad_low.at({})){
-			por.at({}).set(1);
+			por.at({}).set(0);
 			return por;
 		}
 		if(s_dist.at({}) >= rad_high.at({})){
-			por.at({}).set(0);
+			por.at({}).set(1);
 			return por;
 		}
 
 		{
-			typename saw::native_data_type<T>::type inner = (std::numbers::pi / ( eps.at({}).get() )) * (s_dist - rad_low).at({}).get();
-			auto cos_inner = std::cos(inner);
+			typename saw::native_data_type<T>::type inner = (std::numbers::pi / ( 2 * eps.at({}).get() )) * (s_dist - rad_low).at({}).get();
+			auto cos_inner = std::sin(inner);
 			auto cos_i_2 = cos_inner * cos_inner;
 			por.at({}).set(cos_i_2);
 		}

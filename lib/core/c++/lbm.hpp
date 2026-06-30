@@ -16,6 +16,7 @@
 #include "iterator.hpp"
 #include "hlbm.hpp"
 #include "macroscopic.hpp"
+#include "momentum_gather.hpp"
 #include "memory.hpp"
 #include "psm.hpp"
 #include "stream.hpp"

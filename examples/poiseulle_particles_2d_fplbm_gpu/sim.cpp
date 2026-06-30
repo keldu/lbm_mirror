@@ -51,6 +51,7 @@ template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
+	Member<VelChunk<T,Desc>, "force">,
 	Member<ScalarChunk<T,Desc>, "porosity">
 >;
 
@@ -144,6 +145,7 @@ saw::error_or<void> setup_initial_conditions(
 		{{1u,1u}}
 	);
 
+	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
@@ -162,6 +164,7 @@ saw::error_or<void> setup_initial_conditions(
 		{},// 0-index
 		df_f.get_dims()
 	);
+	*/
 
 	return saw::make_void();
 }
@@ -179,16 +182,20 @@ saw::error_or<void> step(
 
 	// auto coll_ev =
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::FpLbmOneParticleNoVelocity,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> bgk{0.8};
+		component<T,Desc,cmpt::FpLbmOneParticleNoVelocity,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.015;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+		saw::data<sch::Scalar<T>> eps;
+		eps.at({}).set(1.5f);
+		saw::data<sch::Scalar<T>> rad;
+		rad.at({}).set(dim_y*0.1);
+		saw::data<sch::Vector<T,Desc::D>> p_pos;
+		{
+			p_pos.at({{0u}}) = dim_x * 0.25;
+			p_pos.at({{1u}}) = dim_y * 0.5;
+		}
+		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
@@ -217,17 +224,18 @@ saw::error_or<void> step(
 					bb.apply(fields,index,t_i);
 				break;
 				case 2u:
+					opa.apply(macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
 					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
 					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 				break;
 				default:
 				break;
@@ -349,20 +357,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
-		if(i.get() % 32u == 0u){
-			{
-				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-			{
-				auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
-				if(eov.is_error()){
-					return eov;
-				}
-			}
-		}
+
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
@@ -398,6 +393,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	{
 		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

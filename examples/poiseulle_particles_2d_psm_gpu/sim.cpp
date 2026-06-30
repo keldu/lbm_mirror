@@ -49,6 +49,7 @@ template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
+	Member<VelChunk<T,Desc>, "force">,
 	Member<ScalarChunk<T,Desc>, "porosity">
 >;
 
@@ -216,17 +217,9 @@ saw::error_or<void> step(
 	auto& porous_f = macros.template get<"porosity">();
 
 	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> bgk{0.8};
 		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
-
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.015;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
-
 
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}).set(1.5f);
@@ -250,6 +243,7 @@ saw::error_or<void> step(
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
+		component<T,Desc,cmpt::ForceGather, encode::Sycl<saw::encode::Native>> fg;
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -268,16 +262,17 @@ saw::error_or<void> step(
 				case 2u:
 					opa.apply(macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
+					fg.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
 					//equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
 					// equi.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 5u:
 					// Corners
