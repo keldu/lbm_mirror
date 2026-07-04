@@ -1,0 +1,27 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Environment for base library
+png_env = env.Clone();
+
+png_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+png_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += png_env.sources;
+env.headers += png_env.headers;
+
+## Static lib
+objects = []
+png_env.add_source_files(objects, png_env.sources, shared=False);
+env.library_static = png_env.StaticLibrary('#build/kel-lbm-png', [objects]);
+
+env.Install('$prefix/lib/', env.library_static);
+env.Install('$prefix/include/kel/lbm/png/', png_env.headers);
