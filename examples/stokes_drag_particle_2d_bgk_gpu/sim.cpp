@@ -10,8 +10,8 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_y = 256ul;
-constexpr uint64_t dim_x = dim_y * 20ul;
+constexpr uint64_t dim_y = 1024ul;
+constexpr uint64_t dim_x = dim_y * 2ul;
 
 constexpr uint64_t particle_amount = 1ul;
 
@@ -50,8 +50,7 @@ using ForceChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
 template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
-	Member<RhoChunk<T>, "density">,
-	Member<ScalarChunk<T,Desc>, "porosity">
+	Member<RhoChunk<T>, "density">
 >;
 
 //template<typename T, typename Desc>
@@ -66,7 +65,6 @@ saw::error_or<void> setup_initial_conditions(
 		saw::data<sch::MacroStruct<T,Desc>>& macros
 ){
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -109,13 +107,11 @@ saw::error_or<void> setup_initial_conditions(
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
-	auto& por_f = macros.template get<"porosity">();
 
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			auto& df = df_f.at(index);
 			auto& rho = rho_f.at(index);
-			por_f.at(index).at({}) = {0};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			auto eq = equilibrium<T,Desc>(rho,vel);
@@ -144,11 +140,10 @@ saw::error_or<void> setup_initial_conditions(
 		{{1u,1u}}
 	);
 
-	/*
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.25;
+			middle.at({{0u}}) = dim_x * 0.5;
 			middle.at({{1u}}) = dim_y * 0.5;
 
 			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
@@ -156,14 +151,13 @@ saw::error_or<void> setup_initial_conditions(
 
 			auto dist = middle - ind_vec;
 			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 1.0;
+			if(dist_2.at({}).get() < dim_y*dim_y*0.01 / 16.0){
+				info_f.at(index).set(5u);
 			}
 		},
 		{},// 0-index
 		df_f.get_dims()
 	);
-	*/
 
 	return saw::make_void();
 }
@@ -177,7 +171,6 @@ saw::error_or<void> step(
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 
 	// auto coll_ev =
 	q.submit([&](acpp::sycl::handler& h){
@@ -192,7 +185,7 @@ saw::error_or<void> step(
 		rad.at({}).set(dim_y*0.1);
 		saw::data<sch::Vector<T,Desc::D>> p_pos;
 		{
-			p_pos.at({{0u}}) = dim_x * 0.25;
+			p_pos.at({{0u}}) = dim_x * 0.5;
 			p_pos.at({{1u}}) = dim_y * 0.5;
 		}
 		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};

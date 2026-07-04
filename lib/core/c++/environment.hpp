@@ -8,11 +8,13 @@ namespace kel {
 namespace lbm {
 
 struct environment {
+	std::string name;
+	
 	std::filesystem::path lbm_dir;
 	std::filesystem::path data_dir;
 };
 
-saw::error_or<environment> lbm_directory(){
+saw::error_or<environment> setup_lbm_env(const std::string_view name){
 	namespace fs = std::filesystem;
 
 	const char* home_dir = std::getenv("HOME");
@@ -25,6 +27,7 @@ saw::error_or<environment> lbm_directory(){
 	env.lbm_dir = std::filesystem::path{home_dir} / ".lbm";
 
 	{
+		// Set default data location to "${lbm_dir}/data"
 		env.data_dir = env.lbm_dir / "data";
 		// LBM Data Location
 		auto lbm_dir_config = env.lbm_dir / "data_dir_location.txt";

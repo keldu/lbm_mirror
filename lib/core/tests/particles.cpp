@@ -273,9 +273,9 @@ SAW_TEST("Verlet integration test 2D"){
 }
 */
 
-SAW_TEST("Particle / AABB"){
+SAW_TEST("Spheroid Particle / AABB"){
 	using namespace kel;
 
-
+	
 }
 }

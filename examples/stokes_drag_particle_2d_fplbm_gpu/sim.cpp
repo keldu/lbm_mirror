@@ -10,8 +10,8 @@
 namespace kel {
 namespace lbm {
 
-constexpr uint64_t dim_y = 256ul;
-constexpr uint64_t dim_x = dim_y * 20ul;
+constexpr uint64_t dim_y = 1024ul;
+constexpr uint64_t dim_x = dim_y * 2ul;
 
 constexpr uint64_t particle_amount = 1ul;
 
@@ -86,7 +86,23 @@ saw::error_or<void> setup_initial_conditions(
 		info_f.get_dims(),
 		{{1u,1u}}
 	);
-
+	// Corners
+	/// Inflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(5u);
+		},
+		{{0u,0u}},
+		{{1u,dim_y}}
+	);
+	/// Outflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(5u);
+		},
+		{{dim_x-1u,0u}},
+		{{dim_x, dim_y}}
+	);
 	// Inflow
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -193,7 +209,7 @@ saw::error_or<void> step(
 		rad.at({}).set(dim_y*0.1);
 		saw::data<sch::Vector<T,Desc::D>> p_pos;
 		{
-			p_pos.at({{0u}}) = dim_x * 0.25;
+			p_pos.at({{0u}}) = dim_x * 0.5;
 			p_pos.at({{1u}}) = dim_y * 0.5;
 		}
 		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};
