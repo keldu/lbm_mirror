@@ -14,6 +14,8 @@ namespace cmpt {
 struct HlbmInit {}; 
 struct Hlbm {};
 struct HlbmParticle {};
+
+struct HlbmOneParticleMomentumExchange {};
 }
 
 template<typename T, typename Descriptor, typename Encode>
@@ -151,6 +153,15 @@ public:
 		}
 		
 
+	}
+};
+
+template<typename T, typename Desc, typename Encode>
+class component<T, Desc, cmpt::HlbmParticle, Encode> final {
+public:
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+		//
 	}
 };
 }
