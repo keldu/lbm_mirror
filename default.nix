@@ -248,6 +248,24 @@ in rec {
 				examples.poiseulle_particles_2d_ibm_gpu
 			];
 		};
+
+		poiseulle_particles_2d = pkgs.symlinkJoin {
+			name = "kel-lbm-sims-poiseulle_particles_2d-${version}";
+			paths = [
+				examples.poiseulle_particles_2d_bgk_gpu
+				examples.poiseulle_particles_2d_psm_gpu
+				examples.poiseulle_particles_2d_hlbm_gpu
+				examples.poiseulle_particles_2d_fplbm_gpu
+			];
+		};
+		stokes_drag_2d = pkgs.symlinkJoin {
+			name = "kel-lbm-sims-stokes_drag_2d-${version}";
+			paths = [
+				examples.stokes_drag_particle_2d_psm_gpu
+				examples.stokes_drag_particle_2d_hlbm_gpu
+				examples.stokes_drag_particle_2d_fplbm_gpu
+			];
+		};
 	};
 
 	default = release.examples;
