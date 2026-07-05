@@ -34,7 +34,6 @@ public:
 		using dfi = df_info<T,Descriptor>;
 
 		auto& porous_f = macros.template get<"porosity">();
-
 		auto& porous = porous_f.at(index);
 
 		auto pos_ind = saw::math::vectorize_data(index);

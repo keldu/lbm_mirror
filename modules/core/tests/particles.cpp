@@ -276,6 +276,10 @@ SAW_TEST("Verlet integration test 2D"){
 SAW_TEST("Spheroid Particle / AABB"){
 	using namespace kel;
 
-	
+	auto spheroid_pgrp = lbm::create_spheroid_particle_group<sch::Float64, lbm::coll::Spheroid<sch::Float64>>({},{},{8u});
+
+	auto res = lbm::particle_aabb<sch::Float64,sch::ParticleGroup<T,D,coll::Spheroid<T>>>::calculate(spheroid_pgrp);
+
+	std::cout<<res<<std::endl;
 }
 }
