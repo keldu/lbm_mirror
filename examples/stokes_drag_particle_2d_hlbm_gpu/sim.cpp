@@ -197,6 +197,7 @@ saw::error_or<void> step(
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> bgk{0.8};
 		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::HlbmOneParticleMomentumExchange,encode::Sycl<saw::encode::Native>> one_part_moment;
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
@@ -241,6 +242,7 @@ saw::error_or<void> step(
 				break;
 				case 2u:
 					opa.apply(macros,index,t_i);
+					one_part_moment.apply(fields,macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					fg.apply(fields,macros,index,t_i);
 					break;

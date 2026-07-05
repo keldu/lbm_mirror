@@ -156,8 +156,9 @@ template<typename T, typename Desc, typename Encode>
 class component<T, Desc, cmpt::HlbmOneParticleMomentumExchange, Encode> final {
 public:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index, saw::data<sch::UInt64> time_step) const {
 		//
+		using dfi = df_info<T,Desc>;
 		bool is_even = ((time_step.get() % 2) == 0);
 		
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
@@ -177,7 +178,7 @@ public:
 		auto& force_f = macros.template get<"force">();
 		
 		// Set Force
-		force.at(index) = momentum * macros.template get<"density">().at(index);
+		force_f.at(index) = momentum * macros.template get<"porosity">().at(index);
 	}
 };
 }
