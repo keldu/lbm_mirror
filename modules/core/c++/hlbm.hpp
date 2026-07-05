@@ -102,10 +102,6 @@ public:
 	}
 };
 
-namespace impl {
-
-}
-
 template<typename T, typename Desc, typename Encode>
 class component<T, Desc, cmpt::HlbmParticle, Encode> final {
 private:
@@ -162,6 +158,26 @@ public:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		//
+		bool is_even = ((time_step.get() % 2) == 0);
+		
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+		saw::data<sch::Vector<T,Desc::D>> momentum;
+		for(uint64_t i = 0u; i < Desc::Q; ++i){
+			
+			saw::data<sch::Vector<sch::Int32,Desc::D>> e_i;
+			for(uint64_t k{0u}; k < Desc::D; ++k){
+				e_i.at({{k}}) = dfi::directions[i][k];
+			}
+
+			uint64_t i_opp = dfi::opposite_index[i];
+
+			momentum = momentum + e_i * (dfs_old_f.at({{i}}) + dfs_old_f.at({{i_opp}}));
+		}
+		auto& force_f = macros.template get<"force">();
+		
+		// Set Force
+		force.at(index) = momentum * macros.template get<"density">().at(index);
 	}
 };
 }
