@@ -70,10 +70,10 @@ let
 in rec {
 	kel = {
 		lbm = {
-			core = pkgs.callPackage ./lib/core/.nix/derivation.nix {
+			core = pkgs.callPackage ./modules/core/.nix/derivation.nix {
 				inherit forstio stdenv clang-tools pname version;
 			};
-			sycl = pkgs.callPackage ./lib/sycl/.nix/derivation.nix {
+			sycl = pkgs.callPackage ./modules/sycl/.nix/derivation.nix {
 				inherit forstio stdenv clang-tools pname version kel adaptive-cpp;
 			};
 		};
