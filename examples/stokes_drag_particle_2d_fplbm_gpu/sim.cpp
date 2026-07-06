@@ -206,7 +206,7 @@ saw::error_or<void> step(
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}).set(1.5f);
 		saw::data<sch::Scalar<T>> rad;
-		rad.at({}).set(dim_y*0.1);
+		rad.at({}).set(dim_y*0.1/4.0);
 		saw::data<sch::Vector<T,Desc::D>> p_pos;
 		{
 			p_pos.at({{0u}}) = dim_x * 0.5;

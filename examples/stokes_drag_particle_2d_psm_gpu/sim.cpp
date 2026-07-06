@@ -166,7 +166,7 @@ saw::error_or<void> setup_initial_conditions(
 	rad.at({}).set(dim_y*0.1);
 	saw::data<sch::Vector<T,Desc::D>> p_pos;
 	{
-		p_pos.at({{0u}}) = dim_x * 0.25;
+		p_pos.at({{0u}}) = dim_x * 0.5;
 		p_pos.at({{1u}}) = dim_y * 0.5;
 	}
 
