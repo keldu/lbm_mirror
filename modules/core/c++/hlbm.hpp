@@ -174,7 +174,7 @@ public:
 
 			uint64_t i_opp = dfi::opposite_index[i];
 
-			saw::data<T> dfs_added = dfs.at({i}) + dfs_old_f.at(n_ind_i).at({i_opp});
+			saw::data<T> dfs_added = dfs.at({i}) - dfs_old_f.at(n_ind_i).at({i_opp});
 			saw::data<sch::Scalar<T>> dfs_added_v;
 			dfs_added_v.at({}) = dfs_added;
 			auto ei_dfs = e_i * dfs_added_v;

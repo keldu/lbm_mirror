@@ -216,11 +216,11 @@ saw::error_or<void> step(
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
-				uint64_t target_t_i = 64u;
+				uint64_t target_t_i = 16u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0002 / target_t_i) * t_i.get();
+					return 1.0 + (0.00002 / target_t_i) * t_i.get();
 				}
-				return 1.0002;
+				return 1.00002;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
