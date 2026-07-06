@@ -14,7 +14,6 @@ namespace cmpt {
 struct HlbmInit {}; 
 struct Hlbm {};
 struct HlbmParticle {};
-
 struct HlbmOneParticleMomentumExchange {};
 }
 
@@ -96,7 +95,6 @@ public:
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 
-		porosity.at({}) = 1.0;
 		D.at({}) = 0.0;
 		N = {};
 	}
@@ -173,7 +171,6 @@ public:
 				e_i.at({{k}}) = dfi::directions[i][k];
 				n_ind_i.at({k}) = (dfi::directions[i])[k];
 			}
-
 
 			uint64_t i_opp = dfi::opposite_index[i];
 
