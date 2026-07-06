@@ -280,13 +280,42 @@ SAW_TEST("Spheroid Particle / AABB"){
 	constexpr uint64_t D = 2u;
 
 	saw::data<sch::Scalar<T>> radi,dense;
-	radi.at({}) = 2.0f;
+	radi.at({}) = 2.2f;
 	dense.at({}) = 1.0f;
 	auto spheroid_pgrp = lbm::create_spheroid_particle_group<T,D>(radi,dense,{8u});
 
-	// auto res = lbm::particle_aabb<sch::ParticleGroup<T,D,lbm::coll::Spheroid<T>>>::calculate(spheroid_pgrp,{{0u}},{});
+	auto& rb_array = spheroid_pgrp.template get<"particles">();
+	rb_array = {1u};
 
+	auto& rb = rb_array.at({0u}).template get<"rigid_body">();
 
+	auto& rb_pos = rb.template get<"position">();
+	{
+		rb_pos.at({{0u}}).set(4.1f);
+		rb_pos.at({{1u}}).set(2.9f);
+	}
+
+	auto res = lbm::particle_aabb<lbm::sch::ParticleGroup<T,D,lbm::coll::Spheroid<T>>>::calculate(spheroid_pgrp,{{0u}},{{64u,32u}});
+
+	{
+		auto res_check = [&](const auto& tbp){
+			lbm::iterator<1u>::apply([&](const auto& index){
+				std::cout<<tbp.at(index).get()<<" ";
+			},{{0u}},{{D}},{{0u}});
+			std::cout<<std::endl;
+		};
+
+		res_check(res.template get<"a">());
+		res_check(res.template get<"b">());
+	}
+	auto& rva = res.template get<"a">();
+	auto& rvb = res.template get<"b">();
+
+	SAW_EXPECT(rva.at({{0u}}).get() == 1, std::string{"Expected another value for rva at 0: "} + std::to_string(rva.at({{0u}}).get()));
+	SAW_EXPECT(rva.at({{1u}}).get() == 0, std::string{"Expected another value for rva at 1: "} + std::to_string(rva.at({{1u}}).get()));
+	
+	SAW_EXPECT(rvb.at({{0u}}).get() == 7, std::string{"Expected another value for rvb at 0: "} + std::to_string(rvb.at({{0u}}).get()));
+	SAW_EXPECT(rvb.at({{1u}}).get() == 6, std::string{"Expected another value for rvb at 1: "} + std::to_string(rvb.at({{1u}}).get()));
 
 	// std::cout<<res<<std::endl;
 }

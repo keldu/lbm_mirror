@@ -35,13 +35,13 @@ public:
 		auto& a = aabb.template get<"a">();
 		auto& b = aabb.template get<"b">();
 
-		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().template get<"radius">().at({0u});
+		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({0u}).template get<"radius">();
 
 		saw::data<sch::Vector<T,D>> lower;
 		saw::data<sch::Vector<T,D>> upper;
 
 		for(uint64_t i{0u}; i < D; ++i){
-			lower.at({{i}}) = pirb_pos.at({{i}}) >= rad_d.at({}) ? (pirb_pos.at({{i}}) - rad_d.at({})) : saw::data<T>{0};
+			lower.at({{i}}) = ((pirb_pos.at({{i}}) >= rad_d.at({})) ? (pirb_pos.at({{i}}) - rad_d.at({})) : saw::data<T>{0});
 			a.at({i}) = lower.at({{i}}).template cast_to<sch::UInt64>();
 			upper.at({{i}}) = pirb_pos.at({{i}}) + rad_d.at({});
 			b.at({i}) = (upper.at({{i}})+saw::data<T>{1}).template cast_to<sch::UInt64>();
