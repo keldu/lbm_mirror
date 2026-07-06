@@ -155,25 +155,34 @@ public:
 template<typename T, typename Desc, typename Encode>
 class component<T, Desc, cmpt::HlbmOneParticleMomentumExchange, Encode> final {
 public:
-	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	template<typename CellFieldSchema, typename MacroFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index, saw::data<sch::UInt64> time_step) const {
 		//
 		using dfi = df_info<T,Desc>;
 		bool is_even = ((time_step.get() % 2) == 0);
 		
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		auto& dfs = dfs_old_f.at(index);
 
 		saw::data<sch::Vector<T,Desc::D>> momentum;
 		for(uint64_t i = 0u; i < Desc::Q; ++i){
 			
-			saw::data<sch::Vector<sch::Int32,Desc::D>> e_i;
+			saw::data<sch::Vector<T,Desc::D>> e_i;
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> n_ind_i;
 			for(uint64_t k{0u}; k < Desc::D; ++k){
 				e_i.at({{k}}) = dfi::directions[i][k];
+				n_ind_i.at({k}) = (dfi::directions[i])[k];
 			}
+
 
 			uint64_t i_opp = dfi::opposite_index[i];
 
-			momentum = momentum + e_i * (dfs_old_f.at({{i}}) + dfs_old_f.at({{i_opp}}));
+			saw::data<T> dfs_added = dfs.at({i}) + dfs_old_f.at(n_ind_i).at({i_opp});
+			saw::data<sch::Scalar<T>> dfs_added_v;
+			dfs_added_v.at({}) = dfs_added;
+			auto ei_dfs = e_i * dfs_added_v;
+
+			momentum = momentum + ei_dfs;
 		}
 		auto& force_f = macros.template get<"force">();
 		
