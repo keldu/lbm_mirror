@@ -132,6 +132,7 @@ saw::error_or<void> setup_initial_conditions(
 			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
+			vel.at({{0u}}) = 0.0002f;
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
@@ -146,9 +147,6 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.0002f;
-			}
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
