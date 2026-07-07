@@ -150,7 +150,7 @@ saw::error_or<void> setup_initial_conditions(
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.0;
+				vel.at({{0u}}) = 0.0002f;
 			}
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
@@ -214,17 +214,30 @@ saw::error_or<void> step(
 		}
 		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};
 
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-			[&](){
-				uint64_t target_t_i = 16u;
+		component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
+			[&]() -> saw::data<sch::Vector<T,Desc::D>>{
+				saw::data<sch::Vector<T,Desc::D>> vel;
+				uint64_t target_t_i = 8u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.00002 / target_t_i) * t_i.get();
+					vel.at({{0u}}) = (0.0002 / target_t_i) * t_i.get();
+				}else{
+					vel.at({{0u}}) = 0.0002;
 				}
-				return 1.00002;
+				return vel;
 			}()
 		};
-		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
+		component<T,Desc,cmpt::ZouHeVelocityX<false>,encode::Sycl<saw::encode::Native>> flow_out{
+			[&]() -> saw::data<sch::Vector<T,Desc::D>>{
+				saw::data<sch::Vector<T,Desc::D>> vel;
+				uint64_t target_t_i = 8u;
+				if(t_i.get() < target_t_i){
+					vel.at({{0u}}) = (0.0002 / target_t_i) * t_i.get();
+				}else{
+					vel.at({{0u}}) = 0.0002;
+				}
+				return vel;
+			}()
+		};
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -365,7 +378,9 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
-	saw::data<sch::UInt64> time_steps{16u*4096ul};
+	
+	saw::data<sch::UInt64> time_steps{32u*4096ul};
+	
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){

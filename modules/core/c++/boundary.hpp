@@ -221,14 +221,14 @@ public:
 	}
 };
 
-/*
-template<typename FP, typename Descriptor, bool East, typename Encode>
-class component<FP, Descriptor, cmpt::ZouHeVelocityX<East>, Encode> final {
+
+template<typename T, typename Descriptor, bool East, typename Encode>
+class component<T, Descriptor, cmpt::ZouHeVelocityX<East>, Encode> final {
 private:
-	saw::data<sch::Vector<FP,Descriptor::D>> velocity_;
+	saw::data<sch::Vector<T,Descriptor::D>> velocity_;
 public:
 	component(
-		saw::data<sch::Vector<FP,Descriptor::D>> velocity__
+		saw::data<sch::Vector<T,Descriptor::D>> velocity__
 	):
 		velocity_{velocity__}
 	{}
@@ -237,13 +237,38 @@ public:
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step) const {
 		
 		bool is_even = ((time_step.get() % 2u) == 0u);
-		using dfi = df_info<FP,Descriptor>;
+		using dfi = df_info<T,Descriptor>;
 		
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
+
+		auto& dfs = dfs_old_f.at(index);
+
+		saw::data<T> dir_sum;
+		if constexpr (East) {
+			dir_sum = dfs.at({1u}) + dfs.at({5u}) + dfs.at({7u});
+		} else if constexpr(not East){
+			dir_sum = dfs.at({2u}) + dfs.at({6u}) + dfs.at({8u});
+		}
+
+		saw::data<sch::Scalar<T>> rho;
+		rho.at({}) = (dfs.at({0u}) + dfs.at({4u}) + dfs.at({3u}) + dir_sum * 2) / (velocity_.at({{0u}}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0)});
+
+		if constexpr (East) {
+			dfs.at({2u}) = dfs.at({1u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({6u}) = dfs.at({5u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
+			dfs.at({8u}) = dfs.at({7u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
+		}else if constexpr ( not East ){
+			dfs.at({1u}) = dfs.at({2u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({5u}) = dfs.at({6u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
+			dfs.at({7u}) = dfs.at({8u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
+		}
 	}
 };
-*/
 
 }
 }
