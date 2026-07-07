@@ -266,6 +266,14 @@ in rec {
 				examples.stokes_drag_particle_2d_fplbm_gpu
 			];
 		};
+
+		ecmor = pkgs.symlinkJoin {
+			name = "kel_ecmor";
+			paths = [
+				release.stokes_drag_2d
+				release.poiseulle_particles_2d
+			];
+		};
 	};
 
 	default = release.examples;
