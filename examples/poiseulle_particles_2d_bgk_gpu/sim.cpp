@@ -422,12 +422,6 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	{
-		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
-	{
 		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
