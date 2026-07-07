@@ -400,7 +400,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	{
-		auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
