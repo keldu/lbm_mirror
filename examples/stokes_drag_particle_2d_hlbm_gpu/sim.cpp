@@ -368,7 +368,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	
-	saw::data<sch::UInt64> time_steps{64u*4096ul};
+	saw::data<sch::UInt64> time_steps{8u*4096ul};
 	
 	auto& info_f = lsd_view.template get<"info">();
 
