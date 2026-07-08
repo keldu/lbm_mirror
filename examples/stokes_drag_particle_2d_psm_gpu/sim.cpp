@@ -202,19 +202,8 @@ saw::error_or<void> step(
 				return vel;
 			}()
 		};
-		component<T,Desc,cmpt::ZouHeVelocityX<false>,encode::Sycl<saw::encode::Native>> flow_out{
-			[&]() -> saw::data<sch::Vector<T,Desc::D>>{
-				saw::data<sch::Vector<T,Desc::D>> vel;
-				uint64_t target_t_i = 8u;
-				if(t_i.get() < target_t_i){
-					vel.at({{0u}}) = (0.0002 / target_t_i) * t_i.get();
-				}else{
-					vel.at({{0u}}) = 0.0002;
-				}
-				return vel;
-			}()
-		};
-
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+	
 		component<T,Desc,cmpt::ForceGather, encode::Sycl<saw::encode::Native>> fg;
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -360,7 +349,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 
-	saw::data<sch::UInt64> time_steps{32u*4096ul};
+	saw::data<sch::UInt64> time_steps{64u*4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
