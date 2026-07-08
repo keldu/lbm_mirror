@@ -134,7 +134,6 @@ saw::error_or<void> setup_initial_conditions(
 			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.0002f;
 
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
@@ -178,7 +177,6 @@ saw::error_or<void> step(
 		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
-		component<T,Desc,cmpt::HlbmOneParticleMomentumExchange,encode::Sycl<saw::encode::Native>> one_part_moment;
 
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}).set(1.5f);
@@ -223,7 +221,6 @@ saw::error_or<void> step(
 				break;
 				case 2u:
 					opa.apply(macros,index,t_i);
-					one_part_moment.apply(fields,macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					fg.apply(fields,macros,index,t_i);
 					break;

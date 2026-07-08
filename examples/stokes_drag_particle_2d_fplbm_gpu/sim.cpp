@@ -135,7 +135,6 @@ saw::error_or<void> setup_initial_conditions(
 			por_f.at(index).at({}) = {0};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.0002f;
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
 			df = eq;
