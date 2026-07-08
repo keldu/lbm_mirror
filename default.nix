@@ -261,6 +261,7 @@ in rec {
 		stokes_drag_2d = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-stokes_drag_2d-${version}";
 			paths = [
+				examples.stokes_drag_particle_2d_bgk_gpu
 				examples.stokes_drag_particle_2d_psm_gpu
 				examples.stokes_drag_particle_2d_hlbm_gpu
 				examples.stokes_drag_particle_2d_fplbm_gpu

@@ -188,15 +188,16 @@ saw::error_or<void> step(
 			p_pos.at({{0u}}) = dim_x * 0.5;
 			p_pos.at({{1u}}) = dim_y * 0.5;
 		}
-		component<T,Desc,cmpt::OneParticleAt,encode::Sycl<saw::encode::Native>> opa{p_pos,rad,eps};
-
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-			[&](){
-				uint64_t target_t_i = 64u;
+		component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
+			[&]() -> saw::data<sch::Vector<T,Desc::D>>{
+				saw::data<sch::Vector<T,Desc::D>> vel;
+				uint64_t target_t_i = 8u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0002 / target_t_i) * t_i.get();
+					vel.at({{0u}}) = (0.0002 / target_t_i) * t_i.get();
+				}else{
+					vel.at({{0u}}) = 0.0002;
 				}
-				return 1.0002;
+				return vel;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
@@ -217,7 +218,6 @@ saw::error_or<void> step(
 					abb.apply(fields,index,t_i);
 				break;
 				case 2u:
-					opa.apply(macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 3u:
