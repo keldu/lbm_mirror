@@ -441,6 +441,12 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			return eov;
 		}
 	}
+	{
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 
 	sycl_q.wait();
 	return saw::make_void();
