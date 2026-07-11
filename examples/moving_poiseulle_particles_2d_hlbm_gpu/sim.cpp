@@ -144,28 +144,6 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
-	/* Technically the particle group should handle this case
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.25;
-			middle.at({{1u}}) = dim_y * 0.5;
-
-			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
-			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
-
-			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 0.0;
-			}
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
-	*/
-
-
 
 	return saw::make_void();
 }
