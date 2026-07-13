@@ -180,10 +180,13 @@ saw::error_or<void> step(
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.0};
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{1.0001};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-		component<T,Desc,cmpt::OneParticleAt, encode::Sycl<saw::encode::Native>> opa{{},{},eps};
+		component<T,Desc,cmpt::OneParticleTwoWay, encode::Sycl<saw::encode::Native>> optw;
+		h.parallel_for(acpp::sycl::range<1u>{1u},[=](acpp::sycl::id<1u> idx){
+
+		}).wait();
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -294,7 +297,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
