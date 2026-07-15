@@ -22,8 +22,8 @@ public:
 		sch::Member<sch::FixedArray<sch::UInt64,D>,"b">
 	>;
 public:
-	template<typename Encode>
-	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Schema,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	template<typename Sch, typename Encode>
+	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
 		static_assert(PC > 0u, "Can't calculate from no particles");
 		if(not (i.at({0u}).get() < PC) ){
 			return saw::make_error<saw::err::critical>("Too large i in particle_aabb");
@@ -55,5 +55,6 @@ public:
 
 	}
 };
+
 }
 }

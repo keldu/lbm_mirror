@@ -105,7 +105,7 @@ class component<T, Desc, cmpt::HlbmParticle, Encode> final {
 private:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
 	void apply_i(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
-		
+		// if constexpr ( i < )
 	}	
 public:
 	/*
@@ -136,6 +136,8 @@ public:
 
 			auto aabb = particle_aabb<ParticleSchema>::calculate(part_spheroid_group,index,mvel.meta());
 			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
+			start = aabb.template get<"a">();
+			stop = aabb.template get<"b">();
 
 			iterator<Desc::D>::apply([&](const auto& index){
 				// ask for the d_k value here.
