@@ -278,15 +278,14 @@ SAW_TEST("Spheroid Particle / AABB"){
 
 	using T = sch::Float64;
 	constexpr uint64_t D = 2u;
+	constexpr uint64_t PC = 1u;
 
 	saw::data<sch::Scalar<T>> radi,dense;
 	radi.at({}) = 2.2f;
 	dense.at({}) = 1.0f;
-	auto spheroid_pgrp = lbm::create_spheroid_particle_group<T,D>(radi,dense,{8u});
+	auto spheroid_pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{8u});
 
 	auto& rb_array = spheroid_pgrp.template get<"particles">();
-	rb_array = {1u};
-
 	auto& rb = rb_array.at({0u}).template get<"rigid_body">();
 
 	auto& rb_pos = rb.template get<"position">();
@@ -295,8 +294,9 @@ SAW_TEST("Spheroid Particle / AABB"){
 		rb_pos.at({{1u}}).set(2.9f);
 	}
 
-	auto res = lbm::particle_aabb<lbm::sch::ParticleGroup<T,D,lbm::coll::Spheroid<T>>>::calculate(spheroid_pgrp,{{0u}},{{64u,32u}});
-
+	auto eo_res = lbm::particle_aabb<lbm::sch::ParticleGroup<T,D,PC,lbm::coll::Spheroid<T>>>::calculate(spheroid_pgrp,{{0u}},{{64u,32u}});
+	SAW_EXPECT(eo_res.is_value(), "particle_aabb has error value");
+	auto& res = eo_res.get_value();
 	{
 		auto res_check = [&](const auto& tbp){
 			lbm::iterator<1u>::apply([&](const auto& index){

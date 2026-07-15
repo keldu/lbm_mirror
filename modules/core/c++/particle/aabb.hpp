@@ -10,12 +10,12 @@ class particle_aabb final {
 	static_assert(saw::always_false<PGroup>, "Not supported");
 };
 
-template<typename T, uint64_t D>
+template<typename T, uint64_t D, uint64_t PC>
 class particle_aabb<
-	sch::ParticleGroup<T,D,coll::Spheroid<T>>
+	sch::ParticleGroup<T,D,PC,coll::Spheroid<T>>
 > final {
 public:
-	using Schema = sch::ParticleGroup<T,D,coll::Spheroid<T>>;
+	using Schema = sch::ParticleGroup<T,D,PC,coll::Spheroid<T>>;
 
 	using AABB = sch::Struct<
 		sch::Member<sch::FixedArray<sch::UInt64,D>,"a">,
@@ -23,7 +23,11 @@ public:
 	>;
 public:
 	template<typename Encode>
-	static constexpr saw::data<AABB> calculate(const saw::data<Schema,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Schema,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+		static_assert(PC > 0u, "Can't calculate from no particles");
+		if(not (i.at({0u}).get() < PC) ){
+			return saw::make_error<saw::err::critical>("Too large i in particle_aabb");
+		}
 
 		saw::data<AABB> aabb;
 		auto& parts = p_grp.template get<"particles">();
@@ -35,7 +39,7 @@ public:
 		auto& a = aabb.template get<"a">();
 		auto& b = aabb.template get<"b">();
 
-		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({0u}).template get<"radius">();
+		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at(i).template get<"radius">();
 
 		saw::data<sch::Vector<T,D>> lower;
 		saw::data<sch::Vector<T,D>> upper;

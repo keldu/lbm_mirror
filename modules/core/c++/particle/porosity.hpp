@@ -11,11 +11,11 @@ template<typename T>
 struct ParticleSpheroid {};
 }
 
-template<typename T, uint64_t D, typename Coll>
+template<typename T, uint64_t D, uint64_t PC, typename Coll>
 class particle_porosity {
 public:
 
-	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,Coll>>& part_group, uint64_t p_i, const saw::data<sch::Vector<T,D>>& lbm_pos){
+	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,PC,Coll>>& part_group, uint64_t p_i, const saw::data<sch::Vector<T,D>>& lbm_pos){
 		auto& mask = part_group.template get<"mask">();
 
 		auto& particles = part_group.template get<"particles">();
@@ -33,7 +33,7 @@ public:
 };
 
 template<typename T, uint64_t D>
-class particle_porosity<T, D, por::ParticleSpheroid<T>> final {
+class particle_porosity<T, D, 1u, por::ParticleSpheroid<T>> final {
 public:
 	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::Vector<T,D>>& lbm_rel_dist, saw::data<sch::Scalar<T>> rad, saw::data<sch::Scalar<T>> eps){
 		saw::data<sch::Scalar<T>> por;
@@ -68,10 +68,10 @@ public:
 };
 
 
-template<typename T, uint64_t D>
-class particle_porosity<T, D, coll::Spheroid<T>> final {
+template<typename T, uint64_t D, uint64_t PC>
+class particle_porosity<T, D, PC, coll::Spheroid<T>> final {
 public:
-	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,coll::Spheroid<T> > >& part_group, uint64_t i, const saw::data<sch::Vector<T,D>>& lbm_pos) {
+	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::ParticleGroup<T,D,PC,coll::Spheroid<T> > >& part_group, uint64_t i, const saw::data<sch::Vector<T,D>>& lbm_pos) {
 		saw::data<sch::Scalar<T>> por;
 
 		auto& parts = part_group.template get<"particles">();

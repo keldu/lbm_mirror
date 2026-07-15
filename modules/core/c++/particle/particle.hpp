@@ -13,13 +13,13 @@
 namespace kel {
 namespace lbm {
 
-template<typename T, uint64_t D>
-saw::data<sch::ParticleGroup<T,D, coll::Spheroid<T>>> create_spheroid_particle_group(
+template<typename T, uint64_t D,uint64_t PartAmount>
+saw::data<sch::ParticleGroup<T, D, PartAmount, coll::Spheroid<T>>> create_spheroid_particle_group(
 		saw::data<sch::Scalar<T>> radius_p,
 		saw::data<sch::Scalar<T>> density_p,
 		const saw::data<sch::UInt64>& mask_resolution
 ){
-	saw::data<sch::ParticleGroup<T,D,coll::Spheroid<T>>> part;
+	saw::data<sch::ParticleGroup<T,D,PartAmount,coll::Spheroid<T>>> part;
 
 	auto& rad_s = part.template get<"collision">().at({0u}).template get<"radius">();
 	rad_s = radius_p;

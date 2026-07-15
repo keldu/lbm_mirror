@@ -41,7 +41,7 @@ public:
 		// Write out value
 		auto diff = pos_ind.template cast_to<T>() - pos_;
 		auto diff_dot = saw::math::dot(diff,diff);
-		porous = particle_porosity<T,Descriptor::D,por::ParticleSpheroid<T>>::calculate(diff, rad_, eps_);
+		porous = particle_porosity<T,Descriptor::D,1u,por::ParticleSpheroid<T>>::calculate(diff, rad_, eps_);
 	}
 };
 }

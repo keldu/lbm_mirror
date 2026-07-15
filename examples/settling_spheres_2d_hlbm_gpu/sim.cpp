@@ -13,7 +13,6 @@ namespace lbm {
 
 constexpr uint64_t dim_x = 512ul;
 constexpr uint64_t dim_y = dim_x * 2ul;
-
 constexpr uint64_t particle_amount = 16ul;
 
 namespace sch {
@@ -59,15 +58,9 @@ template<typename T, typename Desc>
 using ParticleSpheroidGroup = ParticleGroup<
 	T,
 	Desc::D,
-	sch::ParticleCollisionSpheroid<T,2.0f>
+	particle_amount,
+	coll::Spheroid<T>
 >;
-
-template<typename T, typename Desc>
-using ParticleGroups = Tuple<
-	ParticleSpheroidGroup<T,Desc>
->;
-
-
 }
 
 template<typename T, typename Desc>
@@ -186,9 +179,6 @@ saw::error_or<void> step(
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
-
-			// Reset the force to zero
-			forces.at(index) = {};
 		});
 	}).wait();
 

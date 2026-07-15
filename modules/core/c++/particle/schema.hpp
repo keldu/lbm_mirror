@@ -52,7 +52,7 @@ using Particle = Struct<
 	// Member<Array<Float64,D>, "mask">,
 >;
 
-template<typename T, uint64_t D, typename CollisionType = coll::Spheroid<T>>
+template<typename T, uint64_t D, uint64_t PartAmount, typename CollisionType = coll::Spheroid<T>>
 using ParticleGroup = Struct<
 	Member<Array<T,D>, "mask">,
 	Member<FixedArray<typename CollisionType::Schema,1u>, "collision">,
@@ -61,7 +61,7 @@ using ParticleGroup = Struct<
 	Member<FixedArray<Scalar<T>,1u>, "density">,
 	Member<FixedArray<Vector<T,D>,1u>, "center_of_mass">,
 	Member<FixedArray<Scalar<T>,1u>, "total_mass">,
-	Member<Array<Particle<T,D>,1u>, "particles">
+	Member<FixedArray<Particle<T,D>,PartAmount>, "particles">
 >;
 }
 }
