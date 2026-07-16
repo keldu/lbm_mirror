@@ -13,6 +13,7 @@ namespace lbm {
 namespace cmpt {
 struct HlbmInit {}; 
 struct Hlbm {};
+struct HlbmOneParticle {};
 struct HlbmParticle {};
 struct HlbmOneParticleMomentumExchange {};
 }
@@ -101,7 +102,7 @@ public:
 };
 
 template<typename T, typename Desc, typename Encode>
-class component<T, Desc, cmpt::HlbmParticle, Encode> final {
+class component<T, Desc, cmpt::HlbmOneParticle, Encode> final {
 private:
 /*
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
@@ -124,6 +125,7 @@ public:
 			auto& parts = part_spheroid_group.template get<"particles">();
 			auto parts_size = parts.meta().at({0u});
 
+
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
 			auto& pirb_pos = pirb.template get<"position">();
@@ -131,10 +133,8 @@ public:
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
 
-			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,index,mvel.meta());
+			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,{{0u}},mvel.meta());
 			if(eo_aabb.is_error()){
-				std::cerr<<"Prepping error"<<std::endl;
-				std::cerr<<eo_aabb.get_error().get_category()<<std::endl;
 				return;
 			}
 			auto& aabb = eo_aabb.get_value();
@@ -146,13 +146,13 @@ public:
 			iterator<Desc::D>::apply([&](const auto& index){
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
-					std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
+				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
+				
+
 			},start,stop);
 
 			// Check
 		}
-		
-
 	}
 };
 

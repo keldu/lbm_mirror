@@ -23,23 +23,24 @@ public:
 	>;
 public:
 	template<typename Sch, typename Encode>
-	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& i, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& index, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
 		static_assert(PC > 0u, "Can't calculate from no particles");
-		if(not (i.at({0u}).get() < PC) ){
+		if(not (index.at({{0u}}).get() < PC) ){
+			std::cerr.flush();
 			return saw::make_error<saw::err::critical>("Too large i in particle_aabb");
 		}
 
 		saw::data<AABB> aabb;
 		auto& parts = p_grp.template get<"particles">();
 
-		auto& pi = parts.at(i);
+		auto& pi = parts.at(index);
 		auto& pirb = pi.template get<"rigid_body">();
 		auto& pirb_pos = pirb.template get<"position">();
 
 		auto& a = aabb.template get<"a">();
 		auto& b = aabb.template get<"b">();
 
-		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at(i).template get<"radius">();
+		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({{0u}}).template get<"radius">();
 
 		saw::data<sch::Vector<T,D>> lower;
 		saw::data<sch::Vector<T,D>> upper;
@@ -52,7 +53,6 @@ public:
 		}
 		
 		return aabb;
-
 	}
 };
 

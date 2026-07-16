@@ -13,7 +13,7 @@ namespace lbm {
 constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
-// constexpr uint64_t particle_amount = 1ul;
+constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;
@@ -149,14 +149,13 @@ saw::error_or<void> setup_initial_conditions(
 	rad.at({}) = 2.0f;
 	saw::data<sch::Scalar<T>> dense;
 	dense.at({}) = 1.0f;
-	particles = create_spheroid_particle_group<T,Desc::D,1u>(rad,dense,{16u});
+	particles = create_spheroid_particle_group<T,Desc::D,particle_amount>(rad,dense,{16u});
 	{
 		auto& rb = particles.template get<"particles">().at({0u}).template get<"rigid_body">();
 		auto& rbp = rb.template get<"position">();
-		rbp.at({0u}) = 0.25 * dim_x;
-		rbp.at({1u}) = 0.5 * dim_y;
+		rbp.at({{0u}}) = 0.25 * dim_x;
+		rbp.at({{1u}}) = 0.5 * dim_y;
 		auto& rbp_old = rbp;
-
 	}
 
 	return saw::make_void();
@@ -175,24 +174,22 @@ saw::error_or<void> step(
 	auto& porous_f = macros.template get<"porosity">();
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::HlbmParticle,encode::Sycl<saw::encode::Native>> hlbm_one_part;
+		component<T,Desc,cmpt::HlbmOneParticle,encode::Sycl<saw::encode::Native>> hlbm_one_part;
 
-		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
+		h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 			saw::data<sch::FixedArray<sch::UInt64,1u>> index;
 			for(uint64_t i = 0u; i < 1u; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
 
 			hlbm_one_part.apply(fields,macros,particles,index,t_i);
-
 		});
 	}).wait();
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.65};
+		component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
@@ -225,12 +222,10 @@ saw::error_or<void> step(
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
-					// equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
-					// equi.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
