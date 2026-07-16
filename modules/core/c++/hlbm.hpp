@@ -133,6 +133,8 @@ public:
 
 			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,index,mvel.meta());
 			if(eo_aabb.is_error()){
+				std::cerr<<"Prepping error"<<std::endl;
+				std::cerr<<eo_aabb.get_error().get_category()<<std::endl;
 				return;
 			}
 			auto& aabb = eo_aabb.get_value();

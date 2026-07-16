@@ -150,6 +150,14 @@ saw::error_or<void> setup_initial_conditions(
 	saw::data<sch::Scalar<T>> dense;
 	dense.at({}) = 1.0f;
 	particles = create_spheroid_particle_group<T,Desc::D,1u>(rad,dense,{16u});
+	{
+		auto& rb = particles.template get<"particles">().at({0u}).template get<"rigid_body">();
+		auto& rbp = rb.template get<"position">();
+		rbp.at({0u}) = 0.25 * dim_x;
+		rbp.at({1u}) = 0.5 * dim_y;
+		auto& rbp_old = rbp;
+
+	}
 
 	return saw::make_void();
 }
@@ -176,8 +184,6 @@ saw::error_or<void> step(
 			}
 
 			hlbm_one_part.apply(fields,macros,particles,index,t_i);
-
-			// auto aabb = particle_aabb<>::cacl();
 
 		});
 	}).wait();
