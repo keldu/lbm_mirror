@@ -1,52 +1,19 @@
 #pragma once
 
-#include "templates.hpp"
+#include "schema.hpp"
+#include "encode.hpp"
 
 namespace kel {
-namespace sch {
-struct Void {};
+namespace lbm {
+template<typename Schema, typename Encode = enc::Native>
+class data final {};
 
-struct UnsignedInteger {};
-struct SignedInteger {};
-struct FloatingPoint {};
-
-template<typename StorageT, typename InterfaceT>
-struct MixedPrecision {
-	using Meta = Void;
-	using StorageType = StorageT;
-	using InterfaceType = InterfaceT;
+template<typename T, uint64_t N>
+class data<sch::Primitive<T,N>,Encode> final {
+private:
+public:
 };
 
-template<typename PrimType, uint64_t N>
-struct Primitive {
-	using Meta = Void;
-	using Type = PrimType;
-	static constexpr uint64_t Bytes = N;
-};
-
-template<typename T, uint64_t... Dims>
-struct FixedArray {
-	using Meta = Void;
-	using Inner = T;
-	static constexpr std::array<uint64_t,sizeof...(Dims)> Dimensions{Dims...};
-};
-
-template<typename T, uint64_t Dims>
-struct Array {
-	using Meta = FixedArray<UInt64,Dims>;
-	using Inner = T;
-	static constexpr std::array<uint64_t,sizeof...(Dims)> Dimensions{Dims};
-};
-
-template<typename... T>
-struct Tuple {
-};
 
 }
-
-template<typename Sch>
-struct schema {
-	using Type = Sch;
-};
-
 }
