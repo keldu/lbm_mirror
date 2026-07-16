@@ -103,6 +103,10 @@ public:
 		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
+	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> meta() {
+		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
+	}
+
 	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
 		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}

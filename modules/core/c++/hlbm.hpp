@@ -103,16 +103,13 @@ public:
 template<typename T, typename Desc, typename Encode>
 class component<T, Desc, cmpt::HlbmParticle, Encode> final {
 private:
+/*
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
 	void apply_i(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		// if constexpr ( i < )
-	}	
+	}
+*/
 public:
-	/*
-	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
-	void apply_i()
-	*/
-
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
 		/// Figure out how to access the particle list
@@ -125,7 +122,7 @@ public:
 		auto& mvel = macros.template get<"velocity">();
 		{
 			auto& parts = part_spheroid_group.template get<"particles">();
-			auto parts_size = parts.dims().at({0u});
+			auto parts_size = parts.meta().at({0u});
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
@@ -134,7 +131,12 @@ public:
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
 
-			auto aabb = particle_aabb<ParticleSchema>::calculate(part_spheroid_group,index,mvel.meta());
+			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,index,mvel.meta());
+			if(eo_aabb.is_error()){
+				return;
+			}
+			auto& aabb = eo_aabb.get_value();
+
 			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
 			start = aabb.template get<"a">();
 			stop = aabb.template get<"b">();
