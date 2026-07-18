@@ -146,7 +146,7 @@ saw::error_or<void> setup_initial_conditions(
 	);
 
 	saw::data<sch::Scalar<T>> rad;
-	rad.at({}) = 2.0f;
+	rad.at({}) = dim_y * 0.1f;
 	saw::data<sch::Scalar<T>> dense;
 	dense.at({}) = 1.0f;
 	particles = create_spheroid_particle_group<T,Desc::D,particle_amount>(rad,dense,{16u});
@@ -172,6 +172,18 @@ saw::error_or<void> step(
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
+
+	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::HlbmReset,encode::Sycl<saw::encode::Native>> hlbm_reset;
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			hlbm_reset.apply(fields,macros,index,t_i);
+		});
+	}).wait();
 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::HlbmOneParticle,encode::Sycl<saw::encode::Native>> hlbm_one_part;
@@ -360,6 +372,21 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			}
 		}
 		sycl_q.wait();
+
+		if( i.get() % 128u == 0u){
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+		}
 
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){

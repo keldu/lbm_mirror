@@ -8,6 +8,7 @@ namespace kel {
 namespace lbm {
 namespace cmpt {
 struct PSM {};
+struct PsmOneParticle {};
 }
 
 /**
@@ -76,6 +77,30 @@ public:
 		}
 
 		force = force * porous;
+	}
+};
+
+/**
+ * PSM collision operator for LBM
+ */
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::PsmOneParticle, Encode> final {
+private:
+public:
+	component() = default;
+
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& particles, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	
+		using dfi = df_info<T,Descriptor>;
+		bool is_even = ((time_step.get() % 2) == 0);
+
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		auto& porous_f = macros.template get<"porosity">();
+
+		auto& rho_f = macros.template get<"density">();
+		auto& vel_f = macros.template get<"velocity">();
+		
 	}
 };
 

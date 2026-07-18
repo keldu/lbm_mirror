@@ -86,9 +86,9 @@ public:
 		saw::data<sch::Scalar<T>> dist_len = saw::math::dot(dist,dist);
 		dist_len.at({}).set(std::sqrt(dist_len.at({}).get()));
 
-		auto& coll = part_group.template get<"collision">();
+		auto& coll = part_group.template get<"collision">().at({});
 		const saw::data<sch::Scalar<T>>& rad_d = coll.template get<"radius">();
-		const auto& eps = part_group.template get<"epsilon">();
+		const auto& eps = part_group.template get<"epsilon">().at({});
 		// Move this somewhere
 		
 		saw::data<sch::Scalar<T>> eps_h;
@@ -116,7 +116,7 @@ public:
 		 * cos^2 ( ||x-X(t)||_2 - (R-eps/2) )
 		 */
 		{
-			typename saw::native_data_type<T>::type inner = (std::numbers::pi / (eps)) * (dist_len - rad_d_eps_n).at({}).get();
+			typename saw::native_data_type<T>::type inner = (std::numbers::pi / (eps.at({}).get())) * (dist_len - rad_d_eps_n).at({}).get();
 			auto cos_inner = std::cos(inner);
 			auto cos_i_2 = cos_inner * cos_inner;
 			inside.at({}).set(cos_i_2);

@@ -11,7 +11,7 @@
 namespace kel {
 namespace lbm {
 namespace cmpt {
-struct HlbmInit {}; 
+struct HlbmReset {}; 
 struct Hlbm {};
 struct HlbmOneParticle {};
 struct HlbmParticle {};
@@ -19,15 +19,9 @@ struct HlbmOneParticleMomentumExchange {};
 }
 
 template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::HlbmInit, Encode> final {
-private:
-	typename saw::native_data_type<T>::type relaxation_;
-	saw::data<T> frequency_;
+class component<T, Descriptor, cmpt::HlbmReset, Encode> final {
 public:
-	component(typename saw::native_data_type<T>::type relaxation__):
-		relaxation_{relaxation__},
-		frequency_{typename saw::native_data_type<T>::type(1) / relaxation_}
-	{}
+	component() = default;
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
@@ -36,13 +30,13 @@ public:
 		auto& particle_D_f = field.template get<"particle_D">();
 
 		auto& por = porosity_f.at(index);
-		por = {};
+		por.at({}) = 1.0;
 
 		auto& pnf = particle_N_f.at(index);
 		pnf = {};
 
 		auto& pnd = particle_D_f.at(index);
-		pnd = {};
+		pnd.at({}) = 0.0;
 	}
 };
 
@@ -96,8 +90,6 @@ public:
 			dfs_old_f.at(index).at({i}) = dfs_old_f.at(index).at({i}) + frequency_ * (eq.at(i) - dfs_old_f.at(index).at({i}));
 		}
 
-		D.at({}) = 0.0;
-		N = {};
 	}
 };
 
@@ -118,13 +110,20 @@ public:
 
 		/// Iterate over the grid bounds
 		// auto& grid = p.template get<"grid">();
+		using dfi = df_info<T,Desc>;
+		bool is_even = ((time_step.get() % 2) == 0);
+		
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& part_spheroid_group = part_group;
 		auto& mvel = macros.template get<"velocity">();
+		auto& mpor_f = macros.template get<"porosity">();
 		{
 			auto& parts = part_spheroid_group.template get<"particles">();
 			auto parts_size = parts.meta().at({0u});
 
+			auto& p_coll = part_spheroid_group.template get<"collision">().at({});
+			auto& p_rad = p_coll.template get<"radius">();
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
@@ -143,13 +142,47 @@ public:
 			start = aabb.template get<"a">();
 			stop = aabb.template get<"b">();
 
+			saw::data<sch::Vector<T,Desc::D>> force_p;
+
 			iterator<Desc::D>::apply([&](const auto& index){
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
 				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
+			
+				auto& dfs = dfs_old_f.at(index);
 				
+				saw::data<sch::Vector<T,Desc::D>> momentum;
+				for(uint64_t i = 0u; i < Desc::Q; ++i){
+					saw::data<sch::Vector<T,Desc::D>> e_i;
+					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> n_ind_i;
+					for(uint64_t k{0u}; k < Desc::D; ++k){
+						e_i.at({{k}}) = (dfi::directions[i])[k];
+						n_ind_i.at({k}) = (dfi::directions[i])[k];
+					}
+
+					uint64_t i_opp = dfi::opposite_index[i];
+
+					saw::data<T> dfs_added = dfs.at({i}) - dfs_old_f.at(n_ind_i).at({i_opp});
+					saw::data<sch::Scalar<T>> dfs_added_v;
+					dfs_added_v.at({}) = dfs_added;
+					auto ei_dfs = e_i * dfs_added_v;
+
+					momentum = momentum + ei_dfs;
+				}
+
+				auto& mpor = mpor_f.at(index);
+				auto rel_dist = saw::math::vectorize_data(index).template cast_to<T>() - pirb_pos;
+				saw::data<sch::Scalar<T>> eps;
+				eps.at({}) = 1.5f;
+				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
+				force_p = force_p + momentum * mpor;
 
 			},start,stop);
+
+			auto& pirb_acc = pirb.template get<"acceleration">();
+			pirb_acc = force_p;
+
+			verlet_step_lambda(part_spheroid_group,{{0u}},{{1u}});
 
 			// Check
 		}
