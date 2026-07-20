@@ -182,7 +182,9 @@ public:
 			auto& pirb_acc = pirb.template get<"acceleration">();
 			pirb_acc = force_p;
 
-			verlet_step_lambda(part_spheroid_group,{{0u}},{{1u}});
+			saw::data<sch::Scalar<T>> ts;
+			ts.at({}) = 1u;
+			verlet_step_lambda<T,Desc::D,1u,coll::Spheroid<T>>(part_spheroid_group,{{{0u}}},ts);
 
 			// Check
 		}

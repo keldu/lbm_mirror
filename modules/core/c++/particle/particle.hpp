@@ -171,7 +171,7 @@ constexpr auto verlet_step_lambda_old = [](saw::data<sch::Particle<T,D>>& partic
 };
 
 template<typename T,uint64_t D,uint64_t PC, typename Coll>
-constexpr auto verlet_step_lambda = [](saw::data<sch::ParticleGroup<T,D,PC,Coll>>& pgrp, saw::data<sch::FixedArray<T,1u>> index, saw::data<sch::Scalar<T>> time_step_delta){
+constexpr auto verlet_step_lambda = [](saw::data<sch::ParticleGroup<T,D,PC,Coll>>& pgrp, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::Scalar<T>> time_step_delta){
 	auto& parts = pgrp.template get<"particles">();
 	auto& particle = parts.at(index);
 

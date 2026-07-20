@@ -24,7 +24,7 @@ SAW_TEST("Verlet step 2D - Planar"){
 
 	saw::data<sch::Scalar<sch::T>> dt;
 	dt.at({}).set(0.5);
-	lbm::verlet_step_lambda<sch::T,2u>(particle,dt);
+	lbm::verlet_step_lambda_old<sch::T,2u>(particle,dt);
 
 	SAW_EXPECT(pos.at({{0}}).get() == 0.25, std::string{"Incorrect Pos X: "} + std::to_string(pos.at({{0}}).get()));
 	SAW_EXPECT(pos.at({{1}}).get() == 0.0, std::string{"Incorrect Pos Y: "} + std::to_string(pos.at({{1}}).get()));

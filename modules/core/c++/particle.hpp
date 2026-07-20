@@ -26,7 +26,7 @@ public:
 		// Compute forces
 
 		// Update particle velocity
-		verlet_step_lambda<T,Descriptor::D>(p,{1.0});  
+		verlet_step_lambda_old<T,Descriptor::D>(p,{1.0});  
 
 		// Update porosity over lattice nodes
 	
