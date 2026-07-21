@@ -137,7 +137,7 @@ saw::data<sch::Particle<T,D, sch::ParticleCollisionSpheroid<T>>> create_spheroid
 */
 
 template<typename T,uint64_t D>
-constexpr auto verlet_step_lambda_old = [](saw::data<sch::Particle<T,D>>& particle, saw::data<sch::Scalar<T>> time_step_delta){
+constexpr auto verlet_step_lambda = [](saw::data<sch::Particle<T,D>>& particle, saw::data<sch::Scalar<T>> time_step_delta){
 	auto& body = particle.template get<"rigid_body">();
 
 	auto& pos = body.template get<"position">();
@@ -158,51 +158,14 @@ constexpr auto verlet_step_lambda_old = [](saw::data<sch::Particle<T,D>>& partic
 	two.at({}).set(2.0);
 	pos_new = pos * two - pos_old + pos_acc * tsd_squared;
 
-	// Angular
-	saw::data<typename sch::impl::rotation_type_helper<T,D>::Schema> rot_new;
-	rot_new = rot * two - rot_old + rot_acc * tsd_squared;
-
-	// Swap - Could be std::swap?
+	// Swap - Could be std::swap? No, this is device code
 	pos_old = pos;
 	pos = pos_new;
 
-	rot_old = rot;
-	rot = rot_new;
-};
-
-template<typename T,uint64_t D,uint64_t PC, typename Coll>
-constexpr auto verlet_step_lambda = [](saw::data<sch::ParticleGroup<T,D,PC,Coll>>& pgrp, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::Scalar<T>> time_step_delta){
-	auto& parts = pgrp.template get<"particles">();
-	auto& particle = parts.at(index);
-
-	auto& body = particle.template get<"rigid_body">();
-
-	auto& pos = body.template get<"position">();
-	auto& pos_old = body.template get<"position_old">();
-
-	auto& pos_acc = body.template get<"acceleration">();
+	// Angular
+	saw::data<typename sch::impl::rotation_type_helper<T,D>::Schema> rot_new;
+	rot_new = rot * two - rot_old + rot_acc * tsd_squared;
 	
-	auto& rot = body.template get<"rotation">();
-	auto& rot_old = body.template get<"rotation_old">();
-
-	auto& rot_acc = body.template get<"angular_acceleration">();
-
-	auto tsd_squared = time_step_delta * time_step_delta;
-
-	saw::data<sch::Vector<T,D>> pos_new;
-	// Actual step
-	saw::data<sch::Scalar<T>> two;
-	two.at({}).set(2.0);
-	pos_new = pos * two - pos_old + pos_acc * tsd_squared;
-
-	// Angular
-	saw::data<typename sch::impl::rotation_type_helper<T,D>::Schema> rot_new;
-	rot_new = rot * two - rot_old + rot_acc * tsd_squared;
-
-	// Swap - Could be std::swap?
-	pos_old = pos;
-	pos = pos_new;
-
 	rot_old = rot;
 	rot = rot_new;
 };

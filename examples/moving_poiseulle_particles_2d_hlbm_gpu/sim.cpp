@@ -155,7 +155,14 @@ saw::error_or<void> setup_initial_conditions(
 		auto& rbp = rb.template get<"position">();
 		rbp.at({{0u}}) = 0.25 * dim_x;
 		rbp.at({{1u}}) = 0.5 * dim_y;
-		auto& rbp_old = rbp;
+		rb.template get<"position_old">() = rbp;
+		saw::data<sch::Vector<T,Desc::D>> zero;
+		zero.at({{0u}}) = 0.0f;
+		zero.at({{1u}}) = 0.0f;
+		rb.template get<"acceleration">() = zero;
+		rb.template get<"rotation">() = {};
+		rb.template get<"rotation_old">() = {};
+		rb.template get<"angular_acceleration">() = {};
 	}
 
 	return saw::make_void();

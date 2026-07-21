@@ -79,6 +79,7 @@ public:
 
 		auto& N = particle_N_f.at(index);
 		auto& D = particle_D_f.at(index);
+
 		// Convex combination of velocities
 		vel = vel * porosity + [&]() -> saw::data<sch::Vector<T,Desc::D>> {
 			return (D.at({}).get() > 0.0 ? N * flip_porosity / D : N);
@@ -113,13 +114,20 @@ public:
 		using dfi = df_info<T,Desc>;
 		bool is_even = ((time_step.get() % 2) == 0);
 		
+		saw::data<sch::Scalar<T>> one;
+		one.at({}) = 1.0;
+		
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& part_spheroid_group = part_group;
-		auto& mvel = macros.template get<"velocity">();
+		auto& mvel_f = macros.template get<"velocity">();
 		auto& mpor_f = macros.template get<"porosity">();
+		
+		auto& particle_N_f = field.template get<"particle_N">();
+		auto& particle_D_f = field.template get<"particle_D">();
+
 		{
-			auto& parts = part_spheroid_group.template get<"particles">();
+			auto parts = part_spheroid_group.template get<"particles">();
 			auto parts_size = parts.meta().at({0u});
 
 			auto& p_coll = part_spheroid_group.template get<"collision">().at({});
@@ -132,7 +140,7 @@ public:
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
 
-			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,{{0u}},mvel.meta());
+			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,{{0u}},mvel_f.meta());
 			if(eo_aabb.is_error()){
 				return;
 			}
@@ -143,21 +151,22 @@ public:
 			stop = aabb.template get<"b">();
 
 			saw::data<sch::Vector<T,Desc::D>> force_p;
-
-			iterator<Desc::D>::apply([&](const auto& index){
+			
+			iterator<Desc::D>::apply([&](const auto& index_f){
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
 				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
 			
-				auto& dfs = dfs_old_f.at(index);
+				auto& dfs = dfs_old_f.at(index_f);
 				
 				saw::data<sch::Vector<T,Desc::D>> momentum;
+
 				for(uint64_t i = 0u; i < Desc::Q; ++i){
 					saw::data<sch::Vector<T,Desc::D>> e_i;
 					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> n_ind_i;
 					for(uint64_t k{0u}; k < Desc::D; ++k){
 						e_i.at({{k}}) = (dfi::directions[i])[k];
-						n_ind_i.at({k}) = (dfi::directions[i])[k];
+						n_ind_i.at({k}) = index_f.at({k}) + (dfi::directions[i])[k];
 					}
 
 					uint64_t i_opp = dfi::opposite_index[i];
@@ -170,21 +179,26 @@ public:
 					momentum = momentum + ei_dfs;
 				}
 
-				auto& mpor = mpor_f.at(index);
-				auto rel_dist = saw::math::vectorize_data(index).template cast_to<T>() - pirb_pos;
+				auto& mpor = mpor_f.at(index_f);
+				auto rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
 				saw::data<sch::Scalar<T>> eps;
 				eps.at({}) = 1.5f;
 				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
 				force_p = force_p + momentum * mpor;
 
+				auto& N = particle_N_f.at(index_f);
+				auto& D = particle_D_f.at(index_f);
+				auto flip_porosity = one - mpor;
+				D = D + flip_porosity;
+				N = N + mvel_f.at(index_f) * flip_porosity;
 			},start,stop);
-
+			
 			auto& pirb_acc = pirb.template get<"acceleration">();
 			pirb_acc = force_p;
 
 			saw::data<sch::Scalar<T>> ts;
 			ts.at({}) = 1u;
-			verlet_step_lambda<T,Desc::D,1u,coll::Spheroid<T>>(part_spheroid_group,{{{0u}}},ts);
+			verlet_step_lambda<T,Desc::D>(pi,ts);
 
 			// Check
 		}
