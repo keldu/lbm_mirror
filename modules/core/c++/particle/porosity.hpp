@@ -38,8 +38,8 @@ public:
 	static saw::data<sch::Scalar<T>> calculate(const saw::data<sch::Vector<T,D>>& lbm_rel_dist, saw::data<sch::Scalar<T>> rad, saw::data<sch::Scalar<T>> eps){
 		saw::data<sch::Scalar<T>> por;
 		
-		auto s_dist_2 = saw::math::dot(lbm_rel_dist,lbm_rel_dist);
-		auto s_dist = saw::math::sqrt(s_dist_2);
+		saw::data<sch::Scalar<T>> s_dist_2 = saw::math::dot(lbm_rel_dist,lbm_rel_dist);
+		saw::data<sch::Scalar<T>> s_dist = saw::math::sqrt(s_dist_2);
 
 		saw::data<sch::Scalar<T>> eps_h;
 		eps_h.at({}) = eps.at({}).get() / 2;

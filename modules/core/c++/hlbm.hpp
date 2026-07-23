@@ -33,7 +33,9 @@ public:
 		por.at({}) = 1.0;
 
 		auto& pnf = particle_N_f.at(index);
-		pnf = {};
+		for(uint64_t i{0u}; i < Descriptor::D; ++i){
+			pnf.at({{i}}) = 0.0;
+		}
 
 		auto& pnd = particle_D_f.at(index);
 		pnd.at({}) = 0.0;
@@ -105,7 +107,7 @@ private:
 */
 public:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step, saw::data<sch::UInt64> sub_steps) const {
 		/// Figure out how to access the particle list
 		// auto& p = particles.at(i);
 
@@ -134,12 +136,12 @@ public:
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
-			auto& pirb_pos = pirb.template get<"position">();
+			saw::data<sch::Vector<T,Desc::D>>& pirb_pos = pirb.template get<"position">();
 			auto& pirb_pos_old = pirb.template get<"position_old">();
 				
 			// TODO !!!! Divide by actual time step - for now it's ok
 			saw::data<sch::Scalar<T>> ts;
-			ts.at({}) = 1.0f;
+			ts.at({}) = one.at({}) / sub_steps.template cast_to<T>();
 
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
@@ -155,25 +157,33 @@ public:
 			stop = aabb.template get<"b">();
 
 			saw::data<sch::Vector<T,Desc::D>> force_p;
-			
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				force_p.at({{i}}) = 0.0;
+			}
+
 			iterator<Desc::D>::apply([&](const auto& index_f) -> void{
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
 				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
 			
 				auto& dfs = dfs_old_f.at(index_f);
-				auto& mpor = mpor_f.at(index_f);
-				auto rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
+				saw::data<sch::Vector<T,Desc::D>> rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
 				saw::data<sch::Scalar<T>> eps;
 				eps.at({}) = 1.5f;
+				
+				auto& mpor = mpor_f.at(index_f);
 				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
-				if(mpor.at({}).get() < 1.0f){
+
+				if(mpor.at({}).get() >= 1.0f){
 					return;
 				}
 
 				saw::data<sch::Vector<T,Desc::D>> momentum;
+				for(uint64_t i{0u}; i < Desc::D; ++i){
+					momentum.at({{i}}) = 0.0;
+				}
 
-				for(uint64_t i = 0u; i < Desc::Q; ++i){
+				for(uint64_t i{0u}; i < Desc::Q; ++i){
 					saw::data<sch::Vector<T,Desc::D>> e_i;
 					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> n_ind_i;
 					for(uint64_t k{0u}; k < Desc::D; ++k){
@@ -191,13 +201,15 @@ public:
 					momentum = momentum + ei_dfs;
 				}
 
-				force_p = force_p + momentum * mpor;
+				force_p = force_p + momentum;
 			},start,stop);
 			
 			auto& pirb_acc = pirb.template get<"acceleration">();
 			pirb_acc = force_p / part_spheroid_group.template get<"total_mass">().at({});
 
-			verlet_step_lambda<T,Desc::D>(pi,ts);
+			for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
+				verlet_step_lambda<T,Desc::D>(pi,ts);
+			}
 			auto vel_p = (pirb_pos-pirb_pos_old) / ts;
 
 			iterator<Desc::D>::apply([&](const auto& index_f){

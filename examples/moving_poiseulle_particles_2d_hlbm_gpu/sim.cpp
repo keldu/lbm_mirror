@@ -201,7 +201,7 @@ saw::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			hlbm_one_part.apply(fields,macros,particles,index,t_i);
+			hlbm_one_part.apply(fields,macros,particles,index,t_i,{{128u}});
 		});
 	}).wait();
 
@@ -214,9 +214,9 @@ saw::error_or<void> step(
 			[&](){
 				uint64_t target_t_i = 8u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.0005 / target_t_i) * t_i.get();
+					return 1.0 + (0.005 / target_t_i) * t_i.get();
 				}
-				return 1.0005;
+				return 1.005;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
@@ -380,13 +380,14 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 		sycl_q.wait();
 
-		if( i.get() % 32u == 0u){
+		if( i.get() % 32u == 33u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
+
 			{
 				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
@@ -394,7 +395,16 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			}
 		}
-
+		{
+			auto eov = dev.copy_to_host(lbm_sycl_parts_data,*lbm_parts_data_ptr);
+			if(eov.is_error()){
+				return eov;
+			}
+			auto& p = lbm_parts_data_ptr->template get<"particles">().at({0u}).template get<"rigid_body">();
+			auto& ppos = p.template get<"position">();
+			auto& pacc = p.template get<"acceleration">();
+			std::cout<<"Particle: "<<ppos.at({{0u}}).get()<<", "<<ppos.at({{1u}}).get()<<"; "<<pacc.at({{0u}}).get()<<", "<<pacc.at({{1u}}).get()<<";"<<i.get()<<std::endl;
+		}
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
@@ -417,7 +427,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
 			print_status = false;
 		}
-		print_progress_bar(i.get(), time_steps.get()-1u);
+		// print_progress_bar(i.get(), time_steps.get()-1u);
 	}
 
 	// After Loop
@@ -445,7 +455,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	return saw::make_void();
 }
 
-using FloatT = kel::lbm::sch::Float32;
+using FloatT = kel::lbm::sch::Float64;
 
 int main(int argc, char** argv){
 	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
