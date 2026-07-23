@@ -156,13 +156,21 @@ public:
 
 			saw::data<sch::Vector<T,Desc::D>> force_p;
 			
-			iterator<Desc::D>::apply([&](const auto& index_f){
+			iterator<Desc::D>::apply([&](const auto& index_f) -> void{
 				// ask for the d_k value here.
 				// For every value im iterating over I need sth
 				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
 			
 				auto& dfs = dfs_old_f.at(index_f);
-				
+				auto& mpor = mpor_f.at(index_f);
+				auto rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
+				saw::data<sch::Scalar<T>> eps;
+				eps.at({}) = 1.5f;
+				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
+				if(mpor.at({}).get() < 1.0f){
+					return;
+				}
+
 				saw::data<sch::Vector<T,Desc::D>> momentum;
 
 				for(uint64_t i = 0u; i < Desc::Q; ++i){
@@ -183,11 +191,6 @@ public:
 					momentum = momentum + ei_dfs;
 				}
 
-				auto& mpor = mpor_f.at(index_f);
-				auto rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
-				saw::data<sch::Scalar<T>> eps;
-				eps.at({}) = 1.5f;
-				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
 				force_p = force_p + momentum * mpor;
 			},start,stop);
 			
