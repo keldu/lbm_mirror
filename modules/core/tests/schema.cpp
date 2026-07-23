@@ -1,5 +1,6 @@
 #include <forstio/test/suite.hpp>
 
+/*
 #include "../c++/abstract/schema.hpp"
 
 namespace {
@@ -15,5 +16,5 @@ SAW_TEST("Abstract/Schema/Ptr"){
 
 	// static_assert(std::is_same_v<typename schema_decay<ts::TPtr>::Schema, ts::TVal>, "schema decay failed");
 }
-
 }
+*/

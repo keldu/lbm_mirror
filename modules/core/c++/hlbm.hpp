@@ -82,7 +82,7 @@ public:
 
 		// Convex combination of velocities
 		vel = vel * porosity + [&]() -> saw::data<sch::Vector<T,Desc::D>> {
-			return (D.at({}).get() > 0.0 ? N * flip_porosity / D : N);
+			return (D.at({}).get() > 0.0) ? ( N * flip_porosity / D ): N;
 		}();
 		// Equilibrium
 		auto eq = equilibrium<T,Desc>(rho,vel);
@@ -125,7 +125,6 @@ public:
 		
 		auto& particle_N_f = field.template get<"particle_N">();
 		auto& particle_D_f = field.template get<"particle_D">();
-
 		{
 			auto parts = part_spheroid_group.template get<"particles">();
 			auto parts_size = parts.meta().at({0u});
@@ -136,6 +135,11 @@ public:
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
 			auto& pirb_pos = pirb.template get<"position">();
+			auto& pirb_pos_old = pirb.template get<"position_old">();
+				
+			// TODO !!!! Divide by actual time step - for now it's ok
+			saw::data<sch::Scalar<T>> ts;
+			ts.at({}) = 1.0f;
 
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
@@ -185,21 +189,23 @@ public:
 				eps.at({}) = 1.5f;
 				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
 				force_p = force_p + momentum * mpor;
-
-				auto& N = particle_N_f.at(index_f);
-				auto& D = particle_D_f.at(index_f);
-				auto flip_porosity = one - mpor;
-				D = D + flip_porosity;
-				N = N + mvel_f.at(index_f) * flip_porosity;
 			},start,stop);
 			
 			auto& pirb_acc = pirb.template get<"acceleration">();
-			pirb_acc = force_p;
+			pirb_acc = force_p / part_spheroid_group.template get<"total_mass">().at({});
 
-			saw::data<sch::Scalar<T>> ts;
-			ts.at({}) = 1u;
 			verlet_step_lambda<T,Desc::D>(pi,ts);
+			auto vel_p = (pirb_pos-pirb_pos_old) / ts;
 
+			iterator<Desc::D>::apply([&](const auto& index_f){
+				auto& N = particle_N_f.at(index_f);
+				auto& D = particle_D_f.at(index_f);
+				auto& mpor = mpor_f.at(index_f);
+				auto flip_porosity = one - mpor;
+
+				D = D + flip_porosity;
+				N = N + vel_p * flip_porosity;
+			},start,stop);
 			// Check
 		}
 	}

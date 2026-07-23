@@ -7,15 +7,22 @@
 namespace kel {
 namespace lbm {
 
-struct environment {
+class environment {
+public:
 	std::string name;
 	
 	std::filesystem::path lbm_dir;
 	std::filesystem::path data_dir;
+	std::filesystem::path name_dir;
+public:
 };
 
-saw::error_or<environment> setup_lbm_env(const std::string_view name){
+template<typename ArgSch>
+saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
 	namespace fs = std::filesystem;
+
+	auto& args_n = args.template get<"args">();
+	auto& name = args_n.template get<"name">();
 
 	const char* home_dir = std::getenv("HOME");
 	if(not home_dir){
@@ -40,6 +47,10 @@ saw::error_or<environment> setup_lbm_env(const std::string_view name){
 				env.data_dir = fs::path{buffer.str()};
 			}
 		}
+	}
+
+	{
+		env.name_dir = env.data_dir / name.view();
 	}
 
 	return env;

@@ -74,8 +74,18 @@ saw::data<sch::ParticleGroup<T, D, PartAmount, coll::Spheroid<T>>> create_sphero
 		}
 
 		total_mass.at({}) = total_mass.at({}) + dpi;
-
 	},{},mask_dims);
+
+
+	// TODO ? Do mass properly
+	if constexpr ( D == 2u ) {
+		total_mass.at({}) = rad_d * rad_d * density.at({}) * 3.141592;
+	}else if constexpr ( D == 3u ){
+		
+	}else if constexpr ( D== 1u ){
+
+	}
+	std::cout<<"Total Mass: "<<total_mass.at({}).get()<<std::endl;
 
 	for(uint64_t i = 0u; i < D; ++i){
 		com.at({{i}}) = com.at({{i}}) / total_mass.at({});
