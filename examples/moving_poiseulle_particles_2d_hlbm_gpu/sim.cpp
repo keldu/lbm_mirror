@@ -201,7 +201,7 @@ saw::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			hlbm_one_part.apply(fields,macros,particles,index,t_i,{{128u}});
+			hlbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
 		});
 	}).wait();
 
@@ -380,14 +380,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 		sycl_q.wait();
 
-		if( i.get() % 32u == 33u){
+		if( i.get() % 32u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
-
 			{
 				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){

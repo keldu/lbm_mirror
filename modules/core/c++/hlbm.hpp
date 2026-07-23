@@ -123,6 +123,7 @@ public:
 
 		auto& part_spheroid_group = part_group;
 		auto& mvel_f = macros.template get<"velocity">();
+		auto& mrho_f = macros.template get<"density">();
 		auto& mpor_f = macros.template get<"porosity">();
 		
 		auto& particle_N_f = field.template get<"particle_N">();
@@ -160,6 +161,7 @@ public:
 			for(uint64_t i{0u}; i < Desc::D; ++i){
 				force_p.at({{i}}) = 0.0;
 			}
+			auto vel_p_old = (pirb_pos-pirb_pos_old) / ts;
 
 			iterator<Desc::D>::apply([&](const auto& index_f) -> void{
 				// ask for the d_k value here.
@@ -193,19 +195,23 @@ public:
 
 					uint64_t i_opp = dfi::opposite_index[i];
 
-					saw::data<T> dfs_added = dfs.at({i}) - dfs_old_f.at(n_ind_i).at({i_opp});
+					auto u_p_e = saw::math::dot(e_i,vel_p_old);
+
+					saw::data<T> dfs_added = dfs.at({i})*(saw::data<T>{1}-u_p_e.at({})) + dfs_old_f.at(n_ind_i).at({i_opp})*(saw::data<T>{1}+u_p_e.at({}));
 					saw::data<sch::Scalar<T>> dfs_added_v;
 					dfs_added_v.at({}) = dfs_added;
 					auto ei_dfs = e_i * dfs_added_v;
 
 					momentum = momentum + ei_dfs;
 				}
+				// technically needs to adjust for rotation as well
 
+				auto& rho = mrho_f.at(index_f);
 				force_p = force_p + momentum;
 			},start,stop);
 			
 			auto& pirb_acc = pirb.template get<"acceleration">();
-			pirb_acc = force_p / part_spheroid_group.template get<"total_mass">().at({});
+			pirb_acc = - force_p / part_spheroid_group.template get<"total_mass">().at({});
 
 			for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
 				verlet_step_lambda<T,Desc::D>(pi,ts);
