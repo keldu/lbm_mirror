@@ -214,9 +214,9 @@ saw::error_or<void> step(
 			[&](){
 				uint64_t target_t_i = 8u;
 				if(t_i.get() < target_t_i){
-					return 1.0 + (0.005 / target_t_i) * t_i.get();
+					return 1.0 + (0.01 / target_t_i) * t_i.get();
 				}
-				return 1.005;
+				return 1.01;
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};

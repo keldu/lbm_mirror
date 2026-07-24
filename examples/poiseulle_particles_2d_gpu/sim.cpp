@@ -21,7 +21,7 @@ using LbmArgs = Args<
 >;
 }
 
-template<typename T, typename Desc>
+template<typename T, typename Desc, typename Coll>
 saw::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
 
@@ -195,10 +195,17 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	return saw::make_void();
 }
 
+
 using FloatT = kel::lbm::sch::Float32;
 
+saw::error_or<void> kmain(int argc, char** argv){
+	using namespace kel::lbm;
+
+	// auto eo_args = saw::parse_args<
+}
+
 int main(int argc, char** argv){
-	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
+	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9, >(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();
