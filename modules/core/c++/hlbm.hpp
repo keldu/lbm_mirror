@@ -17,6 +17,9 @@ struct HlbmOneParticle {};
 struct HlbmParticle {};
 struct HlbmOneParticleMomentumExchange {};
 }
+namespace method {
+struct Hlbm {};
+}
 
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::HlbmReset, Encode> final {

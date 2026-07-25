@@ -22,17 +22,10 @@ using LbmArgs = Args<
 }
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> lbm_main(int argc, char** argv){
+saw::error_or<void> lbm_main(const saw::data<sch::LbmArgs>& args){
 	using namespace kel::lbm;
 
 	using dfi = df_info<T,Desc>;
-
-	auto eo_args = saw::parse_args<args::LbmArgs>(argc,argv);
-	if(eo_args.is_error()){
-		return std::move(eo_args.get_error());
-	}
-	auto& args = eo_args.get_value();
-	(void)args;
 
 	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
@@ -198,14 +191,28 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 using FloatT = kel::lbm::sch::Float32;
 
-saw::error_or<void> kmain(int argc, char** argv){
+saw::error_or<void> k_main(int argc, char** argv){
 	using namespace kel::lbm;
+	
+	saw::data<sch::LbmArgsStruct> args;
+	{
+		auto eov = saw::parse_args(args,argc,argv);
+		return eov;
+	}
+	auto& an = args.template get<"args">();
+	auto& coupling = an.template get<"coupling">();
 
-	// auto eo_args = saw::parse_args<
+	if(coupling.view() == "hlbm"){
+		return lbm_main<T,Desc,method::Hlbm>(args);
+	//}else if(coupling.view() == "psm"){
+	//	return kmain<T,Desc,coupling::Psm>(args);
+	}
+
+	return saw::make_error<saw::err::critical>("Invalid coupling");
 }
 
 int main(int argc, char** argv){
-	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9, >(argc, argv);
+	auto eov = k_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();
