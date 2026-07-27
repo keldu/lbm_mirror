@@ -5,8 +5,8 @@
 namespace kel {
 namespace lbm {
 
-template<typename T, typename Desc>
-saw::error_or<void> setup_initial_conditions(
+template<typename T, typename Desc, typename Coll>
+saw::error_or<void> init(
 		const converter<T>& conv,
 		saw::data<sch::ChunkStruct<T,Desc>>& fields,
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
@@ -117,7 +117,7 @@ saw::error_or<void> setup_initial_conditions(
 		radius_p.at({}).set(2);
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
-		particles = create_spheroid_particle_group<T,Desc::D>(radius_p, dense_p, {{16u}});
+		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{16u}});
 	}
 
 	return saw::make_void();

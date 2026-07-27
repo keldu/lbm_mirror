@@ -81,7 +81,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = init<T,Desc,Coll>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -115,21 +115,21 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{16u*4096ul};
+	saw::data<sch::UInt64> time_steps{64u*1024ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
+			auto eov = step<T,Desc,Coll>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
 
 		sycl_q.wait();
-		if(i.get() % 32u == 0u){
+		if(i.get() % 64u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
