@@ -22,7 +22,7 @@ using LbmArgs = Args<
 }
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> lbm_main(const saw::data<sch::LbmArgs>& args){
+saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	using namespace kel::lbm;
 
 	using dfi = df_info<T,Desc>;
@@ -111,7 +111,6 @@ saw::error_or<void> lbm_main(const saw::data<sch::LbmArgs>& args){
 		}
 	}
 	sycl_q.wait();
-
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
@@ -188,13 +187,13 @@ saw::error_or<void> lbm_main(const saw::data<sch::LbmArgs>& args){
 	return saw::make_void();
 }
 
-
 using FloatT = kel::lbm::sch::Float32;
+using DescT = kel::lbm::sch::D2Q9;
 
 saw::error_or<void> k_main(int argc, char** argv){
 	using namespace kel::lbm;
 	
-	saw::data<sch::LbmArgsStruct> args;
+	saw::data<args::LbmArgs> args;
 	{
 		auto eov = saw::parse_args(args,argc,argv);
 		return eov;
@@ -202,17 +201,18 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& an = args.template get<"args">();
 	auto& coupling = an.template get<"coupling">();
 
-	if(coupling.view() == "hlbm"){
-		return lbm_main<T,Desc,method::Hlbm>(args);
+	if(coupling.stl_view() == "hlbm"){
+		return lbm_main<FloatT,DescT,method::Hlbm>(args);
 	//}else if(coupling.view() == "psm"){
-	//	return kmain<T,Desc,coupling::Psm>(args);
+	//	return kmain<FloatT,DescT,coupling::Psm>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");
 }
 
+
 int main(int argc, char** argv){
-	auto eov = k_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
+	auto eov = k_main(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();

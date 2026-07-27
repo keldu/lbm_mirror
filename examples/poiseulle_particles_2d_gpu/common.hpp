@@ -55,7 +55,7 @@ using MacroStruct = Struct<
 >;
 
 template<typename T, typename Desc>
-using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,coll::Spheroid<T>>;
+using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,1u,coll::Spheroid<T>>;
 }
 
 }
