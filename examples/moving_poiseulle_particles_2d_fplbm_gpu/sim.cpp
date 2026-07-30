@@ -48,7 +48,8 @@ template<typename T, typename Desc>
 using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
-	Member<ScalarChunk<T,Desc>, "porosity">
+	Member<ScalarChunk<T,Desc>, "porosity">,
+	Member<VelChunk<T,Desc>, "force">
 >;
 
 //template<typename T, typename Desc>
@@ -61,13 +62,12 @@ using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,1u,coll::Spheroid<T>>;
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> setup_initial_conditions(
+saw::error_or<void> init(
 	saw::data<sch::ChunkStruct<T,Desc>>& fields,
 	saw::data<sch::MacroStruct<T,Desc>>& macros,
 	saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -107,42 +107,34 @@ saw::error_or<void> setup_initial_conditions(
 		{{0u,1u}}
 	);
 	//
-	auto& df_f = fields.template get<"dfs_old">();
+	auto& dfs_old_f = fields.template get<"dfs_old">();
+	auto& dfs_f = fields.template get<"dfs">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
+	auto& force_f = macros.template get<"force">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			auto& df = df_f.at(index);
+			auto& dfs = dfs_f.at(index);
 			auto& rho = rho_f.at(index);
 			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
-			auto eq = equilibrium<T,Desc>(rho,vel);
-
-			df = eq;
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
-
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			auto& df = df_f.at(index);
-			auto& rho = rho_f.at(index);
-			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			if(info_f.at(index).get() == 2u){
-				vel.at({{0u}}) = 0.0;
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				vel.at({{i}}).set(0);
 			}
 			auto eq = equilibrium<T,Desc>(rho,vel);
 
-			df = eq;
+			dfs = eq;
+			dfs_old_f.at(index) = dfs;
+			auto& force = force_f.at(index);
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				force.at({{i}}).set(0);
+			}
 		},
 		{},// 0-index
-		df_f.get_dims(),
-		{{1u,1u}}
+		df_f.get_dims()
 	);
 
 	saw::data<sch::Scalar<T>> rad;
@@ -181,19 +173,19 @@ saw::error_or<void> step(
 	auto& porous_f = macros.template get<"porosity">();
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::FplbmReset,encode::Sycl<saw::encode::Native>> hlbm_reset;
+		component<T,Desc,cmpt::FpLbmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
 
-			hlbm_reset.apply(fields,macros,index,t_i);
+			fplbm_reset.apply(fields,macros,index,t_i);
 		});
 	}).wait();
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::FplbmOneParticle,encode::Sycl<saw::encode::Native>> hlbm_one_part;
+		component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
 
 		h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 			saw::data<sch::FixedArray<sch::UInt64,1u>> index;
@@ -201,13 +193,13 @@ saw::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			hlbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
+			fplbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
 		});
 	}).wait();
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::Fplbm,encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
@@ -220,7 +212,6 @@ saw::error_or<void> step(
 			}()
 		};
 		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
-
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -253,14 +244,6 @@ saw::error_or<void> step(
 		});
 	}).wait();
 
-	
-	// Step
-	/*
-	q.submit([&](acpp::sycl::handler& h){
-		// h.depends_on(collision_ev);
-	}).wait();
-	*/
-
 	return saw::make_void();
 }
 }
@@ -278,7 +261,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "moving_poiseulle_particles_2d_hlbm_gpu";
+	auto out_dir = lbm_dir / "moving_poiseulle_particles_2d_fplbm_gpu";
 
 	{
 		std::error_code ec;
@@ -327,7 +310,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	sycl_q.wait();
 	{
-		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_parts_data_ptr);
+		auto eov = init<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_parts_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -421,6 +404,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 				}
 			});
 		}).wait();
+	
+		// EPoll
 		wait.poll();
 		if(print_status){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;

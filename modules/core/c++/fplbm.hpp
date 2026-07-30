@@ -1,6 +1,9 @@
 #pragma once
 
 #include "common.hpp"
+#include "particle/aabb.hpp"
+#include "particle/porosity.hpp"
+#include "iterator.hpp"
 
 namespace kel {
 namespace lbm {
@@ -28,6 +31,24 @@ public:
 
 		auto& por = por_f.at(index);
 		por.at({}) = 1.0;
+
+		auto& force_f = macros.template get<"force">();
+		auto& force = force_f.at(index);
+		for(uint64_t i{0u}; i < Descriptor::D; ++i){
+			force.at({{i}}) = 0.0;
+		}
+
+		bool is_even = ((time_step.get() % 2) == 0);
+
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		auto& dfs = dfs_old_f.at(index);
+
+		auto& rho_f = macros.template get<"density">();
+		auto& rho = rho_f.at(index);
+		auto& vel_f = macros.template get<"velocity">();
+		auto& vel = vel_f.at(index);
+
+		compute_rho_u<T,Descriptor>(dfs,rho,vel);
 	}
 };
 
@@ -52,19 +73,18 @@ public:
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
-	// void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 		auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
-
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
+
+		auto& vel_f = macros.template get<"velocity">();
 		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
 
-		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
+		compute_rho_u<T,Descriptor>(dfs,rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		using dfi = df_info<T,Descriptor>;
@@ -72,36 +92,34 @@ public:
 		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
 
-		auto& porosity_f = macros.template get<"porosity">();
-		auto& porosity = porosity_f.at(index);
+		auto& por_f = macros.template get<"porosity">();
+		auto& por = por_f.at(index);
 
 		saw::data<sch::Scalar<T>> dfi_inv_cs2;
 		dfi_inv_cs2.at({}).set(dfi::inv_cs2);
 
-		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
-			// saw::data<T> ci_min_u{0};
+		for(uint64_t i{0u}; i < Descriptor::Q; ++i){
 			saw::data<sch::Vector<T,Descriptor::D>> ci;
-			for(uint64_t d = 0u; d < Descriptor::D; ++d){
+			for(uint64_t d{0u}; d < Descriptor::D; ++d){
 				ci.at({{d}}).set(static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d]));
 			}
 			auto ci_dot_u = saw::math::dot(ci,vel);
 
-			// saw::data<sch::Vector<T,Descriptor::D>> F_i;
-			// F_i = f * (c_i - u * ics2  + <c_i,u> * c_i * ics2 * ics2) * w_i;
 			saw::data<sch::Scalar<T>> w;
 			w.at({}).set(dfi::weights[i]);
 
-			auto F_i_d = saw::math::dot(force * w, (ci - vel * dfi_inv_cs2 + ci * ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2 ));
-			/*
-			saw::data<sch::Scalar<T>> F_i_sum;
-			for(uint64_t d = 0u; d < Descriptor::D; ++d){
-				saw::data<sch::Scalar<T>> F_i_d;
-				F_i_d.at({}) = F_i.at({{d}});
-				F_i_sum = F_i_sum + F_i_d;
-			}
-			*/
+			auto term1 = (ci-vel) * dfi_inv_cs2;
+			auto term2 = ci * (ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2);
 
-			dfs.at({i}) = dfs.at({i}) + frequency_ * (eq.at(i) - dfs.at({i}) ) + F_i_d.at({}) * (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
+			auto force_projection = saw::math::dot(term1 + term2, force);
+
+			auto F_i = w * force_projection;
+
+			dfs.at({i}) = dfs.at({i})
+									+ frequency_
+										* (eq.at(i) - dfs.at({i}) )
+									+ F_i.at({})
+										* (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
 		}
 	}
 };
@@ -119,14 +137,12 @@ public:
 	// void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
 		bool is_even = ((time_step.get() % 2) == 0);
 
-		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
-		auto& dfs = dfs_old_f.at(index);
+		//auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		// auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"velocity">();
 		auto& por_f = macros.template get<"porosity">();
-
-		// Temporary find a better way
 		auto& force_f = macros.template get<"force">();
 
 		/**
@@ -136,8 +152,19 @@ public:
 		// TODO - Change to tuple later
 		auto parts = pg.template get<"particles">();
 
-		auto parts_size = parts.meta.at({0u});
-		auto pi = parts.at(index);
+		auto parts_size = parts.meta().at({0u});
+		auto pi = parts.at(index);		
+
+		auto& pirb = pi.template get<"rigid_body">();
+		auto& pirb_pos = pirb.template get<"position">();
+		auto& pirb_pos_old = pirb.template get<"position_old">();
+		
+		saw::data<sch::Scalar<T>> sss;
+		sss.at({}) = sub_steps.template cast_to<T>();
+		auto vel_s = (pirb_pos-pirb_pos_old) / sss;
+
+		auto& p_coll = pg.template get<"collision">().at({});
+		auto& p_rad = p_coll.template get<"radius">();
 
 		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,{{0u}},vel_f.meta());
 		if(eo_aabb.is_error()){
@@ -145,9 +172,28 @@ public:
 		}
 		auto& aabb = eo_aabb.get_value();
 
-		iterator<Desc::D>::apply([&](const auto& index_f) -> void {
+		saw::data<sch::Scalar<T>> two;
+		two.at({}).set(2);
 
-		}, start, stop);
+		saw::data<sch::Scalar<T>> one;
+		one.at({}) = 1.0;
+		
+		saw::data<sch::Scalar<T>> eps;
+		eps.at({}) = 1.5f;
+
+		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
+			auto& force = force_f.at(index_f);
+			auto& vel = vel_f.at(index_f);
+			auto& por = por_f.at(index_f);
+			auto& rho = rho_f.at(index_f);
+
+			saw::data<sch::Vector<T,Descriptor::D>> rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
+
+			por = particle_porosity<T,Descriptor::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
+			auto flip_por = one - por;
+
+			force = ( vel_s * rho -  vel * rho ) * two * flip_por;
+		}, aabb.template get<"a">(), aabb.template get<"b">());
 	}
 };
 
@@ -208,14 +254,11 @@ public:
 		saw::data<sch::Scalar<T>> min_two;
 		min_two.at({}).set(-2);
 
-		// Maybe ? 
 		auto& force = force_f.at(index);
 		force = vel * rho * min_two * flip_porosity;
 
 		saw::data<sch::Scalar<T>> dfi_inv_cs2;
 		dfi_inv_cs2.at({}).set(dfi::inv_cs2);
-
-		// auto vel = vel_f.at(index);
 
 		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
 			// saw::data<T> ci_min_u{0};
