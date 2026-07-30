@@ -1,8 +1,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "particle/aabb.hpp"
-#include "particle/porosity.hpp"
+#include "particle/particle.hpp"
 #include "iterator.hpp"
 
 namespace kel {
@@ -153,7 +152,7 @@ public:
 		auto parts = pg.template get<"particles">();
 
 		auto parts_size = parts.meta().at({0u});
-		auto pi = parts.at(index);		
+		auto& pi = parts.at(index);		
 
 		auto& pirb = pi.template get<"rigid_body">();
 		auto& pirb_pos = pirb.template get<"position">();
@@ -181,6 +180,8 @@ public:
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}) = 1.5f;
 
+		saw::data<sch::Vector<T,Descriptor::D>> force_p;
+
 		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
 			auto& force = force_f.at(index_f);
 			auto& vel = vel_f.at(index_f);
@@ -193,7 +194,16 @@ public:
 			auto flip_por = one - por;
 
 			force = ( vel_s * rho -  vel * rho ) * two * flip_por;
+
+			force_p = force_p + force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
+
+		auto& pirb_acc = pirb.template get<"acceleration">();
+		pirb_acc = - force_p / pg.template get<"total_mass">().at({});
+
+		for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
+			verlet_step_lambda<T,Descriptor::D>(pi,sss);
+		}
 	}
 };
 

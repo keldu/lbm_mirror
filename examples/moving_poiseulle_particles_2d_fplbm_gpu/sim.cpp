@@ -134,7 +134,7 @@ saw::error_or<void> init(
 			}
 		},
 		{},// 0-index
-		df_f.get_dims()
+		dfs_f.get_dims()
 	);
 
 	saw::data<sch::Scalar<T>> rad;
@@ -350,7 +350,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_parts_data);
 
-	saw::data<sch::UInt64> time_steps{16u*4096ul};
+	saw::data<sch::UInt64> time_steps{32u*2048ul};
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){

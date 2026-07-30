@@ -25,6 +25,8 @@ template<typename T, typename Desc, typename Coll>
 saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	using namespace kel::lbm;
 
+	auto& an = args.template get<"args">();
+
 	using dfi = df_info<T,Desc>;
 
 	auto eo_lbm_dir = output_directory();
@@ -33,7 +35,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu" / "hlbm";
+	auto out_dir = lbm_dir / "poiseulle_particles_2d_gpu" / an.template get<"coupling">().stl_view();
 
 	{
 		std::error_code ec;
