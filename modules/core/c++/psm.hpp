@@ -86,8 +86,18 @@ public:
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::PsmOneParticle, Encode> final {
 private:
+	saw::data<T> relaxation_;
+	saw::data<T> frequency_;
 public:
-	component() = default;
+	component(
+		typename saw::native_data_type<T>::type relaxation__
+	):
+		relaxation_{relaxation__}
+	{
+		saw::data<T> one;
+		one = 1.0;
+		frequency_ = one / relaxation_;
+	}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& particles, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
@@ -101,6 +111,55 @@ public:
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"velocity">();
 		
+		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+
+		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
+		
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
+
+		saw::data<T> one{1.0};
+		auto& porous = porous_f.at(index);
+		auto flip_porous = one - porous.at({});
+
+		auto& dfs = dfs_old_f.at(index);
+
+		auto dfs_cpy = dfs;
+
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			uint64_t i_opp = dfi::opposite_index[i];
+			dfs.at({i}) = dfs_cpy.at({i}) + frequency_ * (eq.at(i) - dfs_cpy.at({i})) * porous.at({}) + (dfs_cpy.at({i_opp}) - dfs_cpy.at({i}) ) * flip_porous;
+		}
+
+		auto& force_f = macros.template get<"force">();
+		auto& force = force_f.at(index);
+		for(uint64_t k{0u}; k < Descriptor::D; ++k){
+			force.at({{k}}).set(0);
+		}
+
+		/////////
+		saw::data<sch::Vector<T,Descriptor::D>> momentum;
+		for(uint64_t i = 0u; i < Descriptor::Q; ++i){
+			
+			saw::data<sch::Vector<T,Descriptor::D>> e_i;
+			saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> n_ind_i;
+			for(uint64_t k{0u}; k < Descriptor::D; ++k){
+				e_i.at({{k}}) = dfi::directions[i][k];
+				n_ind_i.at({k}) = (dfi::directions[i])[k];
+			}
+
+			uint64_t i_opp = dfi::opposite_index[i];
+
+			saw::data<T> dfs_added = dfs.at({i}) - dfs_old_f.at(n_ind_i).at({i_opp});
+			saw::data<sch::Scalar<T>> dfs_added_v;
+			dfs_added_v.at({}) = dfs_added;
+			auto ei_dfs = e_i * dfs_added_v;
+
+			momentum = momentum + ei_dfs;
+		}
+		
+		// Set Force
+		force = momentum * porous_f.at(index);
 	}
 };
 

@@ -141,7 +141,7 @@ saw::error_or<void> init(
 	rad.at({}) = dim_y * 0.1f;
 	saw::data<sch::Scalar<T>> dense;
 	dense.at({}) = 1.0f;
-	particles = create_spheroid_particle_group<T,Desc::D,particle_amount>(rad,dense,{16u});
+	particles = create_spheroid_particle_group<T,Desc::D,particle_amount>(rad,dense,{1u});
 	{
 		auto& rb = particles.template get<"particles">().at({0u}).template get<"rigid_body">();
 		auto& rbp = rb.template get<"position">();
@@ -179,7 +179,7 @@ saw::error_or<void> step(
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
-
+			
 			fplbm_reset.apply(fields,macros,index,t_i);
 		});
 	}).wait();
@@ -193,12 +193,13 @@ saw::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			fplbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
+			fplbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
 		});
 	}).wait();
 
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
+		component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.8};
 		component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
@@ -232,11 +233,11 @@ saw::error_or<void> step(
 					break;
 				case 3u:
 					flow_in.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 					break;
 				case 4u:
 					flow_out.apply(fields,index,t_i);
-					collision.apply(fields,macros,index,t_i);
+					bgk.apply(fields,macros,index,t_i);
 				break;
 				default:
 				break;
