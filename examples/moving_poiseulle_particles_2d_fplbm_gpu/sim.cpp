@@ -185,7 +185,7 @@ saw::error_or<void> step(
 	}).wait();
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+		component<T,Desc,cmpt::FpLbmOneParticleImplicit,encode::Sycl<saw::encode::Native>> fplbm_one_part;
 
 		h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 			saw::data<sch::FixedArray<sch::UInt64,1u>> index;
@@ -262,7 +262,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "moving_poiseulle_particles_2d_fplbm_gpu";
+	auto out_dir = lbm_dir / "moving_poiseulle_particles_2d_fplbm_imp_gpu";
 
 	{
 		std::error_code ec;
