@@ -26,7 +26,6 @@ public:
 	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& index, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
 		static_assert(PC > 0u, "Can't calculate from no particles");
 		if(not (index.at({{0u}}).get() < PC) ){
-			std::cerr.flush();
 			return saw::make_error<saw::err::critical>("Too large i in particle_aabb");
 		}
 

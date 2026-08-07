@@ -305,7 +305,7 @@ public:
 
 /**
  * This tries to catch cases where error starts including itself as a type which can happen in more complicated cases.
- * So this acts as a type safe guard.
+ * So this acts as a type safe guard in case internal handling fails to treat conversion correctly.
  */
 template <typename T> class error_or<error_or<T>> {
 private:
