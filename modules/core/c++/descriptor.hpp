@@ -4,16 +4,16 @@
 #include <forstio/codec/data_math.hpp>
 #include <forstio/codec/schema_factory.hpp>
 
+#include "descriptor/d1q3.hpp"
+#include "descriptor/d2q5.hpp"
 #include "descriptor/d2q9.hpp"
+#include "descriptor/d3q19.hpp"
 #include "descriptor/d3q27.hpp"
 
 namespace kel {
 namespace lbm {
 namespace sch {
 using namespace saw::schema;
-
-//using D2Q5 = Descriptor<2u,5u>;
-using D3Q27 = Descriptor<3u,27u>;
 
 template<typename Sch, typename Desc, uint64_t SC_V, uint64_t DC_V, uint64_t QC_V>
 struct Cell {
@@ -62,74 +62,6 @@ struct df_ct_helper {
 };
 }
 */
-
-template<typename T> 
-class df_info<T,sch::Descriptor<1,3>> {
-public:
-	using Descriptor = sch::Descriptor<1,3>;
-
-	static constexpr uint64_t D = 1u;
-	static constexpr uint64_t Q = 3u;
-
-	static constexpr std::array<std::array<int32_t,D>,Q> directions = {{
-		{ 0},
-		{-1},
-		{ 1}
-	}};
-
-	static constexpr std::array<typename saw::native_data_type<T>::type, Q> weights = {
-		2./3.,
-		1./6.,
-		1./6.
-	};
-
-	static constexpr std::array<uint64_t,Q> opposite_index = {
-		0,2,1
-	};
-	
-	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
-	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
-};
-
-/**
- * D2Q5 Descriptor
- */
-template<typename T>
-class df_info<T,sch::Descriptor<2, 5>> {
-public:
-	using Descriptor = sch::Descriptor<2,5>;
-
-	static constexpr uint64_t D = 2u;
-	static constexpr uint64_t Q = 5u;
-
-	static constexpr std::array<std::array<int32_t, D>, Q> directions = {{
-		{ 0, 0},
-		{-1, 0},
-		{ 1, 0},
-		{ 0,-1},
-		{ 0, 1},
-	}};
-
-	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
-		1./3.,
-		1./6.,
-		1./6.,
-		1./6.,
-		1./6.
-	};
-
-	static constexpr std::array<uint64_t,Q> opposite_index = {
-		0,
-		2,
-		1,
-		4,
-		3
-	};
-
-	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
-	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
-};
-
 
 template<typename Schema>
 class cell_schema_builder {
