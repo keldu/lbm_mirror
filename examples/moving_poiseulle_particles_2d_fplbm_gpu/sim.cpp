@@ -256,13 +256,25 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 
 	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_dir = output_directory();
-	if(eo_lbm_dir.is_error()){
-		return std::move(eo_lbm_dir.get_error());
+	saw::data<sch::LbmArgs> args;
+	{
+		auto& args_n = args.template get<"args">();
+		auto& name = args_n.template get<"name">();
+		name.set("moving_poiseulle_particles_2d_fplbm_gpu");
 	}
-	auto& lbm_dir = eo_lbm_dir.get_value();
+	{
+		auto eov = saw::parse_args(args,argc,argv);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	auto eo_lbm_env = init_lbm_env(args);
+	if(eo_lbm_env.is_error()){
+		return std::move(eo_lbm_env.get_error());
+	}
+	const auto& lbm_env = eo_lbm_env.get_value();
 
-	auto out_dir = lbm_dir / "moving_poiseulle_particles_2d_fplbm_imp_gpu";
+	auto& out_dir = lbm_env.name_dir;
 
 	{
 		std::error_code ec;
@@ -424,13 +436,13 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,lbm_env.name,time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 	{
-		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_csv_file(out_dir,lbm_env.name,time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

@@ -5,7 +5,7 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using D2Q9 = Descriptor<2u,5u>;
+using D2Q5 = Descriptor<2u,5u>;
 }
 
 template<typename T>

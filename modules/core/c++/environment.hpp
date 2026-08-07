@@ -22,7 +22,7 @@ saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
 	namespace fs = std::filesystem;
 
 	auto& args_n = args.template get<"args">();
-	auto& name = args_n.template get<"name">();
+	auto& arg_name = args_n.template get<"name">();
 
 	const char* home_dir = std::getenv("HOME");
 	if(not home_dir){
@@ -50,7 +50,8 @@ saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
 	}
 
 	{
-		env.name_dir = env.data_dir / name.view();
+		env.name = arg_name.stl_view();
+		env.name_dir = env.data_dir / arg_name.stl_view();
 	}
 
 	return env;
