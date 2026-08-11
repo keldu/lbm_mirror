@@ -6,6 +6,7 @@
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
 #include <forstio/codec/simple.hpp>
+#include <forstio/codec/args.hpp>
 
 namespace kel {
 namespace lbm {
@@ -17,6 +18,14 @@ constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 using namespace saw::schema;
+
+using LbmArgs = Args<
+	Struct<
+		Member<String, "name">,
+		Member<UInt64, "sub_steps">
+	>,
+	Tuple<>
+>;
 
 using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 
@@ -185,7 +194,7 @@ saw::error_or<void> step(
 	}).wait();
 
 	q.submit([&](acpp::sycl::handler& h){
-		component<T,Desc,cmpt::FpLbmOneParticleImplicit,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+		component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
 
 		h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 			saw::data<sch::FixedArray<sch::UInt64,1u>> index;
@@ -193,7 +202,7 @@ saw::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			fplbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
+			fplbm_one_part.apply(fields,macros,particles,index,t_i,{64u});
 		});
 	}).wait();
 

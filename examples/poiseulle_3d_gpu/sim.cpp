@@ -39,22 +39,17 @@ using ChunkStruct = Struct<
 >;
 
 template<typename T, typename Desc>
-using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y, dim_z>;
+using MomChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y, dim_z>;
 
 template<typename T>
 using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y, dim_z>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<MomChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<ScalarChunk<T,Desc>, "porosity">
 >;
-
-//template<typename T, typename Desc>
-//using ParticleArray = Array<
-//	Particle<T,Desc::D>
-//>;
 }
 
 template<typename T, typename Desc>
@@ -106,7 +101,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& mom_f = macros.template get<"momentum">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
@@ -115,8 +110,8 @@ saw::error_or<void> setup_initial_conditions(
 			auto& rho = rho_f.at(index);
 			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			auto eq = equilibrium<T,Desc>(rho,vel);
+			auto& mom = mom_f.at(index);
+			auto eq = equilibrium<T,Desc>(rho,mom);
 
 			df = eq;
 		},
@@ -129,9 +124,9 @@ saw::error_or<void> setup_initial_conditions(
 			auto& df = df_f.at(index);
 			auto& rho = rho_f.at(index);
 			rho.at({}) = {1};
-			auto& vel = vel_f.at(index);
-			vel.at({{0u}}) = 0.01;
-			auto eq = equilibrium<T,Desc>(rho,vel);
+			auto& mom = mom_f.at(index);
+			mom.at({{0u}}) = 0.01;
+			auto eq = equilibrium<T,Desc>(rho,mom);
 
 			df = eq;
 		},
@@ -165,13 +160,6 @@ saw::error_or<void> step(
 		// component<T,Desc,cmpt::HLBM,encode::Sycl<saw::encode::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
-		saw::data<sch::Scalar<T>> rho_b;
-		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
-		vel_b.at({{0u}}) = 0.01;
-
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
-
 		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
 			[&](){
 				uint64_t target_t_i = 256u;
@@ -201,13 +189,11 @@ saw::error_or<void> step(
 					collision.apply(fields,macros,index,t_i);
 				break;
 				case 3u:
-					equi.apply(fields,index,t_i);
-					// flow_in.apply(fields,index,t_i);
+					flow_in.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				case 4u:
-					equi.apply(fields,index,t_i);
-					// flow_out.apply(fields,index,t_i);
+					flow_out.apply(fields,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 				break;
 				default:
