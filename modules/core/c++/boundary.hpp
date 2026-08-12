@@ -169,8 +169,60 @@ public:
  * 0 - 2 - 2
  *
  */
-template<typename FP, typename Descriptor, bool Dir, typename Encode>
-class component<FP, Descriptor, cmpt::ZouHeHorizontal<Dir>, Encode> final {
+template<typename FP, bool Dir, typename Encode>
+class component<FP, sch::Descriptor<2u,9u>, cmpt::ZouHeHorizontal<Dir>, Encode> final {
+private:
+	saw::data<FP> rho_setting_;
+public:
+	component(const saw::data<FP>& rho_setting__):
+		rho_setting_{rho_setting__}
+	{}
+
+	template<typename CellFieldSchema>
+	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,2u>> index, saw::data<sch::UInt64> time_step) const {
+		using dfi = df_info<FP,Descriptor>;
+
+		bool is_even = ((time_step.get() % 2) == 0);
+
+		auto& info_f = field.template get<"info">();
+		
+		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
+		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+
+		auto& dfs_old = dfs_old_f.at(index);
+
+		auto rho_vel_x = [&]() -> saw::data<FP> {
+			if constexpr (Dir){
+				auto S = dfs_old.at({0u})
+					+ dfs_old.at({3u}) + dfs_old.at({4u})
+					+ (dfs_old.at({1u}) + dfs_old.at({5u}) + dfs_old.at({7u})) * 2u;
+				return rho_setting_ - S;
+			}
+			else if constexpr (not Dir) {
+				auto S = dfs_old.at({0u})
+					+ dfs_old.at({3u}) + dfs_old.at({4u})
+					+ (dfs_old.at({2u}) + dfs_old.at({6u}) + dfs_old.at({8u})) * 2u;
+				return S - rho_setting_;
+			}
+			return {};
+		}();
+
+		// static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
+
+		if constexpr (Dir) {
+			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+		}else if constexpr (not Dir){
+			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+		}
+	}
+};
+
+template<typename FP, bool Dir, typename Encode>
+class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHeHorizontal<Dir>, Encode> final {
 private:
 	saw::data<FP> rho_setting_;
 public:
@@ -185,7 +237,7 @@ public:
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		auto& info_f = field.template get<"info">();
-		
+
 		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 

@@ -204,7 +204,7 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s * rho - vel * rho ) * two * flip_por;
+			force = ( vel_s * rho - vel * rho ) /* two */ * flip_por;
 
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
