@@ -171,6 +171,8 @@ public:
  */
 template<typename FP, bool Dir, typename Encode>
 class component<FP, sch::Descriptor<2u,9u>, cmpt::ZouHeHorizontal<Dir>, Encode> final {
+public:
+	using Descriptor = sch::Descriptor<2u,9u>;
 private:
 	saw::data<FP> rho_setting_;
 public:
@@ -221,8 +223,10 @@ public:
 	}
 };
 
-template<typename FP, bool Dir, typename Encode>
-class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHeHorizontal<Dir>, Encode> final {
+template<typename FP, bool East, typename Encode>
+class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHeHorizontal<East>, Encode> final {
+public:
+	using Descriptor = sch::Descriptor<3u,27u>;
 private:
 	saw::data<FP> rho_setting_;
 public:
@@ -240,37 +244,482 @@ public:
 
 		// auto& dfs_f = (is_even) ? field.template get<"dfs">() : field.template get<"dfs_old">();
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
+		    auto& f = dfs_old_f.at(index);
 
-		auto& dfs_old = dfs_old_f.at(index);
+    /*
+     * D3Q27 indexing
+     *
+     *             x=-1        x=0        x=+1
+     *
+     * z=+1:       19 22 25     18 21 24     20 23 26
+     *
+     * z= 0:        1  4  7      0  3  6      2  5  8
+     *
+     * z=-1:       10 13 16      9 12 15     11 14 17
+     *
+     * Boundary normal is x.
+     *
+     * East:
+     *   known:   cx = +1
+     *   unknown: cx = -1
+     *
+     * West:
+     *   known:   cx = -1
+     *   unknown: cx = +1
+     */
 
-		auto rho_vel_x = [&]() -> saw::data<FP> {
-			if constexpr (Dir){
-				auto S = dfs_old.at({0u})
-					+ dfs_old.at({3u}) + dfs_old.at({4u})
-					+ (dfs_old.at({1u}) + dfs_old.at({5u}) + dfs_old.at({7u})) * 2u;
-				return rho_setting_ - S;
+
+    /*
+     * ============================================================
+     * rho * ux
+     * ============================================================
+     *
+     * rho = S + 2 * sum(unknown)
+     *
+     * Therefore:
+     *
+     * East:
+     *   rho*ux = rho - S
+     *
+     * West:
+     *   rho*ux = S - rho
+     */
+
+    saw::data<FP> S;
+
+    if constexpr (East) {
+
+        S =
+            // cx = 0
+            f.at({0u})
+            + f.at({3u})
+            + f.at({6u})
+            + f.at({9u})
+            + f.at({12u})
+            + f.at({15u})
+            + f.at({18u})
+            + f.at({21u})
+            + f.at({24u})
+
+            // cx = +1
+            + saw::data<FP>{2.0} * (
+                f.at({2u})
+                + f.at({5u})
+                + f.at({8u})
+                + f.at({11u})
+                + f.at({14u})
+                + f.at({17u})
+                + f.at({20u})
+                + f.at({23u})
+                + f.at({26u})
+            );
+
+    } else {
+
+        S =
+            // cx = 0
+            f.at({0u})
+            + f.at({3u})
+            + f.at({6u})
+            + f.at({9u})
+            + f.at({12u})
+            + f.at({15u})
+            + f.at({18u})
+            + f.at({21u})
+            + f.at({24u})
+
+            // cx = -1
+            + saw::data<FP>{2.0} * (
+                f.at({1u})
+                + f.at({4u})
+                + f.at({7u})
+                + f.at({10u})
+                + f.at({13u})
+                + f.at({16u})
+                + f.at({19u})
+                + f.at({22u})
+                + f.at({25u})
+            );
+    }
+
+    saw::data<FP> rho_ux;
+
+    if constexpr (East) {
+        rho_ux = rho_setting_ - S;
+    } else {
+        rho_ux = S - rho_setting_;
+    }
+
+
+    /*
+     * ============================================================
+     * Tangential momentum: rho * uy
+     * ============================================================
+     *
+     * For a pressure boundary, uy and uz are obtained from the
+     * known populations.
+     *
+     * rho*uy:
+     *
+     * East:
+     *
+     *   x=0 contribution
+     *   + 2*x=+1 contribution
+     *
+     * West:
+     *
+     *   x=0 contribution
+     *   + 2*x=-1 contribution
+     */
+
+    saw::data<FP> rho_uy;
+    saw::data<FP> rho_uz;
+
+    if constexpr (East) {
+
+        rho_uy =
+            // cx = 0
+            -f.at({3u})
+            + f.at({6u})
+            -f.at({12u})
+            + f.at({15u})
+            -f.at({21u})
+            + f.at({24u})
+
+            // cx = +1
+            + saw::data<FP>{2.0} * (
+                -f.at({5u})
+                + f.at({8u})
+                -f.at({14u})
+                + f.at({17u})
+                -f.at({23u})
+                + f.at({26u})
+            );
+
+        rho_uz =
+            // cx = 0
+            -f.at({9u})
+            -f.at({12u})
+            -f.at({15u})
+            + f.at({18u})
+            + f.at({21u})
+            + f.at({24u})
+
+            // cx = +1
+            + saw::data<FP>{2.0} * (
+                -f.at({11u})
+                -f.at({14u})
+                -f.at({17u})
+                +f.at({20u})
+                +f.at({23u})
+                +f.at({26u})
+            );
+
+    } else {
+
+        rho_uy =
+            // cx = 0
+            -f.at({3u})
+            + f.at({6u})
+            - f.at({12u})
+            + f.at({15u})
+            - f.at({21u})
+            + f.at({24u})
+
+            // cx = -1
+            + saw::data<FP>{2.0} * (
+                -f.at({4u})
+                + f.at({7u})
+                -f.at({13u})
+                + f.at({16u})
+                -f.at({22u})
+                + f.at({25u})
+            );
+
+        rho_uz =
+            // cx = 0
+            -f.at({9u})
+            -f.at({12u})
+            -f.at({15u})
+            +f.at({18u})
+            +f.at({21u})
+            +f.at({24u})
+
+            // cx = -1
+            + saw::data<FP>{2.0} * (
+                -f.at({10u})
+                -f.at({13u})
+                -f.at({16u})
+                +f.at({19u})
+                +f.at({22u})
+                +f.at({25u})
+            );
+    }
+
+
+    /*
+     * ============================================================
+     * Velocity
+     * ============================================================
+     */
+
+    saw::data<FP> ux = rho_ux / rho_setting_;
+    saw::data<FP> uy = rho_uy / rho_setting_;
+    saw::data<FP> uz = rho_uz / rho_setting_;
+
+
+    /*
+     * ============================================================
+     * Reconstruct unknown distributions
+     * ============================================================
+     *
+     * Zou/He non-equilibrium bounce-back:
+     *
+     *   f_i = f_opp
+     *       + (f_eq_i - f_eq_opp)
+     *
+     * For D3Q27:
+     *
+     * axis:
+     *
+     *   6*w*rho*u = 1/6 * rho*u
+     *
+     * face diagonal:
+     *
+     *   6*w*rho*(c.u)
+     *       = 1/9 * rho*(c.u)
+     *
+     * body diagonal:
+     *
+     *   6*w*rho*(c.u)
+     *       = 1/36 * rho*(c.u)
+     *
+     * The factors below therefore use:
+     *
+     *   1/6
+     *   1/9
+     *   1/36
+     *
+     * ============================================================
+     */
+
+    if constexpr (East) {
+
+        /*
+         * --------------------------------------------------------
+         * (-1,  0,  0)  <-  (+1,  0,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({1u}) =
+            f.at({2u})
+            - saw::data<FP>{1.0 / 6.0} * rho_ux;
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, -1,  0)  <-  (+1, -1,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({4u}) =
+            f.at({5u})
+            - saw::data<FP>{1.0 / 9.0}
+                * (rho_ux + rho_uy);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, +1,  0)  <-  (+1, +1,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({7u}) =
+            f.at({8u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (-rho_ux + rho_uy);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1,  0, -1)  <-  (+1,  0, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({10u}) =
+            f.at({11u})
+            - saw::data<FP>{1.0 / 9.0}
+                * (rho_ux + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, -1, -1)  <-  (+1, -1, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({13u}) =
+            f.at({14u})
+            - saw::data<FP>{1.0 / 36.0}
+                * (rho_ux + rho_uy + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, +1, -1)  <-  (+1, +1, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({16u}) =
+            f.at({17u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (-rho_ux + rho_uy + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1,  0, +1)  <-  (+1,  0, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({19u}) =
+            f.at({20u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (-rho_ux + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, -1, +1)  <-  (+1, -1, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({22u}) =
+            f.at({23u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (-rho_ux - rho_uy + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (-1, +1, +1)  <-  (+1, +1, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({25u}) =
+            f.at({26u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (-rho_ux + rho_uy + rho_uz);
+
+    } else {
+
+        /*
+         * --------------------------------------------------------
+         * (+1,  0,  0)  <-  (-1,  0,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({2u}) =
+            f.at({1u})
+            + saw::data<FP>{1.0 / 6.0} * rho_ux;
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, -1,  0)  <-  (-1, -1,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({5u}) =
+            f.at({4u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (rho_ux - rho_uy);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, +1,  0)  <-  (-1, +1,  0)
+         * --------------------------------------------------------
+         */
+
+        f.at({8u}) =
+            f.at({7u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (rho_ux + rho_uy);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1,  0, -1)  <-  (-1,  0, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({11u}) =
+            f.at({10u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (rho_ux - rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, -1, -1)  <-  (-1, -1, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({14u}) =
+            f.at({13u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (rho_ux - rho_uy - rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, +1, -1)  <-  (-1, +1, -1)
+         * --------------------------------------------------------
+         */
+
+        f.at({17u}) =
+            f.at({16u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (rho_ux + rho_uy - rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1,  0, +1)  <-  (-1,  0, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({20u}) =
+            f.at({19u})
+            + saw::data<FP>{1.0 / 9.0}
+                * (rho_ux + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, -1, +1)  <-  (-1, -1, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({23u}) =
+            f.at({22u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (rho_ux - rho_uy + rho_uz);
+
+
+        /*
+         * --------------------------------------------------------
+         * (+1, +1, +1)  <-  (-1, +1, +1)
+         * --------------------------------------------------------
+         */
+
+        f.at({26u}) =
+            f.at({25u})
+            + saw::data<FP>{1.0 / 36.0}
+                * (rho_ux + rho_uy + rho_uz);
 			}
-			else if constexpr (not Dir) {
-				auto S = dfs_old.at({0u})
-					+ dfs_old.at({3u}) + dfs_old.at({4u})
-					+ (dfs_old.at({2u}) + dfs_old.at({6u}) + dfs_old.at({8u})) * 2u;
-				return S - rho_setting_;
-			}
-			return {};
-		}();
-
-		static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
-
-		if constexpr (Dir) {
-			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_vel_x;
-			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
-			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
-		}else if constexpr (not Dir){
-			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_vel_x;
-			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
-			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
 		}
-	}
 };
 
 
