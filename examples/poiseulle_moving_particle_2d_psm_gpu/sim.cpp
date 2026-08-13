@@ -47,7 +47,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<ScalarChunk<T,Desc>, "porosity">
 >;
@@ -123,7 +123,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(

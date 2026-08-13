@@ -49,7 +49,7 @@ using ForceChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">
 >;
 
@@ -122,7 +122,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 
 	iterator<Desc::D>::apply(
 		[&](auto& index){

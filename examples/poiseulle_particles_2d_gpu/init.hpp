@@ -57,7 +57,7 @@ saw::error_or<void> init(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(

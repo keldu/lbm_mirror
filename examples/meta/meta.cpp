@@ -75,7 +75,7 @@ saw::error_or<void> meta_main(int argc, char** argv){
 				meta_lbm_info<sch::Prec,sch::Descriptor<1u,3u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
+				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;
@@ -89,7 +89,7 @@ saw::error_or<void> meta_main(int argc, char** argv){
 				meta_lbm_info<sch::Prec,sch::Descriptor<2u,9u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
+				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;
@@ -108,7 +108,7 @@ saw::error_or<void> meta_main(int argc, char** argv){
 				meta_lbm_info<sch::Prec,sch::Descriptor<3u,27u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid velocity set");
+				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;

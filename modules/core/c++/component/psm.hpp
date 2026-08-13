@@ -39,7 +39,7 @@ public:
 		auto& porous_f = macros.template get<"porosity">();
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 		
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);

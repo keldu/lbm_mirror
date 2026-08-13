@@ -20,7 +20,7 @@ void check_equilibrium(){
 	auto eq = lbm::equilibrium<lbm::sch::Float64,Descriptor>(rho,vel);
 
 	for(saw::data<lbm::sch::UInt64> i{0u}; i.get() < Descriptor::Q; ++i){
-		SAW_EXPECT(eq.at(i).get() == dfi::weights[i.get()], std::string{"No velocity and normalized rho should be exactly the weights: "} + std::to_string(eq.at(i).get()) + std::string{" "} + std::to_string(dfi::weights[i.get()]));
+		SAW_EXPECT(eq.at(i).get() == dfi::weights[i.get()], std::string{"No momentum and normalized rho should be exactly the weights: "} + std::to_string(eq.at(i).get()) + std::string{" "} + std::to_string(dfi::weights[i.get()]));
 	}
 }
 

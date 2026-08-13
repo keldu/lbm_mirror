@@ -46,7 +46,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<VelChunk<T,Desc>, "force">
 >;
@@ -113,7 +113,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 	auto& force_f = macros.template get<"force">();
 	
 	iterator<Desc::D>::apply(
@@ -218,7 +218,7 @@ saw::error_or<void> step(
 			
 	q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
-			auto& vel_f = macros.template get<"velocity">();
+			auto& vel_f = macros.template get<"momentum">();
 			auto& dense_f = macros.template get<"density">();
 
 			auto& ps = particles;

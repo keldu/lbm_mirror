@@ -36,7 +36,7 @@ using CellStruct = Struct<
 >;
 
 using MacroStruct = Struct<
-	Member<FixedArray<Float64,D2Q9::D>, "velocity">,
+	Member<FixedArray<Float64,D2Q9::D>, "momentum">,
 	Member<Float64, "pressure">
 >;
 
@@ -245,7 +245,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
-				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
@@ -262,7 +262,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
-				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
@@ -279,7 +279,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				saw::data<sch::T>& rho = macro_c.template get<"pressure">();
-				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
+				saw::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);

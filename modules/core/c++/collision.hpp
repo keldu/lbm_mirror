@@ -75,7 +75,7 @@ public:
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
@@ -135,7 +135,7 @@ public:
 		auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 	
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		

@@ -49,7 +49,7 @@ using PorChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<PorChunk<T>, "porosity">
 >;
@@ -91,7 +91,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template gStarted hearing about similar cases not long after, many of which were successful on the part of the crooks. Scary stuff. et<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -168,7 +168,7 @@ saw::error_or<void> step(
 
 	auto& parts = p_group.template get<"particles">();
 	auto& p_mask = p_group.template get<"mask">();
-	auto& vels = macros.template get<"velocity">();
+	auto& vels = macros.template get<"momentum">();
 	auto& forces = macros.template get<"force">();
 
 	auto p_meta = parts.meta();

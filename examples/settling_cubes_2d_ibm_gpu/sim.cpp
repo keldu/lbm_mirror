@@ -45,7 +45,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "velocity">,
+	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<VectorChunk<T,Desc>, "force">
 >;
@@ -93,7 +93,7 @@ saw::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template gStarted hearing about similar cases not long after, many of which were successful on the part of the crooks. Scary stuff. et<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"velocity">();
+	auto& vel_f = macros.template get<"momentum">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -163,7 +163,7 @@ saw::error_or<void> step(
 
 	auto& parts = p_group.template get<"particles">();
 	auto& p_mask = p_group.template get<"mask">();
-	auto& vels = macros.template get<"velocity">();
+	auto& vels = macros.template get<"momentum">();
 	auto& forces = macros.template get<"force">();
 
 	auto p_meta = parts.meta();
@@ -214,7 +214,7 @@ saw::error_or<void> step(
 					// Lagrange indicator position
 					auto p_pos_lag = p_pos + transformed_pos;
 
-					// Pick the closest velocity and clamp it
+					// Pick the closest momentum and clamp it
 					saw::data<sch::FixedArray<sch::UInt64,Desc::D>> p_cell_pos;
 					saw::data<sch::Vector<sch::UInt64,Desc::D>> p_cell_pos_vec;
 					for(uint64_t i{0u}; i < Desc::D; ++i){

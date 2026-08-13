@@ -47,7 +47,7 @@ using CellStruct = CellFieldStruct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "velocity">,
+	Member<FixedArray<T,D>, "momentum">,
 	Member<T, "pressure">
 >;
 
@@ -362,7 +362,7 @@ int main(){
 				auto dfs_field = even_step ? dfs_old : dfs;
 
 				auto& rho = macros.at(index).template get<"pressure">();
-				auto& vel = macros.at(index).template get<"velocity">();
+				auto& vel = macros.at(index).template get<"momentum">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs_field[j],rho,vel);
 			}, {{0u,0u}}, meta);
 			std::string vtk_f_name{"tmp/cavity_2d_gpu_"};

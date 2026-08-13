@@ -41,7 +41,7 @@ using CellStruct = Struct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "velocity">,
+	Member<FixedArray<T,D>, "momentum">,
 	Member<T, "pressure">
 >;
 
@@ -375,7 +375,7 @@ int main(int argc, char** argv){
 				auto& dfs = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 
 				auto& rho = macros.at(index).template get<"pressure">();
-				auto& vel = macros.at(index).template get<"velocity">();
+				auto& vel = macros.at(index).template get<"momentum">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 				rho = rho * saw::data<sch::T>{dfi::cs2};
 

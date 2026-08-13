@@ -46,7 +46,7 @@ public:
 
 			auto& rho_f = macros.template get<"density">();
 			auto& rho = rho_f.at(index);
-			auto& vel_f = macros.template get<"velocity">();
+			auto& vel_f = macros.template get<"momentum">();
 			auto& vel = vel_f.at(index);
 
 			compute_rho_u<T,Descriptor>(dfs,rho,vel);
@@ -86,7 +86,7 @@ public:
 		auto& rho_f = macros.template get<"density">();
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
 
 		auto& force_f = macros.template get<"force">();
@@ -148,7 +148,7 @@ public:
 		// auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 		auto& por_f = macros.template get<"porosity">();
 		auto& force_f = macros.template get<"force">();
 
@@ -245,7 +245,7 @@ public:
 		auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"velocity">();
+		auto& vel_f = macros.template get<"momentum">();
 		auto& por_f = macros.template get<"porosity">();
 
 		// Temporary find a better way

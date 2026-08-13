@@ -91,7 +91,7 @@ struct lbm_csv_writer<sch::Chunk<T,Ghost,D...>> {
 template<typename T, uint64_t D>
 struct lbm_csv_writer<sch::Vector<T,D>> {
 	static saw::error_or<void> apply(std::ostream& csv_file, const saw::data<sch::Vector<T,D>>& field){
-		static_assert(D > 0, "Non-dimensionality is bad for velocity.");
+		static_assert(D > 0, "Non-dimensionality is bad for momentum.");
 
 		// csv_file<<"VECTORS "<<name<<" float\n";
 		for(uint64_t i = 0u; i < D; ++i){

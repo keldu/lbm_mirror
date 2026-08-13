@@ -28,6 +28,7 @@ void compute_rho_u (
 		}
 	}
 
+	// TODO - Change to momentum, but that needs checks in every impacted function
 	for(size_t i = 0; i < Desc::D; ++i){
 		vel().at({{i}}) = vel().at({{i}}) / rho().at({});
 	}

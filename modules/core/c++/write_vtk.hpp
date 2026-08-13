@@ -115,7 +115,7 @@ struct lbm_vtk_writer<sch::Vector<T,D>> {
 		return saw::make_void();
 	}
 	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::Vector<T,D>>& field){
-		static_assert(D > 0, "Non-dimensionality is bad for velocity.");
+		static_assert(D > 0, "Non-dimensionality is bad for momentum.");
 		static_assert(D <= 3, "4th dimension as well. Mostly due to vtk.");
 
 		// vtk_file<<"VECTORS "<<name<<" float\n";

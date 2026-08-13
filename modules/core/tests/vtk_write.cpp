@@ -31,7 +31,7 @@ using CellStruct = Struct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "velocity">,
+	Member<FixedArray<T,D>, "momentum">,
 	Member<T, "pressure">
 >;
 
@@ -47,7 +47,7 @@ SAW_TEST("VTK Write test example"){
 	saw::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
 
 	auto& cell_0 = cells.at({{{0,0}}});
-	cell_0.template get<"velocity">()= {{0.5,-0.1}};
+	cell_0.template get<"momentum">()= {{0.5,-0.1}};
 	cell_0.template get<"pressure">().set(1.1);
 
 	auto eov = lbm::impl::lbm_vtk_writer<sch::Array<sch::MacroStruct<sch::T,2>, 2>>::apply(sstream, cells);
@@ -56,7 +56,7 @@ SAW_TEST("VTK Write test example"){
 	// I want to print it to see it for myself. For now I have no tooling to more easily view associated and potentially generated files
 	std::cout<<sstream.str()<<std::endl;
 
-	static std::string_view comparison_str = "# vtk DataFile Version 3.0\nLBM File\nASCII\nDATASET STRUCTURED_POINTS\nSPACING 1.0 1.0 1.0\nORIGIN 0.0 0.0 0.0\nDIMENSIONS 2 2 1\nPOINT_DATA 4\n\nVECTORS velocity float\n0.5 -0.1 0\n0 0 0\n0 0 0\n0 0 0\nSCALARS pressure float\nLOOKUP_TABLE default\n1.1\n0\n0\n0\n";
+	static std::string_view comparison_str = "# vtk DataFile Version 3.0\nLBM File\nASCII\nDATASET STRUCTURED_POINTS\nSPACING 1.0 1.0 1.0\nORIGIN 0.0 0.0 0.0\nDIMENSIONS 2 2 1\nPOINT_DATA 4\n\nVECTORS momentum float\n0.5 -0.1 0\n0 0 0\n0 0 0\n0 0 0\nSCALARS pressure float\nLOOKUP_TABLE default\n1.1\n0\n0\n0\n";
 	SAW_EXPECT(sstream.str() == comparison_str, "Expected different encoding");
 
 	// using Type = typename parameter_pack_type<i,T...>::type;
@@ -74,7 +74,7 @@ SAW_TEST("VTK Write raw test example"){
 	auto meta = cells.dims();
 
 	auto& cell_0 = cells.at({{{0,0}}});
-	cell_0.template get<"velocity">()= {{0.5,-0.1}};
+	cell_0.template get<"momentum">()= {{0.5,-0.1}};
 	cell_0.template get<"pressure">().set(1.1);
 
 	auto eov = lbm::impl::lbm_vtk_writer_raw<sch::MacroStruct<sch::T,2u>,2u>::apply(sstream, &cell_0, meta);
@@ -83,7 +83,7 @@ SAW_TEST("VTK Write raw test example"){
 	// I want to print it to see it for myself. For now I have no tooling to more easily view associated and potentially generated files
 	std::cout<<sstream.str()<<std::endl;
 
-	static std::string_view comparison_str = "# vtk DataFile Version 3.0\nLBM File\nASCII\nDATASET STRUCTURED_POINTS\nSPACING 1.0 1.0 1.0\nORIGIN 0.0 0.0 0.0\nDIMENSIONS 2 2 1\nPOINT_DATA 4\n\nVECTORS velocity float\n0.5 -0.1 0\n0 0 0\n0 0 0\n0 0 0\nSCALARS pressure float\nLOOKUP_TABLE default\n1.1\n0\n0\n0\n";
+	static std::string_view comparison_str = "# vtk DataFile Version 3.0\nLBM File\nASCII\nDATASET STRUCTURED_POINTS\nSPACING 1.0 1.0 1.0\nORIGIN 0.0 0.0 0.0\nDIMENSIONS 2 2 1\nPOINT_DATA 4\n\nVECTORS momentum float\n0.5 -0.1 0\n0 0 0\n0 0 0\n0 0 0\nSCALARS pressure float\nLOOKUP_TABLE default\n1.1\n0\n0\n0\n";
 	SAW_EXPECT(sstream.str() == comparison_str, "Expected different encoding");
 
 	// using Type = typename parameter_pack_type<i,T...>::type;
