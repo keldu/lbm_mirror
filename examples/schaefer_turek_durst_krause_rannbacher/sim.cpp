@@ -46,12 +46,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{{0.41 / dim_y}},
 		// delta_t
-		{{1.0}}
+		{{1.067e-4}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.5 * dim_y});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
@@ -138,7 +138,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				auto eov = write_csv_file(out_dir,"stdkr_2d",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -178,7 +178,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,"stdkr_2d",time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -197,13 +197,17 @@ saw::error_or<void> k_main(int argc, char** argv){
 	saw::data<args::LbmArgs> args;
 	{
 		auto eov = saw::parse_args(args,argc,argv);
-		return eov;
+		if(eov.is_error()){
+			return eov;
+		}
 	}
 	auto& an = args.template get<"args">();
 	auto& coupling = an.template get<"coupling">();
 
 	if(coupling.stl_view() == "hlbm"){
 		return lbm_main<FloatT,DescT,method::Hlbm>(args);
+	} else if(coupling.stl_view() == "fplbm"){
+		return lbm_main<FloatT,DescT,method::FpLbm>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");

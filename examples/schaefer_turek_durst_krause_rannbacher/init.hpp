@@ -114,7 +114,7 @@ saw::error_or<void> init(
 
 	{
 		saw::data<sch::Scalar<T>> radius_p;
-		radius_p.at({}).set(2);
+		radius_p.at({}).set(conv.meter_si_to_lbm({{0.16}}).handle().get());
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{16u}});

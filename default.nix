@@ -218,6 +218,11 @@ in rec {
 			inherit kel;
 		};
 
+		stdkr_2d = pkgs.callPackage ./examples/schaefer_turek_durst_krause_rannbacher/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;

@@ -12,7 +12,6 @@
 }:
 
 let
-	slip_txt = if slip then "slip" else "noslip";
 in stdenv.mkDerivation {
 	pname = "${pname}-examples-stdkr_2d_gpu_${particle_coupling}";
 	inherit version;
