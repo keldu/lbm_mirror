@@ -92,25 +92,6 @@ saw::error_or<void> init(
 		df_f.get_dims(),
 		{{1u,1u}}
 	);
-	
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
-			middle.at({{0u}}) = dim_x * 0.25;
-			middle.at({{1u}}) = dim_y * 0.5;
-
-			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
-			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
-
-			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
-			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
-				porous_f.at(index).at({}) = 0.0;
-			}
-		},
-		{},// 0-index
-		df_f.get_dims()
-	);
 
 	{
 		saw::data<sch::Scalar<T>> radius_p;
@@ -118,6 +99,18 @@ saw::error_or<void> init(
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{16u}});
+		auto& parts = particles.template get<"particles">();
+
+		{
+			auto& p = parts.at({0u});
+			auto& prb = p.template get<"rigid_body">();
+			auto& p_pos = prb.template get<"position">();
+			auto& p_posold = prb.template get<"position_old">();
+			p_pos.at({0u}) = conv.meter_si_to_lbm({{0.16}}).handle();
+			p_pos.at({1u}) = conv.meter_si_to_lbm({{0.2}}).handle();
+
+			p_posold = p_pos;
+		}
 	}
 
 	return saw::make_void();
