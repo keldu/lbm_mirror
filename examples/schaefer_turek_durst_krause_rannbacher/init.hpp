@@ -95,10 +95,11 @@ saw::error_or<void> init(
 
 	{
 		saw::data<sch::Scalar<T>> radius_p;
-		radius_p.at({}).set(conv.meter_si_to_lbm({{0.16}}).handle().get());
+		radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
+		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
-		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{16u}});
+		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{64u}});
 		auto& parts = particles.template get<"particles">();
 
 		{

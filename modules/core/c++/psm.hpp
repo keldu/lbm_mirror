@@ -11,6 +11,9 @@ struct PsmReset {};
 struct PsmOneParticle {};
 struct Psm {};
 }
+namespace method {
+struct Psm {};
+}
 
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::PsmReset, Encode> final {

@@ -91,6 +91,79 @@ saw::error_or<void> step(
 			});
 		}).wait();
 	}else if constexpr ( std::is_same_v<Coll, method::FpLbm> ){
+		q.submit([&](acpp::sycl::handler& h){
+			component<T,Desc,cmpt::FpLbmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				for(uint64_t i = 0u; i < Desc::D; ++i){
+					index.at({{i}}).set(idx[i]);
+				}
+				
+				fplbm_reset.apply(fields,macros,index,t_i);
+			});
+		}).wait();
+
+		q.submit([&](acpp::sycl::handler& h){
+			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+
+			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
+				saw::data<sch::FixedArray<sch::UInt64,1u>> index;
+				for(uint64_t i = 0u; i < 1u; ++i){
+					index.at({{i}}).set(idx[i]);
+				}
+
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+			});
+		}).wait();
+
+		// auto coll_ev = 
+		q.submit([&](acpp::sycl::handler& h){
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.8};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.8};
+			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
+
+			component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
+				[&](){
+					uint64_t target_t_i = 8u;
+					if(t_i.get() < target_t_i){
+						return 1.0 + (0.01 / target_t_i) * t_i.get();
+					}
+					return 1.01;
+				}()
+			};
+			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				for(uint64_t i = 0u; i < Desc::D; ++i){
+					index.at({{i}}).set(idx[i]);
+				}
+
+				auto info = info_f.at(index);
+				
+				switch(info.get()){
+					case 0u:
+					break;
+					case 1u:
+						bb.apply(fields,index,t_i);
+					break;
+					case 2u:
+						collision.apply(fields,macros,index,t_i);
+						break;
+					case 3u:
+						flow_in.apply(fields,index,t_i);
+						bgk.apply(fields,macros,index,t_i);
+						break;
+					case 4u:
+						flow_out.apply(fields,index,t_i);
+						bgk.apply(fields,macros,index,t_i);
+					break;
+					default:
+					break;
+				}
+			});
+		}).wait();
+	}else if constexpr ( std::is_same_v<Coll, method::Psm> ){
 	}
 
 	return saw::make_void();

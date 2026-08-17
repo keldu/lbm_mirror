@@ -111,6 +111,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			return eov;
 		}
 	}
+	{
+		auto eov = dev.copy_to_device(*lbm_particle_data_ptr,lbm_sycl_particle_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	sycl_q.wait();
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
@@ -178,7 +184,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,"stdkr_2d",time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

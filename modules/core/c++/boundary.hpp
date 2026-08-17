@@ -12,7 +12,7 @@ template<uint64_t i>
 struct AntiBounceBack {};
 
 template<bool East>
-struct ZouHeHorizontal{};
+struct ZouHeVelocityX{};
 
 struct Equilibrium {};
 
