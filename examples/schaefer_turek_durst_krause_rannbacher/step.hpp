@@ -19,6 +19,8 @@ saw::error_or<void> step(
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
+
+
 	
 	if constexpr ( std::is_same_v<Coll, method::Hlbm> ){
 		q.submit([&](acpp::sycl::handler& h){
@@ -48,16 +50,6 @@ saw::error_or<void> step(
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{1.0};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-
-			component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-				[&](){
-					uint64_t target_t_i = 16u;
-					if(t_i.get() < target_t_i){
-						return 1.0 + (0.01 / target_t_i) * t_i.get();
-					}
-					return 1.001;
-				}()
-			};
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -78,7 +70,20 @@ saw::error_or<void> step(
 						collision.apply(fields,macros,index,t_i);
 						break;
 					case 3u:
-						flow_in.apply(fields,index,t_i);
+						{
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
+								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
+									saw::data<sch::Vector<T,Desc::D>> vel;
+									{
+										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{1u}}) = 0.0f;
+									}
+									return vel;
+								}()
+							};
+							flow_in.apply(fields,index,t_i);
+						}
 						collision.apply(fields,macros,index,t_i);
 						break;
 					case 4u:
@@ -118,19 +123,9 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.8};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.8};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{1.0};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-
-			component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
-				[&](){
-					uint64_t target_t_i = 8u;
-					if(t_i.get() < target_t_i){
-						return 1.0 + (0.01 / target_t_i) * t_i.get();
-					}
-					return 1.01;
-				}()
-			};
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -151,7 +146,20 @@ saw::error_or<void> step(
 						collision.apply(fields,macros,index,t_i);
 						break;
 					case 3u:
-						flow_in.apply(fields,index,t_i);
+						{
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
+								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
+									saw::data<sch::Vector<T,Desc::D>> vel;
+									{
+										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{1u}}) = 0.0f;
+									}
+									return vel;
+								}()
+							};
+							flow_in.apply(fields,index,t_i);
+						}
 						bgk.apply(fields,macros,index,t_i);
 						break;
 					case 4u:

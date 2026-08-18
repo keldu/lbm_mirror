@@ -12,7 +12,10 @@ template<uint64_t i>
 struct AntiBounceBack {};
 
 template<bool East>
-struct ZouHeVelocityX{};
+struct ZouHePressureX{};
+
+template<bool East>
+using ZouHeHorizontal = ZouHePressureX<East>;
 
 struct Equilibrium {};
 
@@ -170,7 +173,7 @@ public:
  *
  */
 template<typename FP, bool Dir, typename Encode>
-class component<FP, sch::Descriptor<2u,9u>, cmpt::ZouHeHorizontal<Dir>, Encode> final {
+class component<FP, sch::Descriptor<2u,9u>, cmpt::ZouHePressureX<Dir>, Encode> final {
 public:
 	using Descriptor = sch::Descriptor<2u,9u>;
 private:
@@ -224,7 +227,7 @@ public:
 };
 
 template<typename FP, bool East, typename Encode>
-class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHeHorizontal<East>, Encode> final {
+class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHePressureX<East>, Encode> final {
 public:
 	using Descriptor = sch::Descriptor<3u,27u>;
 private:
@@ -726,12 +729,12 @@ public:
 template<typename T, typename Descriptor, bool East, typename Encode>
 class component<T, Descriptor, cmpt::ZouHeVelocityX<East>, Encode> final {
 private:
-	saw::data<sch::Vector<T,Descriptor::D>> momentum_;
+	saw::data<sch::Vector<T,Descriptor::D>> velocity_;
 public:
 	component(
-		saw::data<sch::Vector<T,Descriptor::D>> momentum__
+		const saw::data<sch::Vector<T,Descriptor::D>>& velocity__
 	):
-		momentum_{momentum__}
+		velocity_{velocity__}
 	{}
 
 	template<typename CellFieldSchema>
@@ -753,20 +756,20 @@ public:
 		}
 
 		saw::data<sch::Scalar<T>> rho;
-		rho.at({}) = (dfs.at({0u}) + dfs.at({4u}) + dfs.at({3u}) + dir_sum * 2) / (momentum_.at({{0u}}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0)});
+		rho.at({}) = (dfs.at({0u}) + dfs.at({4u}) + dfs.at({3u}) + dir_sum * 2) / (velocity_.at({{0u}}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0)});
 
 		if constexpr (East) {
-			dfs.at({2u}) = dfs.at({1u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * momentum_.at({{0u}});
-			dfs.at({6u}) = dfs.at({5u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * momentum_.at({{0u}})
-				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * momentum_.at({{1u}})) * 0.5f;
-			dfs.at({8u}) = dfs.at({7u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * momentum_.at({{0u}})
-				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * momentum_.at({{1u}})) * 0.5f;
+			dfs.at({2u}) = dfs.at({1u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({6u}) = dfs.at({5u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
+			dfs.at({8u}) = dfs.at({7u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
 		}else if constexpr ( not East ){
-			dfs.at({1u}) = dfs.at({2u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * momentum_.at({{0u}});
-			dfs.at({5u}) = dfs.at({6u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * momentum_.at({{0u}})
-				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * momentum_.at({{1u}}))*0.5f;
-			dfs.at({7u}) = dfs.at({8u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * momentum_.at({{0u}})
-				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * momentum_.at({{1u}}))*0.5f;
+			dfs.at({1u}) = dfs.at({2u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({5u}) = dfs.at({6u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
+			dfs.at({7u}) = dfs.at({8u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
 		}
 	}
 };
