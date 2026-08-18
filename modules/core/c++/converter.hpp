@@ -62,16 +62,20 @@ public:
 		return m_si / meter_conv_;
 	}
 	
+	saw::data<sch::SiMeter<T>> meter_lbm_to_si(const saw::data<sch::LbmMeter<T>>& m_lbm) const {
+		return m_lbm * meter_conv_;
+	}
+
 	saw::data<sch::LbmSecond<T>> second_si_to_lbm(const saw::data<sch::SiSecond<T>>& s_si) const {
 		return s_si / second_conv_;
 	}
 	
 	saw::data<sch::LbmVelocity<T>> velocity_si_to_lbm(const saw::data<sch::SiVelocity<T>>& vel_si) const {
-		return vel_si * second_conv_ / meter_conv_;
+		return (vel_si / meter_conv_) * second_conv_;
 	}
 	
 	saw::data<sch::LbmAcceleration<T>> acceleration_si_to_lbm(const saw::data<sch::SiAcceleration<T>>& acc_si) const {
-		return acc_si * (second_conv_ * second_conv_) / meter_conv_;
+		return (acc_si / meter_conv_) * (second_conv_ * second_conv_); 
 	}
 
 	saw::data<sch::LbmKinematicViscosity<T>> kinematic_viscosity_si_to_lbm (const saw::data<sch::SiKinematicViscosity<T>>& kin_si) const {
