@@ -1,0 +1,43 @@
+{ lib
+, stdenv
+, scons
+, clang-tools
+, forstio
+, python3
+, pname
+, version
+, adaptive-cpp
+, kel
+, particle_coupling ? "fplbm"
+}:
+
+let
+in stdenv.mkDerivation {
+	pname = "${pname}-examples-dkt_2d_gpu_${particle_coupling}";
+	inherit version;
+	src = ./..;
+
+	nativeBuildInputs = [
+		scons
+		clang-tools
+		python3
+	];
+
+	buildInputs = [
+		forstio.core
+		forstio.async
+		forstio.codec
+		forstio.codec-unit
+		forstio.io
+    forstio.remote
+    forstio.remote-filesystem
+		forstio.codec-json
+		adaptive-cpp
+		kel.lbm.core
+		kel.lbm.sycl
+	];
+
+	preferLocalBuild = true;
+
+	outputs = [ "out" "dev" ];
+}

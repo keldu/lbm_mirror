@@ -214,6 +214,8 @@ saw::error_or<void> k_main(int argc, char** argv){
 		return lbm_main<FloatT,DescT,method::Hlbm>(args);
 	} else if(coupling.stl_view() == "fplbm"){
 		return lbm_main<FloatT,DescT,method::FpLbm>(args);
+	} else if(coupling.stl_view() == "psm"){
+		return lbm_main<FloatT,DescT,method::Psm>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");
