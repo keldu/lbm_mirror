@@ -228,6 +228,11 @@ in rec {
 			inherit kel;
 		};
 
+		ops_2d = pkgs.callPackage ./examples/one_particle_sedimentation_2d/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;

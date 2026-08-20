@@ -14,7 +14,6 @@ saw::error_or<void> init(
 	(void) conv;
 
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -57,13 +56,11 @@ saw::error_or<void> init(
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"momentum">();
-	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
 			auto& df = df_f.at(index);
 			auto& rho = rho_f.at(index);
-			por_f.at(index).at({}) = {1};
 			rho.at({}) = {1};
 			auto& vel = vel_f.at(index);
 			auto eq = equilibrium<T,Desc>(rho,vel);
@@ -92,31 +89,32 @@ saw::error_or<void> init(
 		{{1u,1u}}
 	);
 
-	{
+	iterator<Desc::D>::apply(
+		[&](const auto& index){
+			auto& info = info_f.at(index);
+			saw::data<sch::Scalar<T>> radius_p;
+			radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
+			saw::data<sch::Scalar<T>> dense_p;
+			dense_p.at({}).set(1);
 
-	}
-	{
-		saw::data<sch::Scalar<T>> radius_p;
-		radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
-		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
-		saw::data<sch::Scalar<T>> dense_p;
-		dense_p.at({}).set(1);
-		/*
-		auto& parts = particles.template get<"particles">();
+			saw::data<sch::Vector<T,Desc::D>> middle,ind_vec;
+			middle.at({{0u}}) = conv.meter_si_to_lbm({{0.16}}).handle();
+			middle.at({{1u}}) = conv.meter_si_to_lbm({{0.2}}).handle();
 
-		{
-			auto& p = parts.at({0u});
-			auto& prb = p.template get<"rigid_body">();
-			auto& p_pos = prb.template get<"position">();
-			auto& p_posold = prb.template get<"position_old">();
-			p_pos.at({{0u}}) = conv.meter_si_to_lbm({{0.16}}).handle();
-			p_pos.at({{1u}}) = conv.meter_si_to_lbm({{0.2}}).handle();
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				ind_vec.at({{i}}) = index.at({i}).template cast_to<T>();
+			}
 
-			p_posold = p_pos;
-		}
-		*/
-	}
+			auto dist = ind_vec - middle;
+			auto dist_2 = saw::math::dot(dist,dist);
 
+			if(dist_2.at({}) < radius_p.at({}) * radius_p.at({})){
+				info_f.at(index) = 1u;
+			}
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
 	return saw::make_void();
 }
 

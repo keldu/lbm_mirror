@@ -218,7 +218,7 @@ saw::error_or<void> step(
 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> bgk{0.8};
-		component<T,Desc,cmpt::PSM,encode::Sycl<saw::encode::Native>> collision{0.8};
+		component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.8};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 		saw::data<sch::Scalar<T>> eps;

@@ -17,13 +17,12 @@ saw::error_or<void> step(
 
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 
 	{
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{1.0};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+			component<T,Desc,cmpt::ZouHePressureX<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
