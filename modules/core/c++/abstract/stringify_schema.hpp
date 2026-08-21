@@ -1,6 +1,7 @@
 #pragma once
 
 #include "schema.hpp"
+#include "string_literal.hpp"
 
 namespace kel {
 namespace lbm {
