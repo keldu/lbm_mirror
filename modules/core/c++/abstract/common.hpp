@@ -150,5 +150,4 @@ template <> struct void_unfix<void_t> { typedef void Type; };
 template <typename T> using unfix_void = typename void_unfix<T>::Type;
 
 template <typename... T> constexpr bool always_false = false;
-
 } // namespace saw

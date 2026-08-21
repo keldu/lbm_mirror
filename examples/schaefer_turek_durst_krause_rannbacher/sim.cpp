@@ -20,7 +20,7 @@ using LbmArgs = Args<
 >;
 }
 
-template<typename T, typename Desc, typename Coll>
+template<typename T, typename Desc, typename Coll, uint64_t N>
 saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	using namespace kel::lbm;
 
@@ -211,11 +211,11 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& coupling = an.template get<"coupling">();
 
 	if(coupling.stl_view() == "hlbm"){
-		return lbm_main<FloatT,DescT,method::Hlbm>(args);
+		return lbm_main<FloatT,DescT,method::Hlbm,1u>(args);
 	} else if(coupling.stl_view() == "fplbm"){
-		return lbm_main<FloatT,DescT,method::FpLbm>(args);
+		return lbm_main<FloatT,DescT,method::FpLbm,1u>(args);
 	} else if(coupling.stl_view() == "psm"){
-		return lbm_main<FloatT,DescT,method::Psm>(args);
+		return lbm_main<FloatT,DescT,method::Psm,1u>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");

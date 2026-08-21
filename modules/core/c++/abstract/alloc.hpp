@@ -2,7 +2,7 @@
 
 namespace kel {
 namespace lbm {
-namespace all {
+namespace rep {
 struct Native {};
 }
 }

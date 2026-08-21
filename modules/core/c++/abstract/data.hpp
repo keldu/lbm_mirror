@@ -2,11 +2,14 @@
 
 #include "schema.hpp"
 #include "encode.hpp"
+#include "common.hpp"
 
 namespace kel {
 namespace lbm {
-template<typename Schema, typename Encode = enc::Native>
-class data final {};
+template<typename Schema, typename Encode = rep::Native>
+class data final {
+	static_assert(always_false<Schema,Encode>, "Invalid schema + encode in data specialization");
+};
 
 template<typename T, uint64_t N>
 class data<sch::Primitive<T,N>,Encode> final {
