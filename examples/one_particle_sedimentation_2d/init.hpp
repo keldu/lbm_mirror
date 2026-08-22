@@ -12,10 +12,9 @@ saw::error_or<void> init(
 		saw::data<sch::MacroStruct<T,Desc>>& macros,
 		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
-	(void) conv;
-
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
+
 	// Set everything as walls
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -25,6 +24,7 @@ saw::error_or<void> init(
 		info_f.get_dims(),
 		{}
 	);
+
 	// Fluid
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -35,26 +35,6 @@ saw::error_or<void> init(
 		{{1u,1u}}
 	);
 	
-	// Inflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(3u);
-		},
-		{{0u,0u}},
-		{{1u,dim_y}},
-		{{0u,1u}}
-	);
-	
-	// Outflow
-	iterator<Desc::D>::apply(
-		[&](auto& index){
-			info_f.at(index).set(4u);
-		},
-		{{dim_x-1u,0u}},
-		{{dim_x, dim_y}},
-		{{0u,1u}}
-	);
-	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
 	auto& vel_f = macros.template get<"momentum">();

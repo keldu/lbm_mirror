@@ -34,7 +34,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "stdkr_2d_gpu" / an.template get<"coupling">().stl_view();
+	auto out_dir = lbm_dir / "ops_2d" / an.template get<"coupling">().stl_view();
 
 	{
 		std::error_code ec;
@@ -144,7 +144,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_csv_file(out_dir,"stdkr_2d",i.get(), *lbm_macro_data_ptr);
+				auto eov = write_csv_file(out_dir,"ops_2d",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -173,7 +173,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
 			print_status = false;
 		}
-		print_progress_bar(i.get(), time_steps.get()-1u);
+		print_progress_bar(i.get()+1u, time_steps.get());
 	}
 	// After Loop
 	sycl_q.wait();
@@ -184,7 +184,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,std::string{"ops_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

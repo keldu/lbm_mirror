@@ -8,12 +8,11 @@
 , version
 , adaptive-cpp
 , kel
-, particle_coupling ? "fplbm"
 }:
 
 let
 in stdenv.mkDerivation {
-	pname = "${pname}-examples-stdkr_2d_gpu_${particle_coupling}";
+	pname = "${pname}-examples-stdkr_2d_gpu";
 	inherit version;
 	src = ./..;
 
