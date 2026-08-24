@@ -8,6 +8,7 @@ namespace lbm {
 template<typename T, typename Desc, typename Coll>
 saw::error_or<void> step(
 		const converter<T>& conv,
+		const saw::data<sch::Scalar<T>>& tau,
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
@@ -48,7 +49,7 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.75};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -74,9 +75,19 @@ saw::error_or<void> step(
 							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
 								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
 									saw::data<sch::Vector<T,Desc::D>> vel;
+									saw::data<T> scale;
+									{
+										scale.set([&](){
+											if(t_i.get() > 2048u){
+												return 1.0f;
+											}
+
+											return t_i.get() / 2048.0f;
+										}());
+									}
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle() * scale;
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -123,8 +134,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.75};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.75};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -199,8 +210,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.75};
+			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.75};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 

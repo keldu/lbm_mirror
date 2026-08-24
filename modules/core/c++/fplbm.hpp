@@ -92,7 +92,7 @@ public:
 		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
 
-		vel = vel + force * half;
+		vel = vel + force * half / rho;
 
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
