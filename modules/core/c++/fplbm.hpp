@@ -86,16 +86,16 @@ public:
 		auto& rho_f = macros.template get<"density">();
 		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
 
-		auto& vel_f = macros.template get<"momentum">();
-		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
-
 		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
 
+		auto& vel_f = macros.template get<"momentum">();
+		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
+
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
 		vel = vel + force * half / rho;
 
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		using dfi = df_info<T,Descriptor>;
 
@@ -186,8 +186,8 @@ public:
 		eps.at({}) = 1.5f;
 		
 		saw::data<sch::Scalar<T>> sss;
-		sss.at({}) = one.at({}) / sub_steps.template cast_to<T>();
-		auto vel_s = (pirb_pos-pirb_pos_old) / sss;
+		sss.at({}) = sub_steps.template cast_to<T>();
+		auto vel_s = (pirb_pos-pirb_pos_old) * sss;
 
 		saw::data<sch::Vector<T,Descriptor::D>> force_p{};
 
@@ -213,7 +213,7 @@ public:
 		pirb_acc = force_p / (two * pg.template get<"total_mass">().at({}));
 
 		for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
-			verlet_step_lambda<T,Descriptor::D>(pi,sss);
+			verlet_step_lambda<T,Descriptor::D>(pi,one / sss);
 		}
 	}
 };
