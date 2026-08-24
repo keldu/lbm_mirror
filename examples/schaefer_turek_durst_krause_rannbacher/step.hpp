@@ -8,7 +8,6 @@ namespace lbm {
 template<typename T, typename Desc, typename Coll>
 saw::error_or<void> step(
 		const converter<T>& conv,
-		const saw::data<sch::Scalar<T>>& tau,
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
@@ -20,8 +19,6 @@ saw::error_or<void> step(
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
-
-
 	
 	if constexpr ( std::is_same_v<Coll, method::Hlbm> ){
 		q.submit([&](acpp::sycl::handler& h){
@@ -78,11 +75,11 @@ saw::error_or<void> step(
 									saw::data<T> scale;
 									{
 										scale.set([&](){
-											if(t_i.get() > 2048u){
+											if(t_i.get() > 1024u){
 												return 1.0f;
 											}
 
-											return t_i.get() / 2048.0f;
+											return t_i.get() / 1024.0f;
 										}());
 									}
 									{
