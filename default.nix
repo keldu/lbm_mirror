@@ -36,7 +36,7 @@ let
 		inherit stdenv llvmPackages lld;
 
 		config = {
-			rocm = true;
+			rocm = false;
 		};
 	};
 
