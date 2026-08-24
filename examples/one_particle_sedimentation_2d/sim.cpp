@@ -46,7 +46,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{0.41 / dim_y}},
+		{{0.02 / dim_x}},
 		// delta_t
 		{{1.067e-4}}
 	};

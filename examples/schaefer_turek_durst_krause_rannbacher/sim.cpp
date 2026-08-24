@@ -144,7 +144,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_csv_file(out_dir,"stdkr_2d",i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -189,7 +189,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			return eov;
 		}
 	}
-
+	{
+		auto eov = write_csv_file(out_dir,"stdkr_2d",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	sycl_q.wait();
 	return saw::make_void();
 }

@@ -42,12 +42,6 @@ using Float16 = Primitive<FloatingPoint,2u>;
 using Float32 = Primitive<FloatingPoint,4u>;
 using Float64 = Primitive<FloatingPoint,8u>;
 
-template<typename Sch, uint64_t StorageBytes, uint64_t InterfaceBytes>
-struct MixedPrecision {
-	using Meta = Void;
-	using Inner = Sch;
-};
-
 template<typename T, uint64_t... Dims>
 struct FixedArray {
 	using Meta = Void;

@@ -30,7 +30,6 @@ saw::error_or<void> step(
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
-
 				hlbm_reset.apply(fields,macros,index,t_i);
 			});
 		}).wait();

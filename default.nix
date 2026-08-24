@@ -86,7 +86,7 @@ in rec {
 		};
 	};
 
-	examples = {
+	ex = {
 		cavity_2d_gpu = pkgs.callPackage ./examples/cavity_2d_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
@@ -165,11 +165,11 @@ in rec {
 		poiseulle_particles_2d_all_gpu = pkgs.symlinkJoin {
 			name = "poiseulle_particles_2d_all_gpu";
 			paths = [
-				examples.poiseulle_particles_2d_bgk_gpu
-				examples.poiseulle_particles_2d_psm_gpu
-				examples.poiseulle_particles_2d_hlbm_gpu
-				examples.poiseulle_particles_2d_fplbm_gpu
-				examples.poiseulle_particles_2d_ibm_gpu
+				ex.poiseulle_particles_2d_bgk_gpu
+				ex.poiseulle_particles_2d_psm_gpu
+				ex.poiseulle_particles_2d_hlbm_gpu
+				ex.poiseulle_particles_2d_fplbm_gpu
+				ex.poiseulle_particles_2d_ibm_gpu
 			];
 		};
 		
@@ -241,7 +241,7 @@ in rec {
 		settling_particles = pkgs.symlinkJoin {
 			name = "kel-lbm-settling_particles-${version}";
 			paths = [
-				examples.settling_cubes_2d_ibm_gpu
+				ex.settling_cubes_2d_ibm_gpu
 			];
 		};
 	};
@@ -255,36 +255,36 @@ in rec {
 			inherit kel;
 		};
 
-		examples = pkgs.symlinkJoin {
+		ex = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-${version}";
 			paths = [
 				kel.lbm.core
 				kel.lbm.sycl
-				examples.meta
-				examples.poiseulle_particles_2d_bgk_gpu
-				examples.poiseulle_particles_2d_psm_gpu
-				examples.poiseulle_particles_2d_hlbm_gpu
-				examples.poiseulle_particles_2d_fplbm_gpu
-				examples.poiseulle_particles_2d_ibm_gpu
+				ex.meta
+				ex.poiseulle_particles_2d_bgk_gpu
+				ex.poiseulle_particles_2d_psm_gpu
+				ex.poiseulle_particles_2d_hlbm_gpu
+				ex.poiseulle_particles_2d_fplbm_gpu
+				ex.poiseulle_particles_2d_ibm_gpu
 			];
 		};
 
 		poiseulle_particles_2d = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-poiseulle_particles_2d-${version}";
 			paths = [
-				examples.poiseulle_particles_2d_bgk_gpu
-				examples.poiseulle_particles_2d_psm_gpu
-				examples.poiseulle_particles_2d_hlbm_gpu
-				examples.poiseulle_particles_2d_fplbm_gpu
+				ex.poiseulle_particles_2d_bgk_gpu
+				ex.poiseulle_particles_2d_psm_gpu
+				ex.poiseulle_particles_2d_hlbm_gpu
+				ex.poiseulle_particles_2d_fplbm_gpu
 			];
 		};
 		stokes_drag_2d = pkgs.symlinkJoin {
 			name = "kel-lbm-sims-stokes_drag_2d-${version}";
 			paths = [
-				examples.stokes_drag_particle_2d_bgk_gpu
-				examples.stokes_drag_particle_2d_psm_gpu
-				examples.stokes_drag_particle_2d_hlbm_gpu
-				examples.stokes_drag_particle_2d_fplbm_gpu
+				ex.stokes_drag_particle_2d_bgk_gpu
+				ex.stokes_drag_particle_2d_psm_gpu
+				ex.stokes_drag_particle_2d_hlbm_gpu
+				ex.stokes_drag_particle_2d_fplbm_gpu
 			];
 		};
 
@@ -297,5 +297,5 @@ in rec {
 		};
 	};
 
-	default = release.examples;
+	default = release.ex;
 }

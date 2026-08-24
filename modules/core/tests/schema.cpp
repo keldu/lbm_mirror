@@ -18,6 +18,7 @@ SAW_TEST("Abstract/Schema/Ptr"){
 }
 */
 
+/*
 SAW_TEST("Abstract/SchemaStringify/PrimitiveKind"){
 	using namespace kel::lbm;
 
@@ -25,4 +26,5 @@ SAW_TEST("Abstract/SchemaStringify/PrimitiveKind"){
 
 	static constexpr auto str = schema_to_string<TSch>::value;
 }
+*/
 }

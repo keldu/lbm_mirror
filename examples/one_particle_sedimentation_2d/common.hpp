@@ -14,15 +14,17 @@ namespace kel {
 namespace lbm {
 
 /**
- * length 2.2m
- * height 0.41m
+ * length 20mm
+ * height 80mm
  * viscosity 10^-3
- * particle diameter 0.1m
- * position at (0.16m,0.2m)
+ * particle radius 1.25mm
+ * position at (10mm,40mm)
+ * particle density 0.00125g/mm³
+ * fluid density 0.001g/mm³
  */
 
-constexpr uint64_t dim_y = 512ul;
-constexpr uint64_t dim_x = 256ul;
+constexpr uint64_t dim_y = 800ul;
+constexpr uint64_t dim_x = 200ul;
 
 constexpr uint64_t particle_amount = 1ul;
 
