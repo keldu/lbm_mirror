@@ -92,10 +92,9 @@ public:
 		auto& vel_f = macros.template get<"momentum">();
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
 
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
-		vel = vel + force * half / rho;
-
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
+		vel = vel + force * half / rho;
+		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
 		using dfi = df_info<T,Descriptor>;
 
@@ -176,6 +175,9 @@ public:
 		}
 		auto& aabb = eo_aabb.get_value();
 
+		saw::data<sch::Scalar<T>> three;
+		three.at({}).set(3.0f);
+
 		saw::data<sch::Scalar<T>> two;
 		two.at({}).set(2.0f);
 
@@ -204,7 +206,7 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s * rho - vel * rho ) * two * flip_por;
+			force = ( vel_s * rho - vel * rho ) * (two / three) * flip_por;
 
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
