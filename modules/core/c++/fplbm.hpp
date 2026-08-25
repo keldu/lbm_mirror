@@ -206,13 +206,15 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s * rho - vel * rho ) * (two / three) * flip_por;
+			force = ( vel_s * rho - vel * rho ) * rho * flip_por;
+			// force = ( vel_s * rho - vel * rho ) * flip_por;
+			// force = ( vel_s * rho - vel * rho ) /* (two / three) */ * flip_por;
 
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
 
 		auto& pirb_acc = pirb.template get<"acceleration">();
-		pirb_acc = force_p / (two * pg.template get<"total_mass">().at({}));
+		pirb_acc = force_p / (pg.template get<"total_mass">().at({}));
 
 		for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
 			verlet_step_lambda<T,Descriptor::D>(pi,one / sss);
