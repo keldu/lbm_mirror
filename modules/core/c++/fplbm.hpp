@@ -49,7 +49,7 @@ public:
 			auto& vel_f = macros.template get<"momentum">();
 			auto& vel = vel_f.at(index);
 
-			compute_rho_u<T,Descriptor>(dfs,rho,vel);
+			compute_rho_momentum<T,Descriptor>(dfs,rho,vel);
 		}
 	}
 };
@@ -92,9 +92,10 @@ public:
 		auto& vel_f = macros.template get<"momentum">();
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
 
+		// We already computed this in reset
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		auto eq = equilibrium<T,Descriptor>(rho,vel);
-		vel = vel + force * half / rho;
+		vel = vel + force * half;
+		auto eq = equilibrium<T,Descriptor>(rho,vel / rho);
 
 		using dfi = df_info<T,Descriptor>;
 
@@ -109,12 +110,12 @@ public:
 			for(uint64_t d{0u}; d < Descriptor::D; ++d){
 				ci.at({{d}}).set(static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d]));
 			}
-			auto ci_dot_u = saw::math::dot(ci,vel);
+			auto ci_dot_u = saw::math::dot(ci,vel/rho);
 
 			saw::data<sch::Scalar<T>> w;
 			w.at({}).set(dfi::weights[i]);
 
-			auto term1 = (ci-vel) * dfi_inv_cs2;
+			auto term1 = (ci-vel/rho) * dfi_inv_cs2;
 			auto term2 = ci * (ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2);
 
 			auto force_projection = saw::math::dot(term1 + term2, force);
