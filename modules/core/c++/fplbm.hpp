@@ -93,8 +93,8 @@ public:
 		saw::data<sch::Vector<T,Descriptor::D>> vel = vel_f.at(index);
 
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		vel = vel + force * half / rho;
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
+		vel = vel + force * half / rho;
 
 		using dfi = df_info<T,Descriptor>;
 
@@ -206,8 +206,7 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s * rho - vel * rho ) * rho * flip_por;
-			// force = ( vel_s * rho - vel * rho ) * flip_por;
+			force = ( vel_s * rho - vel * rho ) * flip_por;
 			// force = ( vel_s * rho - vel * rho ) /* (two / three) */ * flip_por;
 
 			force_p = force_p - force;
