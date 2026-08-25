@@ -87,12 +87,6 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			return eov;
 		}
 	}
-	{
-		auto eov = write_vtk_file(out_dir,"initial_state",0u,*lbm_data_ptr);
-		if(eov.is_error()){
-			return eov;
-		}
-	}
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};

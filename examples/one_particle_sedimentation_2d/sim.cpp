@@ -48,10 +48,10 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		// delta_x
 		{{0.02 / dim_x}},
 		// delta_t
-		{{1.067e-4}}
+		{{1.5e-6}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.5 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.02});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();

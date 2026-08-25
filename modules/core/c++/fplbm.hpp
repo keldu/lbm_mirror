@@ -136,8 +136,14 @@ class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
 public:
 	using Component = cmpt::FpLbmOneParticle;
 private:
+	saw::data<sch::Vector<T,Descriptor::D>> global_force_;
 public:
-	component() = default;
+	component():
+		global_force_{}
+	{}
+	component(saw::data<sch::Vector<T,Descriptor::D>> global_force__):
+		global_force_{global_force__}
+	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& pg, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step, saw::data<sch::UInt64> sub_steps) const {
@@ -148,7 +154,7 @@ public:
 		// auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"momentum">();
+		auto& mom_f = macros.template get<"momentum">();
 		auto& por_f = macros.template get<"porosity">();
 		auto& force_f = macros.template get<"force">();
 
@@ -170,7 +176,7 @@ public:
 		auto& p_coll = pg.template get<"collision">().at({});
 		auto& p_rad = p_coll.template get<"radius">();
 
-		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,{{0u}},vel_f.meta());
+		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,{{0u}},mom_f.meta());
 		if(eo_aabb.is_error()){
 			return;
 		}
@@ -183,7 +189,7 @@ public:
 		two.at({}).set(2.0f);
 
 		saw::data<sch::Scalar<T>> one;
-		one.at({}) = 1.0;
+		one.at({}) = 1.0f;
 		
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}) = 1.5f;
@@ -192,11 +198,11 @@ public:
 		sss.at({}) = sub_steps.template cast_to<T>();
 		auto vel_s = (pirb_pos-pirb_pos_old) * sss;
 
-		saw::data<sch::Vector<T,Descriptor::D>> force_p{};
+		saw::data<sch::Vector<T,Descriptor::D>> force_p = global_force_;
 
 		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
 			auto& force = force_f.at(index_f);
-			auto& vel = vel_f.at(index_f);
+			auto& mom = mom_f.at(index_f);
 			auto& por = por_f.at(index_f);
 			auto& rho = rho_f.at(index_f);
 
@@ -207,8 +213,8 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s * rho - vel * rho ) * flip_por;
-			// force = ( vel_s * rho - vel * rho ) /* (two / three) */ * flip_por;
+			force = ( vel_s - mom) * flip_por;
+			// force = (vel_s - mom) * flip_por / (flip_por / two + one);
 
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());

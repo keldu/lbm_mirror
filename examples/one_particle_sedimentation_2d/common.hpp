@@ -62,7 +62,8 @@ using MacroStruct = Struct<
 	Member<VelChunk<T,Desc>, "momentum">,
 	Member<RhoChunk<T>, "density">,
 	Member<ScalarChunk<T,Desc>, "porosity">,
-	Member<VelChunk<T,Desc>, "force">
+	Member<VelChunk<T,Desc>, "force">,
+	Member<VelChunk<T,Desc>, "external_force">
 >;
 
 template<typename T, typename Desc>

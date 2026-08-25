@@ -19,8 +19,7 @@ saw::error_or<void> step(
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 	auto& porous_f = macros.template get<"porosity">();
-
-
+	auto& ext_force_f = macros.template get<"external_force">();
 	
 	if constexpr ( std::is_same_v<Coll, method::Hlbm> ){
 		q.submit([&](acpp::sycl::handler& h){
@@ -31,6 +30,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 				hlbm_reset.apply(fields,macros,index,t_i);
+
 			});
 		}).wait();
 		q.submit([&](acpp::sycl::handler& h){
@@ -49,7 +49,6 @@ saw::error_or<void> step(
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{1.0};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
@@ -67,27 +66,6 @@ saw::error_or<void> step(
 					break;
 					case 2u:
 						collision.apply(fields,macros,index,t_i);
-						break;
-					case 3u:
-						{
-							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
-								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
-									saw::data<sch::Vector<T,Desc::D>> vel;
-									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
-										vel.at({{1u}}) = 0.0f;
-									}
-									return vel;
-								}()
-							};
-							flow_in.apply(fields,index,t_i);
-						}
-						collision.apply(fields,macros,index,t_i);
-						break;
-					case 4u:
-						flow_out.apply(fields,index,t_i);
-						collision.apply(fields,macros,index,t_i);
 					break;
 					default:
 					break;
@@ -104,11 +82,16 @@ saw::error_or<void> step(
 				}
 				
 				fplbm_reset.apply(fields,macros,index,t_i);
+
+				// TODO apply external force
+				// auto& ext_force = ext_force_f.at(index);
 			});
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+			saw::data<sch::Vector<T,Desc::D>> gf;
+			gf.at({{1u}}) = conv.acceleration_si_to_lbm({-9.81}).handle();
+			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part{gf};
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 				saw::data<sch::FixedArray<sch::UInt64,1u>> index;

@@ -21,8 +21,8 @@ namespace lbm {
  * position at (0.16m,0.2m)
  */
 
-constexpr uint64_t dim_y = 512ul;
-constexpr uint64_t dim_x = static_cast<uint64_t>(dim_y * (220.0 / 41.0));
+constexpr uint64_t dim_y = 41u;
+constexpr uint64_t dim_x = 220u;
 
 constexpr uint64_t particle_amount = 1ul;
 
