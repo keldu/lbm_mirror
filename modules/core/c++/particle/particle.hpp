@@ -247,10 +247,14 @@ constexpr auto broadphase_collision_check = [](
 	return broadphase_collision_distance_squared<T,D,Collision>(left,coll_l,right,coll_r).first;
 };
 
+template<typename T,uint64_t D, uint64_t PartAmount>
+constexpr auto particle_dem_lambda = [](saw::data<sch::ParticleGroup<T,D,PartAmount, coll::Spheroid<T>>>& particle, saw::data<sch::Scalar<T>> time_step_delta){
+	for(uint64_t i{0u}; i < PartAmount; ++i){
+		auto has_collided = false;
+	}
+};
 
 
-namespace impl {
-}
 
 }
 }
