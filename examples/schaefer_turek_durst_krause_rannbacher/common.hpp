@@ -19,6 +19,7 @@ namespace lbm {
  * viscosity 10^-3
  * particle diameter 0.1m
  * position at (0.16m,0.2m)
+ * velocity of 0.3 m/s from 1.2/0.41 * x - 1.2/0.41² * x² at x=0.41/2
  */
 
 constexpr uint64_t dim_y = 41u;
@@ -29,38 +30,39 @@ constexpr uint64_t particle_amount = 1ul;
 namespace sch {
 using namespace saw::schema;
 
-using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
+template<uint64_t N>
+using InfoChunk = Chunk<UInt8, 0u, dim_x*N, dim_y*N>;
 
-template<typename T, typename Desc>
-using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
+template<typename T, typename Desc, uint64_t N>
+using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x*N, dim_y*N>;
 
-template<typename T, typename Desc>
-using ScalarChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
+template<typename T, typename Desc, uint64_t N>
+using ScalarChunk = Chunk<Scalar<T>, 0u, dim_x*N, dim_y*N>;
 
-template<typename T, typename Desc>
-using VectorChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+template<typename T, typename Desc, uint64_t N>
+using VectorChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x*N, dim_y*N>;
 
-template<typename T, typename Desc>
+template<typename T, typename Desc, uint64_t N = 1u>
 using ChunkStruct = Struct<
-	Member<InfoChunk, "info">,
-	Member<DfChunk<T,Desc>, "dfs">,
-	Member<DfChunk<T,Desc>, "dfs_old">,
-	Member<VectorChunk<T,Desc>, "particle_N">,
-	Member<ScalarChunk<T,Desc>, "particle_D">
+	Member<InfoChunk<N>, "info">,
+	Member<DfChunk<T,Desc,N>, "dfs">,
+	Member<DfChunk<T,Desc,N>, "dfs_old">,
+	Member<VectorChunk<T,Desc,N>, "particle_N">,
+	Member<ScalarChunk<T,Desc,N>, "particle_D">
 >;
 
-template<typename T, typename Desc>
-using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+template<typename T, typename Desc, uint64_t N>
+using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x*N, dim_y*N>;
 
-template<typename T>
-using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
+template<typename T, uint64_t N>
+using RhoChunk = Chunk<Scalar<T>, 0u, dim_x*N, dim_y*N>;
 
-template<typename T, typename Desc>
+template<typename T, typename Desc, uint64_t N = 1u>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
-	Member<RhoChunk<T>, "density">,
-	Member<ScalarChunk<T,Desc>, "porosity">,
-	Member<VelChunk<T,Desc>, "force">
+	Member<VelChunk<T,Desc,N>, "momentum">,
+	Member<RhoChunk<T,N>, "density">,
+	Member<ScalarChunk<T,Desc,N>, "porosity">,
+	Member<VelChunk<T,Desc,N>, "force">
 >;
 
 template<typename T, typename Desc>

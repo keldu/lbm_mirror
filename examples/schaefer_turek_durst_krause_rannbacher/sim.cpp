@@ -46,19 +46,21 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{0.41 / dim_y}},
+		{{0.41 / (dim_y*N)}},
 		// delta_t
-		{{1.067e-4}}
+		{{3e-3/(N*N)}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.5 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{1e-3},{0.3},{0.1});
+
+	std::cout<<"Inflow free flow velocity: "<<conv.velocity_si_to_lbm({0.3}).handle().get()<<std::endl;
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
-	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
-	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
+	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc,N>>>();
+	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc,N>>>();
 	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
 
-	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
+	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc,N>,sch::MacroStruct<T,Desc,N>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
@@ -82,14 +84,14 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	sycl_q.wait();
 	{
-		auto eov = init<T,Desc,Coll>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
+		auto eov = init<T,Desc,Coll,N>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
-	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
-	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
+	saw::data<sch::ChunkStruct<T,Desc,N>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
+	saw::data<sch::MacroStruct<T,Desc,N>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
 	saw::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
@@ -123,7 +125,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc,Coll>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
+			auto eov = step<T,Desc,Coll,N>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
 			if(eov.is_error()){
 				return eov;
 			}
@@ -212,11 +214,11 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& coupling = an.template get<"coupling">();
 
 	if(coupling.stl_view() == "hlbm"){
-		return lbm_main<FloatT,DescT,method::Hlbm,1u>(args);
+		return lbm_main<FloatT,DescT,method::Hlbm,2u>(args);
 	} else if(coupling.stl_view() == "fplbm"){
-		return lbm_main<FloatT,DescT,method::FpLbm,1u>(args);
+		return lbm_main<FloatT,DescT,method::FpLbm,2u>(args);
 	} else if(coupling.stl_view() == "psm"){
-		return lbm_main<FloatT,DescT,method::Psm,1u>(args);
+		return lbm_main<FloatT,DescT,method::Psm,2u>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");

@@ -23,8 +23,8 @@ namespace lbm {
  * fluid density 0.001g/mm³
  */
 
-constexpr uint64_t dim_y = 800ul;
 constexpr uint64_t dim_x = 200ul;
+constexpr uint64_t dim_y = 800ul;
 
 constexpr uint64_t particle_amount = 1ul;
 

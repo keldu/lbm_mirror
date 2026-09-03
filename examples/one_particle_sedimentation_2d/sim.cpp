@@ -51,7 +51,8 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		{{1.5e-6}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.02});
+	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{2});
+	std::cout<<"Position: "<<conv.meter_si_to_lbm({{0.01}}).handle().get()<<", "<<conv.meter_si_to_lbm({{0.04}}).handle().get()<<std::endl;
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();

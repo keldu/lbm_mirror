@@ -5,11 +5,11 @@
 namespace kel {
 namespace lbm {
 
-template<typename T, typename Desc, typename Coll>
+template<typename T, typename Desc, typename Coll, uint64_t N>
 saw::error_or<void> step(
 		const converter<T>& conv,
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
+		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc,N>>,encode::Sycl<saw::encode::Native>>& fields,
+		saw::data<sch::Ptr<sch::MacroStruct<T,Desc,N>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
 		saw::data<sch::UInt64> t_i,
 		device& dev
@@ -46,7 +46,7 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.59};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -121,8 +121,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.59};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.59};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -197,8 +197,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.59};
+			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.59};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 

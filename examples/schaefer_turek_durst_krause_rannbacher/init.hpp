@@ -5,11 +5,11 @@
 namespace kel {
 namespace lbm {
 
-template<typename T, typename Desc, typename Coll>
+template<typename T, typename Desc, typename Coll, uint64_t N>
 saw::error_or<void> init(
 		const converter<T>& conv,
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros,
+		saw::data<sch::ChunkStruct<T,Desc,N>>& fields,
+		saw::data<sch::MacroStruct<T,Desc,N>>& macros,
 		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
 	(void) conv;

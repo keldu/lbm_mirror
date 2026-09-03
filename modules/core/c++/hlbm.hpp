@@ -102,12 +102,6 @@ public:
 template<typename T, typename Desc, typename Encode>
 class component<T, Desc, cmpt::HlbmOneParticle, Encode> final {
 private:
-/*
-	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema, uint64_t i>
-	void apply_i(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_groups, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step) const {
-		// if constexpr ( i < )
-	}
-*/
 public:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& part_group, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step, saw::data<sch::UInt64> sub_steps) const {
@@ -167,10 +161,6 @@ public:
 			auto vel_p_old = (pirb_pos-pirb_pos_old) / ts;
 
 			iterator<Desc::D>::apply([&](const auto& index_f) -> void{
-				// ask for the d_k value here.
-				// For every value im iterating over I need sth
-				// std::cout<<"Pos: "<<index.at({0u}).get()<<" "<<index.at({1u}).get()<<std::endl;
-			
 				auto& dfs = dfs_old_f.at(index_f);
 				saw::data<sch::Vector<T,Desc::D>> rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
 				saw::data<sch::Scalar<T>> eps;
@@ -207,9 +197,12 @@ public:
 
 					momentum = momentum + ei_dfs;
 				}
-				// technically needs to adjust for rotation as well
+
+				// TODO technically needs to adjust for rotation as well
 
 				auto& rho = mrho_f.at(index_f);
+
+				macros.template get<"force">().at(index_f) = momentum;
 				force_p = force_p + momentum;
 			},start,stop);
 			

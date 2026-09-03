@@ -75,7 +75,7 @@ saw::error_or<void> init(
 
 	{
 		saw::data<sch::Scalar<T>> radius_p;
-		radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
+		radius_p.at({}).set(conv.meter_si_to_lbm({{0.00125}}).handle().get());
 		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
 		saw::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
