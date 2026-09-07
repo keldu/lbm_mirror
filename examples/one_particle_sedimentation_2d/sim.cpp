@@ -145,7 +145,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_csv_file(out_dir,"ops_2d",i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,"ops_2d",i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}

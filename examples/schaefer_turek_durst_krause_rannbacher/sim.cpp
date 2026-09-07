@@ -132,7 +132,6 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 
 		sycl_q.wait();
-		/*
 		if(i.get() % 64u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
@@ -141,13 +140,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,std::string{"ops_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
 		}
-		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;

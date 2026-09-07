@@ -175,7 +175,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{32u});
 			});
 		}).wait();
 

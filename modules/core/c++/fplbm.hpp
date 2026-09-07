@@ -352,7 +352,7 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			force = ( vel_s - mom) * two * flip_por;
+			force = global_force_ * por + ( vel_s - mom) * two * flip_por;
 			// force = (vel_s - mom) * flip_por / (flip_por / two + one);
 
 			force_p = force_p - force;
