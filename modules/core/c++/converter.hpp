@@ -86,6 +86,11 @@ public:
 	saw::data<sch::Pure<T>> kinematic_viscosity_si_to_tau(const saw::data<sch::SiKinematicViscosity<T>>& kin_si) const {
 		return saw::data<sch::Pure<T>>{saw::data<typename saw::unit_division<sch::Pure<T>, sch::LbmKinematicViscosity<T>>::Schema >{df_info<T,Desc>::inv_cs2} * kinematic_viscosity_si_to_lbm(kin_si) + saw::data<sch::Pure<T>>{0.5}};
 	}
+
+	template<typename Desc>
+	saw::data<sch::Pure<T>> kinematic_viscosity_lbm_to_tau(const saw::data<sch::LbmKinematicViscosity<T>>& kin_lbm) const {
+		return saw::data<sch::Pure<T>>{saw::data<typename saw::unit_division<sch::Pure<T>, sch::LbmKinematicViscosity<T>>::Schema >{df_info<T,Desc>::inv_cs2} * kin_lbm + saw::data<sch::Pure<T>>{0.5}};
+	}
 };
 }
 }

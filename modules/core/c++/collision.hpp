@@ -4,6 +4,7 @@
 #include "component.hpp"
 #include "equilibrium.hpp"
 #include "chunk.hpp"
+#include "lbm_unit.hpp"
 
 namespace kel {
 namespace lbm {
@@ -29,6 +30,11 @@ public:
 	component(const saw::data<T>& relaxation__):
 		relaxation_{relaxation__},
 		frequency_{saw::data<T>{1} / relaxation_}
+	{}
+
+	component(const saw::data<sch::Pure<T>>& relaxation__):
+		relaxation_{relaxation__.handle()},
+		frequency_{saw::data<T>{typename saw::native_data_type<T>::type(1)} / relaxation_}
 	{}
 
 	using Component = cmpt::BGK;

@@ -60,6 +60,9 @@ private:
 	saw::data<T> relaxation_;
 	saw::data<T> frequency_;
 public:
+	using Component = cmpt::FpLbm;
+public:
+
 	component(typename saw::native_data_type<T>::type relaxation__):
 		relaxation_{{relaxation__}},
 		frequency_{saw::data<T>{1} / relaxation_}
@@ -70,8 +73,10 @@ public:
 		frequency_{saw::data<T>{1} / relaxation_}
 	{}
 
-	using Component = cmpt::FpLbm;
-
+	component(const saw::data<sch::Pure<T>>& relaxation__):
+		relaxation_{relaxation__.handle()},
+		frequency_{saw::data<T>{typename saw::native_data_type<T>::type(1)} / relaxation_}
+	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
@@ -359,7 +364,7 @@ public:
 		}, aabb.template get<"a">(), aabb.template get<"b">());
 
 		auto& pirb_acc = pirb.template get<"acceleration">();
-		pirb_acc = force_p / (pg.template get<"total_mass">().at({}));
+		pirb_acc = global_force_ +  force_p / (pg.template get<"total_mass">().at({}));
 
 		for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
 			verlet_step_lambda<T,Descriptor::D>(pi,one / sss);

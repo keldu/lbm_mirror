@@ -48,10 +48,13 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		// delta_x
 		{{0.02 / dim_x}},
 		// delta_t
-		{{1.5e-6}}
+		{{3e-7}}
 	};
+	saw::data<sch::SiKinematicViscosity<T>> kin_vis_si{1e-3};
+	auto kin_vis_lbm = conv.kinematic_viscosity_si_to_lbm(kin_vis_si);
+	auto tau = conv.template kinematic_viscosity_lbm_to_tau<Desc>(kin_vis_lbm);
 	
-	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{2});
+	print_lbm_meta<T,Desc>(conv,kin_vis_si,{1e-4},{2});
 	std::cout<<"Position: "<<conv.meter_si_to_lbm({{0.01}}).handle().get()<<", "<<conv.meter_si_to_lbm({{0.04}}).handle().get()<<std::endl;
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
@@ -123,21 +126,29 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{64u*1024ul};
+	saw::data<sch::UInt64> time_steps{1024ul * 1024ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
 	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc,Coll>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
+			auto eov = step<T,Desc,Coll>(
+				conv, 
+				tau, 
+				lsd_view, 
+				lsdm_view, 
+				lsdp_view, 
+				i, 
+				dev
+			);
 			if(eov.is_error()){
 				return eov;
 			}
 		}
 
 		sycl_q.wait();
-		if(i.get() % 64u == 0u){
+		if(i.get() % 1024u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){

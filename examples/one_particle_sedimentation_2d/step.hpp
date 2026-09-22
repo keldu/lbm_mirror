@@ -8,6 +8,7 @@ namespace lbm {
 template<typename T, typename Desc, typename Coll>
 saw::error_or<void> step(
 		const converter<T>& conv,
+		const saw::data<sch::Pure<T>>& tau,
 		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
 		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
 		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
@@ -47,7 +48,7 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{tau};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
@@ -99,14 +100,14 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{16u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{32u});
 			});
 		}).wait();
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{tau};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{tau};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -182,7 +183,7 @@ saw::error_or<void> step(
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{1.0};
-			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{1.0};
+			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{tau};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 

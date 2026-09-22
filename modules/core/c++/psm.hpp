@@ -48,6 +48,11 @@ public:
 		frequency_ = one / relaxation_;
 	}
 
+	component(const saw::data<sch::Pure<T>>& relaxation__):
+		relaxation_{relaxation__.handle()},
+		frequency_{saw::data<T>{typename saw::native_data_type<T>::type(1)} / relaxation_}
+	{}
+
 	template<typename CellFieldSchema, typename MacroFieldSchema>
 	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
 	
