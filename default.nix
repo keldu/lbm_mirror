@@ -232,6 +232,11 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+		
+		throat_2d = pkgs.callPackage ./examples/throat_clog_2d/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
 
 		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;

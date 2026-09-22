@@ -34,6 +34,26 @@ saw::error_or<void> init(
 		info_f.get_dims(),
 		{{1u,1u}}
 	);
+
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			auto dims = info_f.get_dims();
+			auto width = dims.at({{0u}});
+			auto height = dims.at({{1u}});
+			// 
+			auto w2 = width / 2;
+			auto h4 = height / 4;
+			// Circle Top
+			saw::data<sch::FixedArray<sch::Int64,2u>> top_pos{{w2.get(),(height+h4).get()}};
+
+			// Circle Bot
+			saw::data<sch::FixedArray<sch::Int64,2u>> bot_pos{{w2.get(),-h4.get()}};
+
+		},
+		{},
+		info_f.get_dims(),
+		{}
+	);
 	
 	// Inflow
 	iterator<Desc::D>::apply(
