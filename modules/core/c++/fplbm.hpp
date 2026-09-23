@@ -342,7 +342,8 @@ public:
 		sss.at({}) = sub_steps.template cast_to<T>();
 		auto vel_s = (pirb_pos-pirb_pos_old) * sss;
 
-		saw::data<sch::Vector<T,Descriptor::D>> force_p = global_force_;
+		saw::data<sch::Vector<T,Descriptor::D>> force_p;
+		//= global_force_;
 
 		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
 			auto& force = force_f.at(index_f);
