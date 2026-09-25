@@ -25,6 +25,19 @@ namespace lbm {
 constexpr uint64_t dim_y = 41u;
 constexpr uint64_t dim_x = 220u;
 
+template<uint64_t N>
+struct dimensions {
+	static constexpr std::array<uint64_t,2u> calculate(){
+		return {dim_x * N + 1u, dim_y * N + 1u};
+	}
+};
+
+template<uint64_t N>
+constexpr std::array<uint64_t,2u> dims{
+	dim_x * N + 1u,
+	dim_y * N + 1u
+};
+
 constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {

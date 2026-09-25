@@ -41,7 +41,7 @@ saw::error_or<void> init(
 			info_f.at(index).set(3u);
 		},
 		{{0u,0u}},
-		{{1u,dim_y}},
+		{{1u,dim_y*N}},
 		{{0u,1u}}
 	);
 	
@@ -50,8 +50,8 @@ saw::error_or<void> init(
 		[&](auto& index){
 			info_f.at(index).set(4u);
 		},
-		{{dim_x-1u,0u}},
-		{{dim_x, dim_y}},
+		{{dim_x*N-1u,0u}},
+		{{dim_x*N, dim_y*N}},
 		{{0u,1u}}
 	);
 	//

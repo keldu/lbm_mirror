@@ -35,19 +35,33 @@ saw::error_or<void> init(
 		{{1u,1u}}
 	);
 
+	auto dims = info_f.get_dims();
+	auto width = dims.at({{0u}});
+	auto height = dims.at({{1u}});
+	// 
+	auto w = width.template cast_to<T>();
+	auto h = height.template cast_to<T>();
+	auto w2 = w * 0.5;
+	auto h4 = h * 0.25;
+
+	saw::data<T> e{0.1};
+	saw::data<T> c = saw::data<T>{1.0} - e;
+
+	saw::data<T> d{0.2};
+	auto b = (saw::data<T>{1.0} - d) * 0.5;
+
+	auto p_r = (c*c + b*b) / (b*2);
+	auto p_i = p_r - b;
+
+	// Circle Top
+	saw::data<sch::FixedArray<sch::Int64,2u>> top_pos{w2.get(),h + p_i};
+
+	// Circle Bot
+	saw::data<sch::FixedArray<sch::Int64,2u>> bot_pos{w2.get(),-p_i.get()};
+
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			auto dims = info_f.get_dims();
-			auto width = dims.at({{0u}});
-			auto height = dims.at({{1u}});
-			// 
-			auto w2 = width / 2;
-			auto h4 = height / 4;
-			// Circle Top
-			saw::data<sch::FixedArray<sch::Int64,2u>> top_pos{{w2.get(),(height+h4).get()}};
 
-			// Circle Bot
-			saw::data<sch::FixedArray<sch::Int64,2u>> bot_pos{{w2.get(),-h4.get()}};
 
 		},
 		{},

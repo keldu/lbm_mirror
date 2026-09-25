@@ -34,7 +34,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "stdkr_2d_gpu" / an.template get<"coupling">().stl_view();
+	auto out_dir = lbm_dir / "stdkr_2d" / std::to_string(N) / an.template get<"coupling">().stl_view();
 
 	{
 		std::error_code ec;
@@ -118,7 +118,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{64u*1024ul};
+	saw::data<sch::UInt64> time_steps{64u*1024ul * N * N};
 
 	auto& info_f = lsd_view.template get<"info">();
 
@@ -140,7 +140,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_vtk_file(out_dir,std::string{"ops_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+std::to_string(N)+std::string{"_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -150,7 +150,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
 
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -180,7 +180,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+std::to_string(N)+std::string{"_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -212,11 +212,11 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& coupling = an.template get<"coupling">();
 
 	if(coupling.stl_view() == "hlbm"){
-		return lbm_main<FloatT,DescT,method::Hlbm,2u>(args);
+		return lbm_main<FloatT,DescT,method::Hlbm,1u>(args);
 	} else if(coupling.stl_view() == "fplbm"){
-		return lbm_main<FloatT,DescT,method::FpLbm,2u>(args);
+		return lbm_main<FloatT,DescT,method::FpLbm,1u>(args);
 	} else if(coupling.stl_view() == "psm"){
-		return lbm_main<FloatT,DescT,method::Psm,2u>(args);
+		return lbm_main<FloatT,DescT,method::Psm,1u>(args);
 	}
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");

@@ -23,7 +23,7 @@ saw::error_or<void> step(
 	if constexpr ( std::is_same_v<Coll, method::Hlbm> ){
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::HlbmReset,encode::Sycl<saw::encode::Native>> hlbm_reset;
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -50,7 +50,7 @@ saw::error_or<void> step(
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -96,7 +96,7 @@ saw::error_or<void> step(
 	}else if constexpr ( std::is_same_v<Coll, method::FpLbm> ){
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::FpLbmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -126,7 +126,7 @@ saw::error_or<void> step(
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -172,7 +172,7 @@ saw::error_or<void> step(
 	}else if constexpr ( std::is_same_v<Coll, method::Psm> ){
 		q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::PsmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
@@ -202,7 +202,7 @@ saw::error_or<void> step(
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
-			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
 				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
