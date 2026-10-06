@@ -126,13 +126,16 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-
-	saw::data<sch::UInt64> time_steps{conv.second_si_to_lbm({1.0f}).handle().template cast_to<sch::UInt64>() + 1u};
-	std::cout<<"Steps for 1 sec: "<<time_steps.get()<<std::endl;
-
 	auto& info_f = lsd_view.template get<"info">();
 
-	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
+	std::array<uint64_t,11u> record_steps;
+	for(uint64_t j{0u}; j < record_steps.size(); ++j){
+		record_steps.at(j) = conv.second_si_to_lbm({0.1 * j}).handle().template cast_to<sch::UInt64>().get();
+	}
+	std::cout<<"Steps for 1 sec: "<<record_steps.at(10u)<<std::endl;
+
+	for(saw::data<sch::UInt64> i{0u},j{0u}; j.get() < 11u and krun; ++i){
+
 		// BC + Collision
 		{
 			auto eov = step<T,Desc,Coll>(
@@ -150,7 +153,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 
 		sycl_q.wait();
-		if(i.get() % 1024u == 0u){
+		if(i.get() >= record_steps.at(j.get()) ){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
@@ -158,11 +161,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_vtk_file(out_dir,"ops_2d",i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,"ops_2d",j.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
+			++j;
 		}
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
@@ -184,10 +188,10 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		wait.poll();
 
 		if(print_status){
-			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
+			std::cout<<"Status: "<<i.get()<<" of "<<record_steps.at(10u)<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / record_steps.at(10u))<<"%"<<std::endl;
 			print_status = false;
 		}
-		print_progress_bar(i.get()+1u, time_steps.get());
+		print_progress_bar(i.get()+1u, record_steps.at(10u));
 	}
 	// After Loop
 	sycl_q.wait();
@@ -198,7 +202,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,std::string{"ops_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,std::string{"ops_2d_"}+an.template get<"coupling">().stl_string(),record_steps.at(10u), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}

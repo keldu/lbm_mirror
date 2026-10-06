@@ -45,24 +45,53 @@ saw::error_or<void> init(
 	auto h4 = h * 0.25;
 
 	saw::data<T> e{0.1};
-	saw::data<T> c = saw::data<T>{1.0} - e;
+	saw::data<T> c = w * (saw::data<T>{1.0} - e) * 0.5;
 
 	saw::data<T> d{0.2};
-	auto b = (saw::data<T>{1.0} - d) * 0.5;
+	auto b = h * (saw::data<T>{1.0} - d) * 0.5;
 
 	auto p_r = (c*c + b*b) / (b*2);
+	auto p_r_2 = p_r * p_r;
+	std::cout<<"p²_r: "<<p_r_2.get()<<std::endl; 
 	auto p_i = p_r - b;
 
 	// Circle Top
-	saw::data<sch::FixedArray<sch::Int64,2u>> top_pos{w2.get(),h + p_i};
+	saw::data<sch::FixedArray<sch::Int64,Desc::D>> top_pos;
+	{
+		top_pos.at({0u}) = w2.get();
+		top_pos.at({1u}) = (h + p_i).get();
+	}
 
 	// Circle Bot
-	saw::data<sch::FixedArray<sch::Int64,2u>> bot_pos{w2.get(),-p_i.get()};
+	saw::data<sch::FixedArray<sch::Int64,Desc::D>> bot_pos;
+	{
+		bot_pos.at({0u}) = w2.get();
+		bot_pos.at({1u}) = -p_i.get();
+	}
 
 	iterator<Desc::D>::apply(
 		[&](auto& index){
+			auto& info = info_f.at(index);
 
+			auto tp_diff = top_pos;
+			auto bp_diff = bot_pos;
+			for(uint64_t i{0u}; i < Desc::D; ++i){
+				tp_diff.at(i) = top_pos.at(i) - index.at(i).template cast_to<sch::Int64>();
+				bp_diff.at(i) = bot_pos.at(i) - index.at(i).template cast_to<sch::Int64>();
+			}
 
+			auto tpd_v = saw::math::vectorize_data(tp_diff);
+			auto tpd_dot = saw::math::dot(tpd_v,tpd_v);
+			
+			auto bpd_v = saw::math::vectorize_data(bp_diff);
+			auto bpd_dot = saw::math::dot(bpd_v,bpd_v);
+
+			if(
+				(tpd_dot.at({}).template cast_to<T>() <= p_r_2 ) or
+				(bpd_dot.at({}).template cast_to<T>() <= p_r_2 )
+			){
+				info.set({1u});
+			}
 		},
 		{},
 		info_f.get_dims(),
