@@ -117,7 +117,9 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+			saw::data<sch::Vector<T,Desc::D>> grav;
+			grav.at({{1u}}) = conv.acceleration_si_to_lbm({-9.81}).handle();
+			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part{grav};
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 				saw::data<sch::FixedArray<sch::UInt64,1u>> index;
@@ -125,7 +127,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{4u});
 			});
 		}).wait();
 

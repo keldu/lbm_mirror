@@ -46,9 +46,9 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{0.41 / dim_y}},
+		{{0.64 / dim_y}},
 		// delta_t
-		{{1.067e-4 * 0.5}}
+		{{1.067e-2}}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.5 * dim_y});
@@ -136,8 +136,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 
 		sycl_q.wait();
-		/*
-		if(i.get() % 64u == 0u){
+		if(i.get() % 256u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){
@@ -145,13 +144,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_vtk_file(out_dir,std::string{"stdkr_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,std::string{"throat_clog_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
 			}
 		}
-		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
 			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;

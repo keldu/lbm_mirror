@@ -230,8 +230,11 @@ public:
 		auto& pirb_acc = pirb.template get<"acceleration">();
 		pirb_acc = global_force_ +  force_p / (pg.template get<"total_mass">().at({}));
 
-		for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
-			verlet_step_lambda<T,Descriptor::D>(pi,one / sss);
+		if(sub_steps.get() > 0u){
+			auto sss_inv = one / sss;
+			for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
+				verlet_step_lambda<T,Descriptor::D>(pi,sss_inv);
+			}
 		}
 	}
 };
