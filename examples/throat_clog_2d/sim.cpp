@@ -51,7 +51,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		{{1.067e-2}}
 	};
 	
-	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.5 * dim_y});
+	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.2 * dim_y});
 
 	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
@@ -122,7 +122,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{128u*1024ul};
+	saw::data<sch::UInt64> time_steps{256u*512ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 

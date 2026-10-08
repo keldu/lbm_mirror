@@ -84,7 +84,7 @@ saw::error_or<void> step(
 									}
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle() * scale;
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle() * scale;
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -162,7 +162,7 @@ saw::error_or<void> step(
 									saw::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -238,7 +238,7 @@ saw::error_or<void> step(
 									saw::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
