@@ -21,6 +21,7 @@ namespace lbm {
  * position at (0.16m,0.32m)
  */
 
+// Base resolution.
 constexpr uint64_t dim_y = 64ul;
 constexpr uint64_t dim_x = dim_y * 4ul;
 

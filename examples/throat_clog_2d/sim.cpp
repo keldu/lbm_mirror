@@ -93,6 +93,12 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			return eov;
 		}
 	}
+	{
+		auto eov = write_vtk_file(out_dir,"initial_state_macro",0u,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
 	sycl_q.wait();
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
@@ -216,11 +222,11 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& an = args.template get<"args">();
 	auto& coupling = an.template get<"coupling">();
 
-	auto resolution_resolve = [&]<typename Cpl>(){
-		lbm_main<FloatT,DescT,Cpl,1u>(args);
+	auto resolution_resolve = [&]<typename Cpl>() -> saw::error_or<void>{
+		return lbm_main<FloatT,DescT,Cpl,1u>(args);
 	};
 
-	auto coupling_resolve = [&](){
+	auto coupling_resolve = [&]() -> saw::error_or<void> {
 		if(coupling.stl_view() == "hlbm"){
 			return resolution_resolve.template operator()<method::Hlbm>();
 		} else if(coupling.stl_view() == "fplbm"){
@@ -230,7 +236,7 @@ saw::error_or<void> k_main(int argc, char** argv){
 		}
 	};
 
-	coupling_resolve();
+	return coupling_resolve();
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");
 }

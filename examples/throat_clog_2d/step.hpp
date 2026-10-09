@@ -118,7 +118,6 @@ saw::error_or<void> step(
 
 		q.submit([&](acpp::sycl::handler& h){
 			saw::data<sch::Vector<T,Desc::D>> grav;
-			grav.at({{1u}}) = conv.acceleration_si_to_lbm({-9.81}).handle();
 			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part{grav};
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
