@@ -46,7 +46,7 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.75};
+			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.8201};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -84,7 +84,7 @@ saw::error_or<void> step(
 									}
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle() * scale;
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((0.1 / 0.64) * y_si.get() - (0.1 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle() * scale;
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -133,8 +133,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.75};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.75};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.8201};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.8201};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 
@@ -162,7 +162,7 @@ saw::error_or<void> step(
 									saw::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((0.01 / 0.64) * y_si.get() - (0.01 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -209,8 +209,8 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.75};
-			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.75};
+			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.8201};
+			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.8201};
 			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
 			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
 

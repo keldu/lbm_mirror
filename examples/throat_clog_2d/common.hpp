@@ -14,15 +14,15 @@ namespace kel {
 namespace lbm {
 
 /**
- * length 2.2m
- * height 0.41m
+ * length 2.56m
+ * height 0.64m
  * viscosity 10^-3
  * particle diameter 0.1m
- * position at (0.16m,0.2m)
+ * position at (0.16m,0.32m)
  */
 
 constexpr uint64_t dim_y = 64ul;
-constexpr uint64_t dim_x = static_cast<uint64_t>(dim_y * (220.0 / 64.0));
+constexpr uint64_t dim_x = static_cast<uint64_t>(dim_y * (256.0 / 64.0));
 
 constexpr uint64_t particle_amount = 1ul;
 
