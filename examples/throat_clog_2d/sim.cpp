@@ -12,6 +12,7 @@ using namespace saw::schema;
 
 using LbmArgsStruct = Struct<
 	Member<String, "coupling">
+	//,Member<UInt64, "refinement">
 >;
 
 using LbmArgs = Args<
@@ -80,7 +81,6 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	auto& sycl_q = dev.get_handle();
 
-	sycl_q.wait();
 	{
 		auto eov = init<T,Desc,Coll>(conv,*lbm_data_ptr,*lbm_macro_data_ptr,*lbm_particle_data_ptr);
 		if(eov.is_error()){
@@ -93,6 +93,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 			return eov;
 		}
 	}
+	sycl_q.wait();
 
 	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
 	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
@@ -215,13 +216,21 @@ saw::error_or<void> k_main(int argc, char** argv){
 	auto& an = args.template get<"args">();
 	auto& coupling = an.template get<"coupling">();
 
-	if(coupling.stl_view() == "hlbm"){
-		return lbm_main<FloatT,DescT,method::Hlbm,1u>(args);
-	} else if(coupling.stl_view() == "fplbm"){
-		return lbm_main<FloatT,DescT,method::FpLbm,1u>(args);
-	} else if(coupling.stl_view() == "psm"){
-		return lbm_main<FloatT,DescT,method::Psm,1u>(args);
-	}
+	auto resolution_resolve = [&]<typename Cpl>(){
+		lbm_main<FloatT,DescT,Cpl,1u>(args);
+	};
+
+	auto coupling_resolve = [&](){
+		if(coupling.stl_view() == "hlbm"){
+			return resolution_resolve.template operator()<method::Hlbm>();
+		} else if(coupling.stl_view() == "fplbm"){
+			return resolution_resolve.template operator()<method::FpLbm>();
+		} else if(coupling.stl_view() == "psm"){
+			return resolution_resolve.template operator()<method::Psm>();
+		}
+	};
+
+	coupling_resolve();
 
 	return saw::make_error<saw::err::critical>("Invalid coupling");
 }

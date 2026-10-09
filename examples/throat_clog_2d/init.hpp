@@ -169,11 +169,11 @@ saw::error_or<void> init(
 			auto& p = parts.at({0u});
 			auto& prb = p.template get<"rigid_body">();
 			auto& p_pos = prb.template get<"position">();
-			auto& p_posold = prb.template get<"position_old">();
+			auto& p_pos_old = prb.template get<"position_old">();
 			p_pos.at({{0u}}) = conv.meter_si_to_lbm({{0.18}}).handle();
 			p_pos.at({{1u}}) = conv.meter_si_to_lbm({{0.25}}).handle();
 
-			p_posold = p_pos;
+			p_pos_old = p_pos;
 		}
 	}
 

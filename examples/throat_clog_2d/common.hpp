@@ -22,7 +22,7 @@ namespace lbm {
  */
 
 constexpr uint64_t dim_y = 64ul;
-constexpr uint64_t dim_x = static_cast<uint64_t>(dim_y * (256.0 / 64.0));
+constexpr uint64_t dim_x = dim_y * 4ul;
 
 constexpr uint64_t particle_amount = 1ul;
 
@@ -64,7 +64,7 @@ using MacroStruct = Struct<
 >;
 
 template<typename T, typename Desc>
-using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,1u,coll::Spheroid<T>>;
+using ParticleSpheroidGroup = ParticleGroup<T,Desc::D,particle_amount,coll::Spheroid<T>>;
 }
 
 }

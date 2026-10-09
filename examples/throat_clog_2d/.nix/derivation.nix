@@ -28,8 +28,8 @@ in stdenv.mkDerivation {
 		forstio.codec
 		forstio.codec-unit
 		forstio.io
-    forstio.remote
-    forstio.remote-filesystem
+		forstio.remote
+		forstio.remote-filesystem
 		forstio.codec-json
 		adaptive-cpp
 		kel.lbm.core
