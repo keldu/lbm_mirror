@@ -129,7 +129,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{256u*512ul};
+	saw::data<sch::UInt64> time_steps{1024ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
@@ -143,7 +143,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 
 		sycl_q.wait();
-		if(i.get() % 256u == 0u){
+		if(i.get() % 1u == 0u){
 			{
 				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
 				if(eov.is_error()){

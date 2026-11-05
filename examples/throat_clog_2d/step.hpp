@@ -41,7 +41,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				hlbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+				hlbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
 			});
 		}).wait();
 
@@ -75,7 +75,7 @@ saw::error_or<void> step(
 									saw::data<T> scale;
 									{
 										scale.set([&](){
-											if(t_i.get() > 1024u){
+											if(t_i.get() >= 0u){// > 1024u
 												return 1.0f;
 											}
 
@@ -84,7 +84,7 @@ saw::error_or<void> step(
 									}
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((0.1 / 0.64) * y_si.get() - (0.1 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle() * scale;
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((0.01 / 0.64) * y_si.get() - (0.01 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -126,7 +126,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{4u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
 			});
 		}).wait();
 
@@ -202,7 +202,7 @@ saw::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{2u});
 			});
 		}).wait();
 

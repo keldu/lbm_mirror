@@ -47,7 +47,7 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 	static saw::error_or<void> apply(std::ostream& vtk_file, const saw::data<sch::FixedArray<T,D>>& field){
 		saw::data<sch::FixedArray<sch::UInt64,D>> index;
 		for(saw::data<sch::UInt64> it{0}; it.get() < D; ++it){
-			index.at({0u}).set(0u);
+			index.at(it).set(0u);
 		}
 
 		// vtk_file<<"VECTORS "<<name<<" float\n";

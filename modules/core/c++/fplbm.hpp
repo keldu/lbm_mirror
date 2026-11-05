@@ -99,7 +99,10 @@ public:
 
 		// We already computed this in reset
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		mom = mom + force * half;
+
+		// -------------------------
+		// mom = mom + force * half;
+		// -------------------------
 		auto vel = mom / rho;
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
@@ -172,7 +175,7 @@ public:
 		auto parts = pg.template get<"particles">();
 
 		auto parts_size = parts.meta().at({0u});
-		auto& pi = parts.at(index);		
+		auto& pi = parts.at(index);
 
 		auto& pirb = pi.template get<"rigid_body">();
 		auto& pirb_pos = pirb.template get<"position">();
@@ -191,11 +194,11 @@ public:
 		saw::data<sch::Scalar<T>> three;
 		three.at({}).set(3.0f);
 
-		saw::data<sch::Scalar<T>> two;
-		two.at({}).set(2.0f);
-
 		saw::data<sch::Scalar<T>> one;
 		one.at({}) = 1.0f;
+
+		saw::data<sch::Scalar<T>> k;
+		k.at({}) = 1.0f;
 		
 		saw::data<sch::Scalar<T>> eps;
 		eps.at({}) = 1.5f;
@@ -221,7 +224,8 @@ public:
 			// vel_s is technically time the density of the particle?
 
 			// force = global_force_ * por + ( vel_s - mom) * two * flip_por;
-			force = ( vel_s - mom) * two * flip_por;
+			// force = ( vel_s - mom) * eps * flip_por;
+			force = ( vel_s - mom) * k * flip_por;
 			// force = (vel_s - mom) * flip_por / (flip_por / two + one);
 
 			force_p = force_p - force;
