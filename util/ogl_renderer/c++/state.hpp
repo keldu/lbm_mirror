@@ -8,7 +8,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 }
 
 struct ogl_state final {
@@ -55,8 +54,8 @@ public:
 	}
 };
 
-saw::error_or<saw::own<ogl_state>> create_ogl_renderer(){
-	auto owned_state = saw::heap<ogl_state>();
+kel::lbm::error_or<kel::lbm::own<ogl_state>> create_ogl_renderer(){
+	auto owned_state = kel::lbm::heap<ogl_state>();
 
 	auto& st = *owned_state;
 
@@ -67,7 +66,7 @@ saw::error_or<saw::own<ogl_state>> create_ogl_renderer(){
 
 	st.window = SDL_CreateWindow("Kel'LBM Renderer",st.w,st.h,SDL_WINDOW_OPENGL /*| SDL_WINDOW_HIDDEN*/);
 	if(not st.window){
-		return saw::make_error<saw::err::critical>("Window not created");
+		return kel::lbm::make_error<kel::lbm::err::critical>("Window not created");
 	}
 	st.context = SDL_GL_CreateContext(st.window);
 

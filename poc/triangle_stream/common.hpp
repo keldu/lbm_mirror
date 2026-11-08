@@ -9,7 +9,6 @@ constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
 namespace sch {
-using namespace saw::schema;
 
 using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 

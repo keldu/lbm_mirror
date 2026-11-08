@@ -8,7 +8,6 @@
  * For deciding what parameters to use maybe?
  */
 namespace args {
-using namespace saw::schema;
 
 using LbmArgsStruct = Struct<
 	Member<String, "coupling">
@@ -21,7 +20,7 @@ using LbmArgs = Args<
 }
 
 template<typename T, typename Desc, typename Coll, uint64_t N>
-saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
+kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 	using namespace kel::lbm;
 
 	auto& an = args.template get<"args">();
@@ -40,7 +39,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		std::error_code ec;
 		std::filesystem::create_directories(out_dir,ec);
 		if(ec != std::errc{}){
-			return saw::make_error<saw::err::critical>("Could not create output directory");
+			return kel::lbm::make_error<kel::lbm::err::critical>("Could not create output directory");
 		}
 	}
 
@@ -55,16 +54,17 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 
 	std::cout<<"Inflow free flow velocity: "<<conv.velocity_si_to_lbm({0.3}).handle().get()<<std::endl;
 
-	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
-	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc,N>>>();
-	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc,N>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
+	// kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	auto lbm_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ChunkStruct<T,Desc,N>>>();
+	auto lbm_macro_data_ptr = kel::lbm::heap<kel::lbm::data<sch::MacroStruct<T,Desc,N>>>();
+	auto lbm_particle_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>>>();
 
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc,N>,sch::MacroStruct<T,Desc,N>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
-		return std::move(eo_aio.get_error());
+		return kel::lbm::make_error<kel::lbm::err::critical>(
+			std::string{eo_aio.get_error().get_message()});
 	}
 	auto& aio = eo_aio.get_value();
 	saw::wait_scope wait{aio.event_loop};
@@ -90,9 +90,9 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 
-	saw::data<sch::ChunkStruct<T,Desc,N>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
-	saw::data<sch::MacroStruct<T,Desc,N>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
+	kel::lbm::data<sch::ChunkStruct<T,Desc,N>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_data{sycl_q};
+	kel::lbm::data<sch::MacroStruct<T,Desc,N>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_macro_data{sycl_q};
+	kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	{
@@ -118,11 +118,11 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
 	auto lsdp_view = make_view(lbm_sycl_particle_data);
 	
-	saw::data<sch::UInt64> time_steps{64u*1024ul * N * N};
+	kel::lbm::data<sch::UInt64> time_steps{64u*1024ul * N * N};
 
 	auto& info_f = lsd_view.template get<"info">();
 
-	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
 			auto eov = step<T,Desc,Coll,N>(conv,lsd_view,lsdm_view,lsdp_view,i,dev);
@@ -148,10 +148,10 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
+			component<T,Desc,cmpt::Stream,encode::Sycl<kel::lbm::enc::Native>> stream;
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -192,16 +192,16 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 	sycl_q.wait();
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 using FloatT = kel::lbm::sch::Float32;
 using DescT = kel::lbm::sch::D2Q9;
 
-saw::error_or<void> k_main(int argc, char** argv){
+kel::lbm::error_or<void> k_main(int argc, char** argv){
 	using namespace kel::lbm;
 	
-	saw::data<args::LbmArgs> args;
+	kel::lbm::data<args::LbmArgs> args;
 	{
 		auto eov = saw::parse_args(args,argc,argv);
 		if(eov.is_error()){
@@ -219,7 +219,7 @@ saw::error_or<void> k_main(int argc, char** argv){
 		return lbm_main<FloatT,DescT,method::Psm,1u>(args);
 	}
 
-	return saw::make_error<saw::err::critical>("Invalid coupling");
+	return kel::lbm::make_error<kel::lbm::err::critical>("Invalid coupling");
 }
 
 

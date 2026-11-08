@@ -13,7 +13,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 using T = Float32;
 
@@ -85,7 +84,7 @@ using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
 }
 }
 
-void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_geometry(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
 	auto meta = latt.meta();
@@ -93,7 +92,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set ghost
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -104,7 +103,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set wall
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -115,7 +114,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set fluid
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -126,7 +125,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set inflow
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -137,7 +136,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set outflow
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -148,11 +147,11 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set channel wall
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
-		saw::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-8u, meta.at({1u})-2u}};
+		kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-8u, meta.at({1u})-2u}};
 		double safety_start = 0.1*area.at({0u}).get();
 		double safety_width = 0.2*area.at({1u}).get();
 
@@ -160,7 +159,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 		double ch_width = (area.at({1u}).get()-safety_width) * 0.5;
 		double ch_length = (area.at({0u}).get()-safety_start) * 0.5;
 
-		saw::data<sch::FixedArray<sch::UInt64,2u>> middle{{meta.at({0u})/2u, meta.at({1u})/2u}};
+		kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> middle{{meta.at({0u})/2u, meta.at({1u})/2u}};
 
 		// r^2 = (r-w/2)^2 + l^2
 		double r_c = ch_length * ch_length;
@@ -187,11 +186,11 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set channel circular obstacle
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
-		saw::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-4u, meta.at({1u})-4u}};
+		kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> area{{meta.at({0u})-4u, meta.at({1u})-4u}};
 		double pos_x = 0.8 * area.at({0u}).get();
 		double pos_y = 0.5 * area.at({1u}).get();
 
@@ -207,11 +206,11 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}, {{0u,0u}}, meta, {{2u,2u}});
 }
 
-void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_initial_conditions(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
-	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
+	kel::lbm::data<sch::T> rho{1.0};
+	kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
 	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 	auto meta = latt.meta();
@@ -219,12 +218,12 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set distribution
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& dfs = cell.template get<"dfs">();
 		auto& dfs_old = cell.template get<"dfs_old">();
 
-		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
+		for(kel::lbm::data<sch::UInt64> k = 0; k < kel::lbm::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
 			dfs(k) = eq.at(k);
 			dfs_old(k) = eq.at(k);
 		}
@@ -234,7 +233,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 
 void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 	using namespace kel::lbm;
-	saw::data<sch::Particle<sch::T,2u>> part;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part;
 
 	auto& p_mask = part.template get<"mask">();
 	auto& p_mass = part.template get<"mass">();
@@ -243,7 +242,7 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 		p_mask = geo.template generate_mask<sch::T>(10u,0u);
 		auto& p_grid = p_mask.template get<"grid">();
 
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 			auto& p_grid_cell = p_grid.at(index);
 			p_mass = p_mass + p_grid_cell;
 		}, {{0u,0u}}, p_grid.dims());
@@ -263,8 +262,8 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 
 	for(uint64_t i = 0; i < 10; ++i){
 		for(uint64_t j = 0; j < 15; ++j){
-			pos.at({{0u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(16u + j * 11u)};
-			pos.at({{1u}}) = {static_cast<typename saw::native_data_type<sch::T>::type>(16u + i * 11u)};
+			pos.at({{0u}}) = {static_cast<typename kel::lbm::native_data_type<sch::T>::type>(16u + j * 11u)};
+			pos.at({{1u}}) = {static_cast<typename kel::lbm::native_data_type<sch::T>::type>(16u + i * 11u)};
 			old_pos = pos;
 
 			auto eov = part_sys.add_particle(part);
@@ -277,9 +276,9 @@ void add_particles(kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys){
 
 void couple_particles_to_lattice(
 		kel::lbm::particle_system<kel::lbm::sch::T,2u>& part_sys,
-		saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-		saw::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
-		saw::data<kel::lbm::sch::UInt64> time_step
+		kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+		kel::lbm::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
+		kel::lbm::data<kel::lbm::sch::UInt64> time_step
 ){
 	using namespace kel::lbm;
 	(void) time_step;
@@ -287,7 +286,7 @@ void couple_particles_to_lattice(
 	auto meta = latt.meta();
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
-	for(saw::data<sch::UInt64> i{0u}; i < part_sys.size(); ++i){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < part_sys.size(); ++i){
 		auto& part = part_sys.at(i);
 
 		auto& p_rb = part.template get<"rigid_body">();
@@ -307,15 +306,15 @@ void couple_particles_to_lattice(
 
 		// Temporary unused due to me trying to debug freaking particle wall phasing
 		// Rotated x-dir
-		saw::data<sch::FixedArray<sch::T,2u>> x_dir{{
-			p_size * saw::data<sch::T>{std::cos(p_rot.get())},
-			p_size * saw::data<sch::T>{-std::sin(p_rot.get())}
+		kel::lbm::data<sch::FixedArray<sch::T,2u>> x_dir{{
+			p_size * kel::lbm::data<sch::T>{std::cos(p_rot.get())},
+			p_size * kel::lbm::data<sch::T>{-std::sin(p_rot.get())}
 		}};
 
 		// Rotated y-dir
-		saw::data<sch::FixedArray<sch::T,2u>> y_dir{{
-			p_size * saw::data<sch::T>{std::sin(p_rot.get())},
-			p_size * saw::data<sch::T>{std::cos(p_rot.get())}
+		kel::lbm::data<sch::FixedArray<sch::T,2u>> y_dir{{
+			p_size * kel::lbm::data<sch::T>{std::sin(p_rot.get())},
+			p_size * kel::lbm::data<sch::T>{std::cos(p_rot.get())}
 		}};
 
 		auto& p_mask_grid = p_mask.template get<"grid">();
@@ -328,26 +327,26 @@ void couple_particles_to_lattice(
 
 		// Particle to Fluid Coupling
 		// Spread force to close fluid cells
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 			(void)index;
 		}, {{0u,0u}}, p_mask_grid_dims);
 
 		// Fluid to Particle Coupling
 		// Prepare force sum
-		// saw::data<sch::Vector<sch::T,2u>> forces;
+		// kel::lbm::data<sch::Vector<sch::T,2u>> forces;
 
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			if(p_mask_grid.at(index).get() == 0){
 				return;
 			}
 
-			saw::data<sch::Vector<sch::T,2u>> index_shift;
+			kel::lbm::data<sch::Vector<sch::T,2u>> index_shift;
 			for(uint64_t i = 0u; i < sch::D2Q9::D; ++i){
 				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - center_of_mass.at({{i}});
 			}
 
-			saw::data<sch::Vector<sch::T,2u>> mask_shift;
+			kel::lbm::data<sch::Vector<sch::T,2u>> mask_shift;
 			for(uint64_t i = 0u; i < sch::D2Q9::D; ++i){
 				// Technically rotate and adjust here
 				mask_shift.at({{i}}) = index_shift.at({{i}});
@@ -357,7 +356,7 @@ void couple_particles_to_lattice(
 
 			// Cast down to get lower corner.
 			// Before casting shift by 0.5 for closest pick
-			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
+			kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
 			{
 				p_cell_pos.at({{0u}}) = {static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5)};
 				p_cell_pos.at({{1u}}) = {static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)};
@@ -374,7 +373,7 @@ void couple_particles_to_lattice(
 
 			// p_pos - p_pos_old
 			// auto p_vel_rel = closest_u - p_vel;
-			saw::data<sch::Vector<sch::T, 2u>> p_vel_rel = closest_u - p_vel;
+			kel::lbm::data<sch::Vector<sch::T, 2u>> p_vel_rel = closest_u - p_vel;
 			{
 				p_vel_rel.at({{0u}}) = p_vel_rel.at({{0u}}) / p_mass;
 				p_vel_rel.at({{1u}}) = p_vel_rel.at({{1u}}) / p_mass;
@@ -385,7 +384,7 @@ void couple_particles_to_lattice(
 			p_acc = p_acc + p_vel_rel;
 
 			/*
-			for(saw::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
+			for(kel::lbm::data<sch::UInt64> i{0u}; i.get() < 2u; ++i){
 				p_cell_pos.at({{1u}}).set(std::max(1ul, std::min(p_cell_pos.at({{1u}}).get(), meta.at({1u}).get()-2ul)));
 				p_acc.at({{i}}) = p_acc.at({{i}}) + p_vel_rel.at({{i}});
 			}
@@ -393,20 +392,20 @@ void couple_particles_to_lattice(
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
-		saw::data<sch::Vector<sch::T,2u>> solid_normal;
+		kel::lbm::data<sch::Vector<sch::T,2u>> solid_normal;
 
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			if(p_mask_grid.at(index).get() == 0){
 				return;
 			}
 
-			saw::data<sch::Vector<sch::T,2u>> index_shift;
+			kel::lbm::data<sch::Vector<sch::T,2u>> index_shift;
 			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
 				index_shift.at({{i}}) = index.at({i}).template cast_to<sch::T>() - center_of_mass.at({{i}});
 			}
 
-			saw::data<sch::Vector<sch::T,2u>> mask_shift;
+			kel::lbm::data<sch::Vector<sch::T,2u>> mask_shift;
 			/*
 			{
 				mask_shift.at({{0u}}) = index_shift.at({{0u}}) * x_dir.at({0u}) + index_shift.at({{1u}}) * y_dir.at({0u});
@@ -422,7 +421,7 @@ void couple_particles_to_lattice(
 
 			// Cast down to get lower corner.
 			// Before casting shift by 0.5 for closest pick
-			saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
+			kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos;
 			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
 				p_cell_pos.at({{i}}) = {static_cast<uint64_t>(p_pos_lie.at({{i}}).get()+0.5)};
 			}
@@ -430,7 +429,7 @@ void couple_particles_to_lattice(
 				p_cell_pos.at({{i}}).set(std::max(1ul, std::min(p_cell_pos.at({{i}}).get(), meta.at({i}).get()-2ul)));
 			}
 
-			saw::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
+			kel::lbm::data<sch::Vector<sch::UInt64,2u>> p_vec_cell_pos;
 			for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
 				p_vec_cell_pos.at({{i}}) = p_cell_pos.at({i});
 			}
@@ -446,13 +445,13 @@ void couple_particles_to_lattice(
 
 				auto p_pos_rel_vec = p_pos - p_vec_cell_pos.template cast_to<sch::T>();
 				solid_normal = solid_normal + p_pos_rel_vec;
-				p_pos_rel_vec = saw::math::normalize(p_pos_rel_vec);
+				p_pos_rel_vec = kel::lbm::math::normalize(p_pos_rel_vec);
 
-				// solid_normal = saw::math::normalize(solid_normal);
-				// auto v_n = saw::math::dot(solid_normal,p_vel + p_acc);
+				// solid_normal = kel::lbm::math::normalize(solid_normal);
+				// auto v_n = kel::lbm::math::dot(solid_normal,p_vel + p_acc);
 
 				{
-					saw::data<sch::Scalar<sch::T>> one;
+					kel::lbm::data<sch::Scalar<sch::T>> one;
 					one.at({}) = {0.05f};
 
 					p_pos_rel_vec.at({{0u}}) = p_pos_rel_vec.at({{0u}}) * one.at({});
@@ -470,8 +469,8 @@ void couple_particles_to_lattice(
 			*/
 
 			/*
-			for(saw::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
-				auto n_p_cell_pos = saw::data<sch::FixedArray<sch::UInt64,2u>> {{
+			for(kel::lbm::data<sch::UInt64> k{0u}; k.get() < sch::D2Q9::Q; ++k){
+				auto n_p_cell_pos = kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> {{
 					p_cell_pos.at({{0u}}) + dfi::directions[k.get()][0u],
 					p_cell_pos.at({{1u}}) + dfi::directions[k.get()][1u]
 				}};
@@ -486,7 +485,7 @@ void couple_particles_to_lattice(
 				if(n_info.get() <= 1u or (n_macro_cell_particle.get() != (i.get()+1u) and n_macro_cell_particle.get() > 0u) ) {
 					// add to p_acc
 
-					saw::data<sch::T> dist_dot{
+					kel::lbm::data<sch::T> dist_dot{
 						(p_pos.at({{0u}})-n_p_cell_pos.at({{0u}}).template cast_to<sch::T>()) * dfi::directions[dfi::opposite_index[k.get()]][0u]+
 						(p_pos.at({{1u}})-n_p_cell_pos.at({{1u}}).template cast_to<sch::T>()) * dfi::directions[dfi::opposite_index[k.get()]][1u]
 					};
@@ -495,10 +494,10 @@ void couple_particles_to_lattice(
 						// TODO add if particle is close
 						//auto& n_debug_acc = n_macro_cell.template get<"debug_acceleration">();
 
-						saw::data<sch::Vector<sch::T,sch::D2Q9::D>> push_force;
+						kel::lbm::data<sch::Vector<sch::T,sch::D2Q9::D>> push_force;
 						{
-							push_force.at({{0u}}) = saw::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
-							push_force.at({{1u}}) = saw::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
+							push_force.at({{0u}}) = kel::lbm::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][0u]}.template cast_to<sch::T>();
+							push_force.at({{1u}}) = kel::lbm::data<sch::Int32>{1000000 * dfi::directions[dfi::opposite_index[k.get()]][1u]}.template cast_to<sch::T>();
 						}
 
 						//n_debug_acc = n_debug_acc + push_force;
@@ -513,10 +512,10 @@ void couple_particles_to_lattice(
 
 		}, {{0u,0u}}, p_mask_grid.dims());
 
-		solid_normal = saw::math::normalize(solid_normal);
+		solid_normal = kel::lbm::math::normalize(solid_normal);
 
 		// Calculate orientation (Leaving wall or particle "< 0" or not "> 0")
-		auto v_n = saw::math::dot(solid_normal, (p_vel + p_acc));
+		auto v_n = kel::lbm::math::dot(solid_normal, (p_vel + p_acc));
 
 		if(v_n.at({}).get() < 0.0){
 			auto v_n_2 = v_n + v_n;
@@ -531,8 +530,8 @@ void couple_particles_to_lattice(
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
-	saw::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
+	kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	kel::lbm::data<kel::lbm::sch::Array<kel::lbm::sch::MacroStruct<kel::lbm::sch::T,kel::lbm::sch::D2Q9::D>,kel::lbm::sch::D2Q9::D>>& macros,
 	uint64_t time_step
 ){
 	using namespace kel::lbm;
@@ -554,7 +553,7 @@ void lbm_step(
 	/**
 	 * Collision
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -587,7 +586,7 @@ void lbm_step(
 	}, {{0u,0u}}, meta);
 
 	// Stream
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 		auto& info_new = cell.template get<"info">();
@@ -620,7 +619,7 @@ void lbm_step(
  */
 
 
-saw::error_or<void> real_main(int argc, char** argv){
+kel::lbm::error_or<void> real_main(int argc, char** argv){
 	using namespace kel::lbm;
 	using dfi = df_info<sch::T,sch::D2Q9>;
 
@@ -632,7 +631,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 
 
 
-	saw::data<sch::LbmArgs<sch::T>> args;
+	kel::lbm::data<sch::LbmArgs<sch::T>> args;
 	auto& conf = args.template get<"args">();
 	{
 		conf.template get<"delta_x">() = 1.0f;
@@ -648,8 +647,8 @@ saw::error_or<void> real_main(int argc, char** argv){
 		*/
 	}
 	{
-		saw::data<sch::LbmArgs<sch::T>, saw::encode::Args> args_enc{argc,argv};
-		saw::codec<sch::LbmArgs<sch::T>, saw::encode::Args> args_codec;
+		kel::lbm::data<sch::LbmArgs<sch::T>, saw::encode::Args> args_enc{argc,argv};
+		kel::lbm::codec<sch::LbmArgs<sch::T>, saw::encode::Args> args_codec;
 		auto eov = args_codec.decode(args_enc, args);
 		if(eov.is_error()){
 			return eov;
@@ -671,8 +670,8 @@ saw::error_or<void> real_main(int argc, char** argv){
 
 	print_lbm_meta<sch::T,sch::Descriptor<2u,9u>>(conv, {conf.template get<"kinematic_viscosity">()});
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
-	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
+	kel::lbm::data<sch::CavityFieldD2Q9, kel::lbm::enc::Native> lattice{dim};
 	auto meta = lattice.meta();
 
 	/**
@@ -687,9 +686,9 @@ saw::error_or<void> real_main(int argc, char** argv){
 	set_geometry(lattice);
 
 	{
-		saw::data<sch::Array<sch::GeometryStruct<sch::T>, sch::D2Q9::D>> geo{dim};
+		kel::lbm::data<sch::Array<sch::GeometryStruct<sch::T>, sch::D2Q9::D>> geo{dim};
 
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 			auto& cell = lattice(index);
 			auto& info = cell.template get<"info">();
@@ -705,7 +704,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 	 */
 	set_initial_conditions(lattice);
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
 	uint64_t lbm_steps = 10000u;
 	for(uint64_t i = 0u; i < lbm_steps; ++i){
@@ -714,7 +713,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 
 		{
 			// Stream
-			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+			iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 				auto& cell = lattice(index);
 				auto& dfs = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 
@@ -726,7 +725,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 
 				auto& part_mask = macro_cell.template get<"particle">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
-				rho = rho * saw::data<sch::T>{dfi::cs2};
+				rho = rho * kel::lbm::data<sch::T>{dfi::cs2};
 
 				for(uint64_t d = 0u; d < sch::D2Q9::D; ++d){
 					force.at({d}) = cell.template get<"force">()({d});
@@ -735,7 +734,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 				part_mask.set(0u);
 			}, {{0u,0u}}, meta);
 
-			for(saw::data<sch::UInt64> i{0u}; i < particle_sys.size(); ++i){
+			for(kel::lbm::data<sch::UInt64> i{0u}; i < particle_sys.size(); ++i){
 				auto& p = particle_sys.at({i});
 
 				auto& p_rb = p.template get<"rigid_body">();
@@ -746,23 +745,23 @@ saw::error_or<void> real_main(int argc, char** argv){
 				auto p_mask_grid_dims = p_mask_grid.dims();
 
 
-				saw::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
+				kel::lbm::data<sch::Vector<sch::T,2u>> p_mask_grid_shift;
 				p_mask_grid_shift.at({{0u}}) = (p_mask_grid_dims.at({0u}).template cast_to<sch::T>() - 1.0) / 2.0;
 				p_mask_grid_shift.at({{1u}}) = (p_mask_grid_dims.at({1u}).template cast_to<sch::T>() - 1.0) / 2.0;
 
 
 				// Iterate
-				iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+				iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 
 					if(p_mask_grid.at(index).get() == 0){
 						return;
 					}
 
-					saw::data<sch::Vector<sch::T,2u>> index_shift;
+					kel::lbm::data<sch::Vector<sch::T,2u>> index_shift;
 					index_shift.at({{0u}}) = index.at({0u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{0u}});
 					index_shift.at({{1u}}) = index.at({1u}).template cast_to<sch::T>() - p_mask_grid_shift.at({{1u}});
 
-					saw::data<sch::Vector<sch::T,2u>> mask_shift;
+					kel::lbm::data<sch::Vector<sch::T,2u>> mask_shift;
 					for(uint64_t i = 0; i < sch::D2Q9::D; ++i){
 						// Technically rotate and adjust here
 						mask_shift.at({{i}}) = index_shift.at({{i}});
@@ -772,7 +771,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 
 					// Cast down to get lower corner.
 					// Before casting shift by 0.5 for closest pick
-					saw::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
+					kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> p_cell_pos {{
 						static_cast<uint64_t>(p_pos_lie.at({{0u}}).get()+0.5),
 						static_cast<uint64_t>(p_pos_lie.at({{1u}}).get()+0.5)
 					}};
@@ -801,7 +800,7 @@ saw::error_or<void> real_main(int argc, char** argv){
 		lbm_step(lattice, macros, i);
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 int main(int argc, char** argv){

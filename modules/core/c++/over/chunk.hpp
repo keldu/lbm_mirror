@@ -15,7 +15,8 @@ using OverChunk = Array<Chunk,Dim>;
 }
 }
 
-namespace saw {
+namespace kel {
+namespace lbm {
 template<template Chunk, uint64_t Dim>
 class data<kel::lbm::sch::OverChunk<Chunk,Dim>> final {
 public:
@@ -24,4 +25,5 @@ private:
 	std::vector<data<Schema>> data_;
 public:
 };
+}
 }

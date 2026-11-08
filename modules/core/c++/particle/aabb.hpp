@@ -7,7 +7,7 @@ namespace kel {
 namespace lbm {
 template<typename PGroup>
 class particle_aabb final {
-	static_assert(saw::always_false<PGroup>, "Not supported");
+	static_assert(kel::lbm::always_false<PGroup>, "Not supported");
 };
 
 template<typename T, uint64_t D, uint64_t PC>
@@ -23,13 +23,13 @@ public:
 	>;
 public:
 	template<typename Sch, typename Encode>
-	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& p_grp, const saw::data<sch::FixedArray<sch::UInt64,1u>>& index, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	static constexpr kel::lbm::error_or<kel::lbm::data<AABB>> calculate(const kel::lbm::data<Sch,Encode>& p_grp, const kel::lbm::data<sch::FixedArray<sch::UInt64,1u>>& index, const kel::lbm::data<sch::FixedArray<sch::UInt64,D>>& meta){
 		static_assert(PC > 0u, "Can't calculate from no particles");
 		if(not (index.at({{0u}}).get() < PC) ){
-			return saw::make_error<saw::err::critical>("Too large i in particle_aabb");
+			return kel::lbm::make_error<kel::lbm::err::critical>("Too large i in particle_aabb");
 		}
 
-		saw::data<AABB> aabb;
+		kel::lbm::data<AABB> aabb;
 		auto& parts = p_grp.template get<"particles">();
 
 		auto& pi = parts.at(index);
@@ -39,16 +39,16 @@ public:
 		auto& a = aabb.template get<"a">();
 		auto& b = aabb.template get<"b">();
 
-		const saw::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({{0u}}).template get<"radius">();
+		const kel::lbm::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({{0u}}).template get<"radius">();
 
-		saw::data<sch::Vector<T,D>> lower;
-		saw::data<sch::Vector<T,D>> upper;
+		kel::lbm::data<sch::Vector<T,D>> lower;
+		kel::lbm::data<sch::Vector<T,D>> upper;
 
 		for(uint64_t i{0u}; i < D; ++i){
-			lower.at({{i}}) = ((pirb_pos.at({{i}}) >= rad_d.at({})) ? (pirb_pos.at({{i}}) - rad_d.at({})) : saw::data<T>{0});
+			lower.at({{i}}) = ((pirb_pos.at({{i}}) >= rad_d.at({})) ? (pirb_pos.at({{i}}) - rad_d.at({})) : kel::lbm::data<T>{0});
 			a.at({i}) = lower.at({{i}}).template cast_to<sch::UInt64>();
 			upper.at({{i}}) = pirb_pos.at({{i}}) + rad_d.at({});
-			b.at({i}) = (upper.at({{i}})+saw::data<T>{1}).template cast_to<sch::UInt64>();
+			b.at({i}) = (upper.at({{i}})+kel::lbm::data<T>{1}).template cast_to<sch::UInt64>();
 		}
 		
 		return aabb;

@@ -6,10 +6,10 @@ namespace kel {
 namespace lbm {
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> init(
+kel::lbm::error_or<void> init(
 		const converter<T>& conv,
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros
+		kel::lbm::data<sch::ChunkStruct<T,Desc>>& fields,
+		kel::lbm::data<sch::MacroStruct<T,Desc>>& macros
 ){
 	(void) conv;
 
@@ -92,12 +92,12 @@ saw::error_or<void> init(
 	iterator<Desc::D>::apply(
 		[&](const auto& index){
 			auto& info = info_f.at(index);
-			saw::data<sch::Scalar<T>> radius_p;
+			kel::lbm::data<sch::Scalar<T>> radius_p;
 			radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
-			saw::data<sch::Scalar<T>> dense_p;
+			kel::lbm::data<sch::Scalar<T>> dense_p;
 			dense_p.at({}).set(1);
 
-			saw::data<sch::Vector<T,Desc::D>> middle,ind_vec;
+			kel::lbm::data<sch::Vector<T,Desc::D>> middle,ind_vec;
 			middle.at({{0u}}) = conv.meter_si_to_lbm({{0.16}}).handle();
 			middle.at({{1u}}) = conv.meter_si_to_lbm({{0.2}}).handle();
 
@@ -106,7 +106,7 @@ saw::error_or<void> init(
 			}
 
 			auto dist = ind_vec - middle;
-			auto dist_2 = saw::math::dot(dist,dist);
+			auto dist_2 = kel::lbm::math::dot(dist,dist);
 
 			if(dist_2.at({}) < radius_p.at({}) * radius_p.at({})){
 				info_f.at(index) = 1u;
@@ -115,7 +115,7 @@ saw::error_or<void> init(
 		{},// 0-index
 		df_f.get_dims()
 	);
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

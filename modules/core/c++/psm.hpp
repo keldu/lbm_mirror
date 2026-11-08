@@ -21,7 +21,7 @@ public:
 	component() = default;
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		auto& porosity_f = macros.template get<"porosity">();
 
 		auto& por = porosity_f.at(index);
@@ -35,26 +35,26 @@ public:
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::Psm, Encode> {
 private:
-	saw::data<T> relaxation_;
-	saw::data<T> frequency_;
+	kel::lbm::data<T> relaxation_;
+	kel::lbm::data<T> frequency_;
 public:
 	component(
-		typename saw::native_data_type<T>::type relaxation__
+		typename kel::lbm::native_data_type<T>::type relaxation__
 	):
 		relaxation_{relaxation__}
 	{
-		saw::data<T> one;
+		kel::lbm::data<T> one;
 		one = 1.0;
 		frequency_ = one / relaxation_;
 	}
 
-	component(const saw::data<sch::Pure<T>>& relaxation__):
+	component(const kel::lbm::data<sch::Pure<T>>& relaxation__):
 		relaxation_{relaxation__.handle()},
-		frequency_{saw::data<T>{typename saw::native_data_type<T>::type(1)} / relaxation_}
+		frequency_{kel::lbm::data<T>{typename kel::lbm::native_data_type<T>::type(1)} / relaxation_}
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 	
 		using dfi = df_info<T,Descriptor>;
 		bool is_even = ((time_step.get() % 2) == 0);
@@ -65,14 +65,14 @@ public:
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"momentum">();
 		
-		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
-		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+		kel::lbm::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		kel::lbm::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
 
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
-		saw::data<T> one{1.0};
+		kel::lbm::data<T> one{1.0};
 		auto& porous = porous_f.at(index);
 		auto flip_porous = one - porous.at({});
 
@@ -98,12 +98,12 @@ public:
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 void apply(
-    const saw::data<CellFieldSchema, Encode>& field,
-    const saw::data<MacroFieldSchema, Encode>& macros,
-    const saw::data<ParticleSchema, Encode>& pg,
-    saw::data<sch::FixedArray<sch::UInt64,1u>> index,
-    saw::data<sch::UInt64> time_step,
-    saw::data<sch::UInt64> sub_steps
+    const kel::lbm::data<CellFieldSchema, Encode>& field,
+    const kel::lbm::data<MacroFieldSchema, Encode>& macros,
+    const kel::lbm::data<ParticleSchema, Encode>& pg,
+    kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index,
+    kel::lbm::data<sch::UInt64> time_step,
+    kel::lbm::data<sch::UInt64> sub_steps
 ) const {
 
     using dfi = df_info<T,Descriptor>;
@@ -126,10 +126,10 @@ void apply(
     auto& vel_f   = macros.template get<"momentum">();
     auto& force_f = macros.template get<"force">();
 
-    saw::data<sch::Scalar<T>> one;
+    kel::lbm::data<sch::Scalar<T>> one;
     one.at({}) = 1.0;
 
-		saw::data<sch::Scalar<T>> half;
+		kel::lbm::data<sch::Scalar<T>> half;
 		half.at({}) = 0.5;
 
     /*
@@ -152,7 +152,7 @@ void apply(
         auto& pirb =
             pi.template get<"rigid_body">();
 
-        saw::data<sch::Vector<T,Descriptor::D>>& pirb_pos =
+        kel::lbm::data<sch::Vector<T,Descriptor::D>>& pirb_pos =
             pirb.template get<"position">();
 
         auto& pirb_pos_old =
@@ -165,7 +165,7 @@ void apply(
          * --------------------------------------------------------
          */
 
-        saw::data<sch::Scalar<T>> ts;
+        kel::lbm::data<sch::Scalar<T>> ts;
 
         ts.at({}) =
             one.at({})
@@ -203,8 +203,8 @@ void apply(
 
         auto& aabb = eo_aabb.get_value();
 
-        saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> start;
-        saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> stop;
+        kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> start;
+        kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> stop;
 
         start = aabb.template get<"a">();
         stop  = aabb.template get<"b">();
@@ -216,7 +216,7 @@ void apply(
          * --------------------------------------------------------
          */
 
-        saw::data<sch::Vector<T,Descriptor::D>> force_p;
+        kel::lbm::data<sch::Vector<T,Descriptor::D>> force_p;
 
         for(uint64_t k = 0u; k < Descriptor::D; ++k){
             force_p.at({{k}}) = 0.0;
@@ -248,8 +248,8 @@ void apply(
                  * ------------------------------------------------
                  */
 
-                saw::data<sch::Vector<T,Descriptor::D>> rel_dist =
-                    saw::math::vectorize_data(index_f)
+                kel::lbm::data<sch::Vector<T,Descriptor::D>> rel_dist =
+                    kel::lbm::math::vectorize_data(index_f)
                     .template cast_to<T>()
                     - pirb_pos;
 
@@ -260,7 +260,7 @@ void apply(
                  * ------------------------------------------------
                  */
 
-                saw::data<sch::Scalar<T>> eps;
+                kel::lbm::data<sch::Scalar<T>> eps;
                 eps.at({}) = 1.5;
 
                 auto& por =
@@ -294,7 +294,7 @@ void apply(
                  * ------------------------------------------------
                  */
 
-                saw::data<sch::Vector<T,Descriptor::D>> momentum;
+                kel::lbm::data<sch::Vector<T,Descriptor::D>> momentum;
 
                 for(uint64_t k = 0u; k < Descriptor::D; ++k){
                     momentum.at({{k}}) = 0.0;
@@ -319,9 +319,9 @@ void apply(
                      * Direction vector e_i.
                      */
 
-                    saw::data<sch::Vector<T,Descriptor::D>> e_i;
+                    kel::lbm::data<sch::Vector<T,Descriptor::D>> e_i;
 
-                    saw::data<
+                    kel::lbm::data<
                         sch::FixedArray<
                             sch::UInt64,
                             Descriptor::D
@@ -353,7 +353,7 @@ void apply(
                      */
 
                     auto u_p_e =
-                        saw::math::dot(
+                        kel::lbm::math::dot(
                             e_i,
                             vel_p_old
                         );
@@ -371,10 +371,10 @@ void apply(
                      * ------------------------------------------------
                      */
 
-                    saw::data<T> dfs_added =
+                    kel::lbm::data<T> dfs_added =
                           dfs.at({i})
                             * (
-                                saw::data<T>{1.0}
+                                kel::lbm::data<T>{1.0}
                                 - u_p_e.at({})
                             )
 
@@ -382,7 +382,7 @@ void apply(
                             .at(n_ind_i)
                             .at({i_opp})
                             * (
-                                saw::data<T>{1.0}
+                                kel::lbm::data<T>{1.0}
                                 + u_p_e.at({})
                             );
 
@@ -391,7 +391,7 @@ void apply(
                      * Convert scalar into vector multiplication.
                      */
 
-                    saw::data<sch::Scalar<T>> dfs_added_v;
+                    kel::lbm::data<sch::Scalar<T>> dfs_added_v;
 
                     dfs_added_v.at({}) =
                         dfs_added;
@@ -457,7 +457,7 @@ void apply(
          * ------------------------------------------------------------
          */
 
-        for(saw::data<sch::UInt64> i{0u};
+        for(kel::lbm::data<sch::UInt64> i{0u};
             i < sub_steps;
             ++i){
 

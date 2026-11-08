@@ -41,7 +41,6 @@ constexpr std::array<uint64_t,2u> dims{
 constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
-using namespace saw::schema;
 
 template<uint64_t N>
 using InfoChunk = Chunk<UInt8, 0u, dim_x*N, dim_y*N>;

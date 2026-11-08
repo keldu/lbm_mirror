@@ -47,15 +47,15 @@ public:
 	/**
 	 * Thoughts regarding automating order setup
 	 */
-	static constexpr saw::string_literal name = "full_way_bounce_back";
-	static constexpr saw::string_literal after = "";
-	static constexpr saw::string_literal before = "streaming";
+	static constexpr kel::lbm::string_literal name = "full_way_bounce_back";
+	static constexpr kel::lbm::string_literal after = "";
+	static constexpr kel::lbm::string_literal before = "streaming";
 
 	/**
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, kel::lbm::data<sch::UInt64> time_step)const{
 		bool is_even = ((time_step.get() % 2u) == 0u);
 
 		// This is a ref
@@ -96,15 +96,15 @@ public:
 	/**
 	 * Thoughts regarding automating order setup
 	 */
-	static constexpr saw::string_literal name = "full_way_anti_bounce_back";
-	static constexpr saw::string_literal after = "";
-	static constexpr saw::string_literal before = "streaming";
+	static constexpr kel::lbm::string_literal name = "full_way_anti_bounce_back";
+	static constexpr kel::lbm::string_literal after = "";
+	static constexpr kel::lbm::string_literal before = "streaming";
 
 	/**
 	 * Raw setup
 	 */
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step)const{
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, kel::lbm::data<sch::UInt64> time_step)const{
 		bool is_even = ((time_step.get() % 2u) == 0u);
 
 		// This is a ref
@@ -135,19 +135,19 @@ public:
 template<typename FP, typename Descriptor, typename Encode>
 class component<FP, Descriptor, cmpt::Equilibrium, Encode> final {
 private:
-	saw::data<sch::Scalar<FP>> density_;
-	saw::data<sch::Vector<FP,Descriptor::D>> momentum_;
+	kel::lbm::data<sch::Scalar<FP>> density_;
+	kel::lbm::data<sch::Vector<FP,Descriptor::D>> momentum_;
 public:
 	component(
-		saw::data<sch::Scalar<FP>> density__,
-		saw::data<sch::Vector<FP,Descriptor::D>> momentum__
+		kel::lbm::data<sch::Scalar<FP>> density__,
+		kel::lbm::data<sch::Vector<FP,Descriptor::D>> momentum__
 	):
 		density_{density__},
 		momentum_{momentum__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, kel::lbm::data<sch::UInt64> time_step) const {
 		
 		bool is_even = ((time_step.get() % 2u) == 0u);
 		using dfi = df_info<FP,Descriptor>;
@@ -177,14 +177,14 @@ class component<FP, sch::Descriptor<2u,9u>, cmpt::ZouHePressureX<Dir>, Encode> f
 public:
 	using Descriptor = sch::Descriptor<2u,9u>;
 private:
-	saw::data<FP> rho_setting_;
+	kel::lbm::data<FP> rho_setting_;
 public:
-	component(const saw::data<FP>& rho_setting__):
+	component(const kel::lbm::data<FP>& rho_setting__):
 		rho_setting_{rho_setting__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,2u>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, kel::lbm::data<sch::FixedArray<sch::UInt64,2u>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		using dfi = df_info<FP,Descriptor>;
 
 		bool is_even = ((time_step.get() % 2) == 0);
@@ -196,7 +196,7 @@ public:
 
 		auto& dfs_old = dfs_old_f.at(index);
 
-		auto rho_vel_x = [&]() -> saw::data<FP> {
+		auto rho_vel_x = [&]() -> kel::lbm::data<FP> {
 			if constexpr (Dir){
 				auto S = dfs_old.at({0u})
 					+ dfs_old.at({3u}) + dfs_old.at({4u})
@@ -215,13 +215,13 @@ public:
 		// static_assert(Descriptor::D == 2u and Descriptor::Q == 9u, "Some parts are hard coded sadly");
 
 		if constexpr (Dir) {
-			dfs_old.at({2u}) = dfs_old.at({1u}) + saw::data<FP>{2.0 / 3.0} * rho_vel_x;
-			dfs_old.at({6u}) = dfs_old.at({5u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
-			dfs_old.at({8u}) = dfs_old.at({7u}) + saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({2u}) = dfs_old.at({1u}) + kel::lbm::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({6u}) = dfs_old.at({5u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_vel_x + kel::lbm::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({8u}) = dfs_old.at({7u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_vel_x + kel::lbm::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
 		}else if constexpr (not Dir){
-			dfs_old.at({1u}) = dfs_old.at({2u}) - saw::data<FP>{2.0 / 3.0} * rho_vel_x;
-			dfs_old.at({5u}) = dfs_old.at({6u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
-			dfs_old.at({7u}) = dfs_old.at({8u}) - saw::data<FP>{1.0 / 6.0} * rho_vel_x + saw::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
+			dfs_old.at({1u}) = dfs_old.at({2u}) - kel::lbm::data<FP>{2.0 / 3.0} * rho_vel_x;
+			dfs_old.at({5u}) = dfs_old.at({6u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_vel_x + kel::lbm::data<FP>{0.5} * (dfs_old.at({4u}) - dfs_old.at({3u}));
+			dfs_old.at({7u}) = dfs_old.at({8u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_vel_x + kel::lbm::data<FP>{0.5} * (dfs_old.at({3u}) - dfs_old.at({4u}));
 		}
 	}
 };
@@ -231,14 +231,14 @@ class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHePressureX<East>, Encode>
 public:
 	using Descriptor = sch::Descriptor<3u,27u>;
 private:
-	saw::data<FP> rho_setting_;
+	kel::lbm::data<FP> rho_setting_;
 public:
-	component(const saw::data<FP>& rho_setting__):
+	component(const kel::lbm::data<FP>& rho_setting__):
 		rho_setting_{rho_setting__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		using dfi = df_info<FP,Descriptor>;
 
 		bool is_even = ((time_step.get() % 2) == 0);
@@ -288,7 +288,7 @@ public:
      *   rho*ux = S - rho
      */
 
-    saw::data<FP> S;
+    kel::lbm::data<FP> S;
 
     if constexpr (East) {
 
@@ -305,7 +305,7 @@ public:
             + f.at({24u})
 
             // cx = +1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 f.at({2u})
                 + f.at({5u})
                 + f.at({8u})
@@ -332,7 +332,7 @@ public:
             + f.at({24u})
 
             // cx = -1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 f.at({1u})
                 + f.at({4u})
                 + f.at({7u})
@@ -345,7 +345,7 @@ public:
             );
     }
 
-    saw::data<FP> rho_ux;
+    kel::lbm::data<FP> rho_ux;
 
     if constexpr (East) {
         rho_ux = rho_setting_ - S;
@@ -375,8 +375,8 @@ public:
      *   + 2*x=-1 contribution
      */
 
-    saw::data<FP> rho_uy;
-    saw::data<FP> rho_uz;
+    kel::lbm::data<FP> rho_uy;
+    kel::lbm::data<FP> rho_uz;
 
     if constexpr (East) {
 
@@ -390,7 +390,7 @@ public:
             + f.at({24u})
 
             // cx = +1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 -f.at({5u})
                 + f.at({8u})
                 -f.at({14u})
@@ -409,7 +409,7 @@ public:
             + f.at({24u})
 
             // cx = +1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 -f.at({11u})
                 -f.at({14u})
                 -f.at({17u})
@@ -430,7 +430,7 @@ public:
             + f.at({24u})
 
             // cx = -1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 -f.at({4u})
                 + f.at({7u})
                 -f.at({13u})
@@ -449,7 +449,7 @@ public:
             +f.at({24u})
 
             // cx = -1
-            + saw::data<FP>{2.0} * (
+            + kel::lbm::data<FP>{2.0} * (
                 -f.at({10u})
                 -f.at({13u})
                 -f.at({16u})
@@ -466,9 +466,9 @@ public:
      * ============================================================
      */
 
-    saw::data<FP> ux = rho_ux / rho_setting_;
-    saw::data<FP> uy = rho_uy / rho_setting_;
-    saw::data<FP> uz = rho_uz / rho_setting_;
+    kel::lbm::data<FP> ux = rho_ux / rho_setting_;
+    kel::lbm::data<FP> uy = rho_uy / rho_setting_;
+    kel::lbm::data<FP> uz = rho_uz / rho_setting_;
 
 
     /*
@@ -516,7 +516,7 @@ public:
 
         f.at({1u}) =
             f.at({2u})
-            - saw::data<FP>{1.0 / 6.0} * rho_ux;
+            - kel::lbm::data<FP>{1.0 / 6.0} * rho_ux;
 
 
         /*
@@ -527,7 +527,7 @@ public:
 
         f.at({4u}) =
             f.at({5u})
-            - saw::data<FP>{1.0 / 9.0}
+            - kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux + rho_uy);
 
 
@@ -539,7 +539,7 @@ public:
 
         f.at({7u}) =
             f.at({8u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (-rho_ux + rho_uy);
 
 
@@ -551,7 +551,7 @@ public:
 
         f.at({10u}) =
             f.at({11u})
-            - saw::data<FP>{1.0 / 9.0}
+            - kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux + rho_uz);
 
 
@@ -563,7 +563,7 @@ public:
 
         f.at({13u}) =
             f.at({14u})
-            - saw::data<FP>{1.0 / 36.0}
+            - kel::lbm::data<FP>{1.0 / 36.0}
                 * (rho_ux + rho_uy + rho_uz);
 
 
@@ -575,7 +575,7 @@ public:
 
         f.at({16u}) =
             f.at({17u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (-rho_ux + rho_uy + rho_uz);
 
 
@@ -587,7 +587,7 @@ public:
 
         f.at({19u}) =
             f.at({20u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (-rho_ux + rho_uz);
 
 
@@ -599,7 +599,7 @@ public:
 
         f.at({22u}) =
             f.at({23u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (-rho_ux - rho_uy + rho_uz);
 
 
@@ -611,7 +611,7 @@ public:
 
         f.at({25u}) =
             f.at({26u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (-rho_ux + rho_uy + rho_uz);
 
     } else {
@@ -624,7 +624,7 @@ public:
 
         f.at({2u}) =
             f.at({1u})
-            + saw::data<FP>{1.0 / 6.0} * rho_ux;
+            + kel::lbm::data<FP>{1.0 / 6.0} * rho_ux;
 
 
         /*
@@ -635,7 +635,7 @@ public:
 
         f.at({5u}) =
             f.at({4u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux - rho_uy);
 
 
@@ -647,7 +647,7 @@ public:
 
         f.at({8u}) =
             f.at({7u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux + rho_uy);
 
 
@@ -659,7 +659,7 @@ public:
 
         f.at({11u}) =
             f.at({10u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux - rho_uz);
 
 
@@ -671,7 +671,7 @@ public:
 
         f.at({14u}) =
             f.at({13u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (rho_ux - rho_uy - rho_uz);
 
 
@@ -683,7 +683,7 @@ public:
 
         f.at({17u}) =
             f.at({16u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (rho_ux + rho_uy - rho_uz);
 
 
@@ -695,7 +695,7 @@ public:
 
         f.at({20u}) =
             f.at({19u})
-            + saw::data<FP>{1.0 / 9.0}
+            + kel::lbm::data<FP>{1.0 / 9.0}
                 * (rho_ux + rho_uz);
 
 
@@ -707,7 +707,7 @@ public:
 
         f.at({23u}) =
             f.at({22u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (rho_ux - rho_uy + rho_uz);
 
 
@@ -719,7 +719,7 @@ public:
 
         f.at({26u}) =
             f.at({25u})
-            + saw::data<FP>{1.0 / 36.0}
+            + kel::lbm::data<FP>{1.0 / 36.0}
                 * (rho_ux + rho_uy + rho_uz);
 			}
 		}
@@ -729,16 +729,16 @@ public:
 template<typename T, typename Descriptor, bool East, typename Encode>
 class component<T, Descriptor, cmpt::ZouHeVelocityX<East>, Encode> final {
 private:
-	saw::data<sch::Vector<T,Descriptor::D>> velocity_;
+	kel::lbm::data<sch::Vector<T,Descriptor::D>> velocity_;
 public:
 	component(
-		const saw::data<sch::Vector<T,Descriptor::D>>& velocity__
+		const kel::lbm::data<sch::Vector<T,Descriptor::D>>& velocity__
 	):
 		velocity_{velocity__}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>>& index, kel::lbm::data<sch::UInt64> time_step) const {
 		
 		bool is_even = ((time_step.get() % 2u) == 0u);
 		using dfi = df_info<T,Descriptor>;
@@ -748,27 +748,27 @@ public:
 
 		auto& dfs = dfs_old_f.at(index);
 
-		saw::data<T> dir_sum;
+		kel::lbm::data<T> dir_sum;
 		if constexpr (East) {
 			dir_sum = dfs.at({1u}) + dfs.at({5u}) + dfs.at({7u});
 		} else if constexpr(not East){
 			dir_sum = dfs.at({2u}) + dfs.at({6u}) + dfs.at({8u});
 		}
 
-		saw::data<sch::Scalar<T>> rho;
-		rho.at({}) = (dfs.at({0u}) + dfs.at({4u}) + dfs.at({3u}) + dir_sum * 2) / (velocity_.at({{0u}}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0)});
+		kel::lbm::data<sch::Scalar<T>> rho;
+		rho.at({}) = (dfs.at({0u}) + dfs.at({4u}) + dfs.at({3u}) + dir_sum * 2) / (velocity_.at({{0u}}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(1.0)});
 
 		if constexpr (East) {
-			dfs.at({2u}) = dfs.at({1u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
-			dfs.at({6u}) = dfs.at({5u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+			dfs.at({2u}) = dfs.at({1u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({6u}) = dfs.at({5u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
 				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
-			dfs.at({8u}) = dfs.at({7u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+			dfs.at({8u}) = dfs.at({7u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
 				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}})) * 0.5f;
 		}else if constexpr ( not East ){
-			dfs.at({1u}) = dfs.at({2u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
-			dfs.at({5u}) = dfs.at({6u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+			dfs.at({1u}) = dfs.at({2u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(2.0 / 3.0)} * rho.at({}) * velocity_.at({{0u}});
+			dfs.at({5u}) = dfs.at({6u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
 				+ (dfs.at({4u}) - dfs.at({3u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
-			dfs.at({7u}) = dfs.at({8u}) + saw::data<T>{static_cast<saw::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
+			dfs.at({7u}) = dfs.at({8u}) + kel::lbm::data<T>{static_cast<kel::lbm::native_data_type<T>::type>(1.0 / 6.0)} * rho.at({}) * velocity_.at({{0u}})
 				+ (dfs.at({3u}) - dfs.at({4u}) + rho.at({}) * velocity_.at({{1u}}))*0.5f;
 		}
 	}

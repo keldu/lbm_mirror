@@ -22,14 +22,14 @@ using TestObjSchema = Tuple<
 
 SAW_TEST("Sycl Data Compilation"){
 	acpp::sycl::queue q;
-	saw::data<
-		saw::schema::Struct<
-			saw::schema::Member<
-				kel::lbm::sch::Chunk<saw::schema::UInt8,1u,1u,1u>,
+	kel::lbm::data<
+		kel::lbm::sch::Struct<
+			kel::lbm::sch::Member<
+				kel::lbm::sch::Chunk<kel::lbm::sch::UInt8,1u,1u,1u>,
 				"test"
 			>
 		>,
-		kel::lbm::encode::Sycl<saw::encode::Native>
+		kel::lbm::encode::Sycl<kel::lbm::enc::Native>
 	> dat{q};
 
 	auto& test_f = dat.template get<"test">();
@@ -41,14 +41,14 @@ SAW_TEST("Sycl Data Compilation"){
 SAW_TEST("Sycl Data Array of Struct"){
 	acpp::sycl::queue q;
 
-	saw::data<sch::Array<sch::Float64>, kel::lbm::encode::Sycl<saw::encode::Native>> a{{{2u}},q};
+	kel::lbm::data<sch::Array<sch::Float64>, kel::lbm::encode::Sycl<kel::lbm::enc::Native>> a{{{2u}},q};
 }
 
 /*
 SAW_TEST("Sycl Data Compilation for Particle Similacrum"){
 	acpp::sycl::queue q;
 
-	saw::data<
+	kel::lbm::data<
 		sch::TestObjSchema
 	> a;
 }

@@ -3,18 +3,18 @@
 namespace kel {
 namespace lbm {
 template<typename T, uint64_t D>
-void blur_mask(saw::data<sch::Array<T,D>>& p_mask){
+void blur_mask(kel::lbm::data<sch::Array<T,D>>& p_mask){
 
-	saw::data<T> mid{2.0/3.0};
-	saw::data<T> edge{1.0/6.0};
+	kel::lbm::data<T> mid{2.0/3.0};
+	kel::lbm::data<T> edge{1.0/6.0};
 
-	// saw::data<sch::FixedArray<sch::UInt64>,2u> blur_weights{{2.0/3.0},{1.0/6.0}};
+	// kel::lbm::data<sch::FixedArray<sch::UInt64>,2u> blur_weights{{2.0/3.0},{1.0/6.0}};
 
 	auto meta = p_mask.dims();
-	saw::data<sch::Array<T,D>> blurred_mask{meta};
+	kel::lbm::data<sch::Array<T,D>> blurred_mask{meta};
 
 	/* 1D blur into N-D Blur*/
-	for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{D}; ++i){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < kel::lbm::data<sch::UInt64>{D}; ++i){
 		iterator<D>::apply([&](const auto& index){
 			blurred_mask.at(index) = p_mask.at(index) * mid;
 

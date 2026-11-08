@@ -4,7 +4,7 @@
 
 namespace {
 namespace sch {
-using namespace saw::schema;
+using namespace kel::lbm::sch;
 }
 
 SAW_TEST("Chunk Ghost size 0"){
@@ -39,7 +39,7 @@ SAW_TEST("Chunk 2D setup"){
 
 	using TestChunk = lbm::sch::Chunk<sch::Float32, 1u, 2u, 2u>;
 
-	auto chunk = saw::heap<saw::data<TestChunk>>();
+	auto chunk = kel::lbm::heap<kel::lbm::data<TestChunk>>();
 	chunk->at({{0u,0u}}).set(1.0f);
 	SAW_EXPECT((chunk->ghost_at({{1u,1u}}).get() == 1.0f),"Check if ghost is at shifted spot.");
 }

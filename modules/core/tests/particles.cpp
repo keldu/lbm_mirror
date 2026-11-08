@@ -12,7 +12,7 @@ using T = Float64;
 SAW_TEST("Verlet step 2D - Planar"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> particle;
+	kel::lbm::data<sch::Particle<sch::T,2u>> particle;
 	auto& body = particle.template get<"rigid_body">();
 	auto& pos = body.template get<"position">();
 	auto& pos_old = body.template get<"position_old">();
@@ -22,7 +22,7 @@ SAW_TEST("Verlet step 2D - Planar"){
 
 	acc.at({{0}}).set({1.0});
 
-	saw::data<sch::Scalar<sch::T>> dt;
+	kel::lbm::data<sch::Scalar<sch::T>> dt;
 	dt.at({}).set(0.5);
 	lbm::verlet_step_lambda<sch::T,2u>(particle,dt);
 
@@ -33,7 +33,7 @@ SAW_TEST("Verlet step 2D - Planar"){
 SAW_TEST("No Collision Spheroid 2D"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> part_a;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_a;
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -42,7 +42,7 @@ SAW_TEST("No Collision Spheroid 2D"){
 		pos.at({{1u}}) = 0.2;
 
 	}
-	saw::data<sch::Particle<sch::T,2u>> part_b;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_b;
 	{
 		auto& body = part_b.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -59,7 +59,7 @@ SAW_TEST("No Collision Spheroid 2D"){
 SAW_TEST("Collision Spheroid 2D"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> part_a;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_a;
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -72,7 +72,7 @@ SAW_TEST("Collision Spheroid 2D"){
 		pos.at({{1u}}) = 0.2;
 
 	}
-	saw::data<sch::Particle<sch::T,2u>> part_b;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_b;
 	{
 		auto& body = part_b.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -93,7 +93,7 @@ SAW_TEST("Collision Spheroid 2D"){
 SAW_TEST("Moving particles 2D"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> part_a;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_a;
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -110,7 +110,7 @@ SAW_TEST("Moving particles 2D"){
 		acc.at({{0u}}) = 0.1;
 
 	}
-	saw::data<sch::Particle<sch::T,2u>> part_b;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_b;
 	{
 		auto& body = part_b.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -127,7 +127,7 @@ SAW_TEST("Moving particles 2D"){
 		acc.at({{0u}}) = -0.1;
 	}
 
-	saw::data<sch::Scalar<sch::T>> dt;
+	kel::lbm::data<sch::Scalar<sch::T>> dt;
 	dt.at({}).set(0.5);
 	bool has_collided = false;
 	for(uint64_t i = 0u; i < 32u; ++i){
@@ -147,7 +147,7 @@ SAW_TEST("Moving particles 2D"){
 SAW_TEST("Particle Matrix Rotation"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> part_a;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_a;
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -164,7 +164,7 @@ SAW_TEST("Particle Matrix Rotation"){
 SAW_TEST("Particle Collision Impulse"){
 	using namespace kel;
 
-	saw::data<sch::Particle<sch::T,2u>> part_a;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_a;
 	{
 		auto& body = part_a.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -181,7 +181,7 @@ SAW_TEST("Particle Collision Impulse"){
 		acc.at({{0u}}) = 0.1;
 
 	}
-	saw::data<sch::Particle<sch::T,2u>> part_b;
+	kel::lbm::data<sch::Particle<sch::T,2u>> part_b;
 	{
 		auto& body = part_b.template get<"rigid_body">();
 		auto& pos = body.template get<"position">();
@@ -210,15 +210,15 @@ SAW_TEST("Minor Test for mask"){
 
 	auto& grid = mask.template get<"grid">();
 
-	for(saw::data<sch::UInt64> i{0u}; i < grid.template get_dim_size<0>(); ++i){
-		for(saw::data<sch::UInt64> j{0u}; j < grid.template get_dim_size<1>(); ++j){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < grid.template get_dim_size<0>(); ++i){
+		for(kel::lbm::data<sch::UInt64> j{0u}; j < grid.template get_dim_size<1>(); ++j){
 			std::cout<<grid.at({{i,j}}).get()<<" ";
 		}
 		std::cout<<"\n";
 	}
 	std::cout<<std::endl;
 
-	//saw::data<sch::Array<sch::T,2>> reference_mask{{{4+2,4+2}}};
+	//kel::lbm::data<sch::Array<sch::T,2>> reference_mask{{{4+2,4+2}}};
 	//reference_mask.at({{0,0}});
 }
 */
@@ -228,7 +228,7 @@ SAW_TEST("Verlet integration test 2D"){
 	lbm::particle_system<sch::T,2,sch::Particle<sch::T,2>> system;
 
 	{
-		saw::data<sch::Particle<sch::T,2>> particle;
+		kel::lbm::data<sch::Particle<sch::T,2>> particle;
 		auto& rb = particle.template get<"rigid_body">();
 		auto& acc = rb.template get<"acceleration">();
 		auto& pos = rb.template get<"position">();
@@ -245,21 +245,21 @@ SAW_TEST("Verlet integration test 2D"){
 		auto& rb = p.template get<"rigid_body">();
 		auto& pos = rb.template get<"position">();
 
-		for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{2u}; ++i){
+		for(kel::lbm::data<sch::UInt64> i{0u}; i < kel::lbm::data<sch::UInt64>{2u}; ++i){
 			std::cout<<pos.at(i).get()<<" ";
 		}
 		std::cout<<std::endl;
 	}
 
 	for(uint64_t i = 0u; i < 36u; ++i){
-		system.step(saw::data<sch::T>{1e-1});
+		system.step(kel::lbm::data<sch::T>{1e-1});
 
 		{
 			auto& p = system.at({0u});
 			auto& rb = p.template get<"rigid_body">();
 			auto& pos = rb.template get<"position">();
 
-			for(saw::data<sch::UInt64> i{0u}; i < saw::data<sch::UInt64>{2u}; ++i){
+			for(kel::lbm::data<sch::UInt64> i{0u}; i < kel::lbm::data<sch::UInt64>{2u}; ++i){
 				std::cout<<pos.at(i).get()<<" ";
 			}
 			std::cout<<"\n";
@@ -280,7 +280,7 @@ SAW_TEST("Spheroid Particle / AABB"){
 	constexpr uint64_t D = 2u;
 	constexpr uint64_t PC = 1u;
 
-	saw::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::Scalar<T>> radi,dense;
 	radi.at({}) = 2.2f;
 	dense.at({}) = 1.0f;
 	auto spheroid_pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{8u});

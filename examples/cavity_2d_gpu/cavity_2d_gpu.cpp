@@ -12,7 +12,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 /**
  * Basic distribution function
@@ -71,9 +70,9 @@ class df_cell_view<sch::Cell<sch::T, Desc, SN, DN, QN>, Encode> {
 public:
 	using Schema = sch::Cell<sch::T,Desc,SN,DN,QN>;
 private:
-		std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN> view_;
+		std::array<std::decay_t<typename kel::lbm::native_data_type<sch::T>::type>*, QN> view_;
 public:
-		df_cell_view(const std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN>& view):
+		df_cell_view(const std::array<std::decay_t<typename kel::lbm::native_data_type<sch::T>::type>*, QN>& view):
 				view_{view}
 		{}
 };
@@ -89,11 +88,11 @@ struct MovingWall {};
 template<typename Desc>
 class component<sch::T, Desc, cmpt::MovingWall> {
 public:
-	std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
+	std::array<typename kel::lbm::native_data_type<sch::T>::type, Desc::D> lid_vel;
 
 public:
 	void apply(
-		saw::data<sch::DfCell<Desc>>& dfs
+		kel::lbm::data<sch::DfCell<Desc>>& dfs
 	){
 		using dfi = df_info<sch::T,Desc>;
 
@@ -113,15 +112,15 @@ constexpr size_t dim_y = 128;
 
 template<typename Desc>
 void set_geometry(
-	saw::data<sch::CellInfo<Desc>>* info_field
+	kel::lbm::data<sch::CellInfo<Desc>>* info_field
 ){
 	using namespace kel::lbm;
 	using namespace acpp;
-	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	/**
 	 * Set ghost
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& info = info_field[i];
 
@@ -132,7 +131,7 @@ void set_geometry(
 	/**
 	 * Set wall
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& info = info_field[i];
 
@@ -143,7 +142,7 @@ void set_geometry(
 	/**
 	 * Set fluid
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& info = info_field[i];
 
@@ -154,7 +153,7 @@ void set_geometry(
 	/**
 	 * Set top lid
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& info = info_field[i];
 		info({0u}).set(3u);
@@ -164,27 +163,27 @@ void set_geometry(
 
 template<typename Desc>
 void set_initial_conditions(
-	saw::data<sch::CellInfo<Desc>>* info_field,
-	saw::data<sch::DfCell<Desc>>* dfs_field,
-	saw::data<sch::DfCell<Desc>>* dfs_old_field
+	kel::lbm::data<sch::CellInfo<Desc>>* info_field,
+	kel::lbm::data<sch::DfCell<Desc>>* dfs_field,
+	kel::lbm::data<sch::DfCell<Desc>>* dfs_old_field
 ){
 	using namespace kel::lbm;
 	using namespace acpp;
 
-	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,Desc::D>> vel{{0.0,0.0}};
+	kel::lbm::data<sch::T> rho{1.0};
+	kel::lbm::data<sch::FixedArray<sch::T,Desc::D>> vel{{0.0,0.0}};
 	auto eq = equilibrium<sch::T,Desc>(rho, vel);
-	saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 
 	/**
 	 * Set distribution
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>>& index){
 		size_t i = index.at({0u}).get() * dim_x + index.at({1u}).get();
 		auto& dfs = dfs_field[i];
 		auto& dfs_old = dfs_old_field[i];
 
-		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{Desc::Q}; ++k){
+		for(kel::lbm::data<sch::UInt64> k = 0; k < kel::lbm::data<sch::UInt64>{Desc::Q}; ++k){
 			dfs(k) = eq.at(k);
 			dfs_old(k) = eq.at(k);
 		}
@@ -194,9 +193,9 @@ void set_initial_conditions(
 
 template<typename T, typename Desc>
 void lbm_step(
-	saw::data<sch::CellInfo<Desc>>* info_r,
-	saw::data<sch::DfCell<Desc>>* dfs_r,
-	saw::data<sch::DfCell<Desc>>* dfs_r_old,
+	kel::lbm::data<sch::CellInfo<Desc>>* info_r,
+	kel::lbm::data<sch::DfCell<Desc>>* dfs_r,
+	kel::lbm::data<sch::DfCell<Desc>>* dfs_r_old,
 	bool is_even,
 	uint64_t time_step,
 	acpp::sycl::queue& sycl_q
@@ -207,7 +206,7 @@ void lbm_step(
 	using dfi = df_info<T,Desc>;
 
 	//component<T, Desc, cmpt::BGK> coll{0.59};
-	constexpr saw::data<T> frequency{1.0 / 0.59};
+	constexpr kel::lbm::data<T> frequency{1.0 / 0.59};
 	//component<T, Desc, cmpt::BounceBack> bb;
 	component<T, Desc, cmpt::MovingWall> bb_lid;
 	bb_lid.lid_vel = {0.1, 0.0};
@@ -243,8 +242,8 @@ void lbm_step(
 				// coll.apply(latt_acc, {i, j}, time_step);
 				auto& dfs_old = is_even ? dfs_r_old[acc_id] : dfs_r[acc_id];
 
-				saw::data<T> rho;
-				saw::data<sch::FixedArray<T,Desc::D>> vel;
+				kel::lbm::data<T> rho;
+				kel::lbm::data<sch::FixedArray<T,Desc::D>> vel;
 				compute_rho_u<T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<T,Desc>(rho,vel);
 
@@ -302,7 +301,7 @@ int main(){
 	using namespace kel::lbm;
 	using namespace acpp;
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> meta{{dim_x, dim_y}};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> meta{{dim_x, dim_y}};
 	constexpr size_t dim_size = dim_x * dim_y;
 
 	converter<sch::T> conv{
@@ -324,9 +323,9 @@ int main(){
 	constexpr size_t num_cells = dim_x * dim_y;
 
 	// Allocate USM shared memory for your main data
-	auto* info     = sycl::malloc_shared<saw::data<sch::CellInfo<sch::D2Q9>>>(num_cells, sycl_q);
-	auto* dfs      = sycl::malloc_shared<saw::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
-	auto* dfs_old  = sycl::malloc_shared<saw::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
+	auto* info     = sycl::malloc_shared<kel::lbm::data<sch::CellInfo<sch::D2Q9>>>(num_cells, sycl_q);
+	auto* dfs      = sycl::malloc_shared<kel::lbm::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
+	auto* dfs_old  = sycl::malloc_shared<kel::lbm::data<sch::DfCell<sch::D2Q9>>>(num_cells, sycl_q);
 
 	/**
 	 * Set meta information describing what this cell is
@@ -347,7 +346,7 @@ int main(){
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{meta};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{meta};
 
 	std::cout<<"Start"<<std::endl;
 
@@ -357,7 +356,7 @@ int main(){
 		lbm_step<sch::T,sch::D2Q9>(info, dfs, dfs_old, even_step, i, sycl_q);
 		if(i % 1024u == 0u){
 			sycl_q.wait();
-			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+			iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
 				size_t j = index.at({0u}).get() * dim_x + index.at({1u}).get();
 				auto dfs_field = even_step ? dfs_old : dfs;
 

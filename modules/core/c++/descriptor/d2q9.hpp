@@ -28,7 +28,7 @@ public:
 		{ 1,-1}  // 8
 	}};
 
-	static constexpr std::array<typename saw::native_data_type<T>::type,Q> weights = {
+	static constexpr std::array<typename kel::lbm::native_data_type<T>::type,Q> weights = {
 		4./9.,
 		1./9.,
 		1./9.,
@@ -52,8 +52,8 @@ public:
 		7
 	};
 	
-	static constexpr typename saw::native_data_type<T>::type inv_cs2 = 3.0;
-	static constexpr typename saw::native_data_type<T>::type cs2 = 1./3.;
+	static constexpr typename kel::lbm::native_data_type<T>::type inv_cs2 = 3.0;
+	static constexpr typename kel::lbm::native_data_type<T>::type cs2 = 1./3.;
 };
 
 

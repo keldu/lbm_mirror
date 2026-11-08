@@ -9,9 +9,9 @@ namespace lbm {
  */
 template<typename T, typename Desc>
 void compute_rho_u (
-		const saw::data<sch::FixedArray<T,Desc::Q>>& dfs,
-		saw::ref<saw::data<sch::Scalar<T>>> rho,
-		saw::ref<saw::data<sch::Vector<T,Desc::D>>> vel
+		const kel::lbm::data<sch::FixedArray<T,Desc::Q>>& dfs,
+		kel::lbm::ref<kel::lbm::data<sch::Scalar<T>>> rho,
+		kel::lbm::ref<kel::lbm::data<sch::Vector<T,Desc::D>>> vel
 	)
 {
 	using dfi = df_info<T, Desc>;
@@ -24,7 +24,7 @@ void compute_rho_u (
 	for(size_t j = 0; j < Desc::Q; ++j){
 		rho().at({}) = rho().at({}) + dfs.at({j});
 		for(size_t i = 0; i < Desc::D; ++i){
-			vel().at({{i}}) = vel().at({{i}}) + saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[j][i])} * dfs.at({j});
+			vel().at({{i}}) = vel().at({{i}}) + kel::lbm::data<T>{static_cast<typename kel::lbm::native_data_type<T>::type>(dfi::directions[j][i])} * dfs.at({j});
 		}
 	}
 
@@ -39,9 +39,9 @@ void compute_rho_u (
  */
 template<typename T, typename Desc>
 void compute_rho_momentum (
-		const saw::data<sch::FixedArray<T,Desc::Q>>& dfs,
-		saw::ref<saw::data<sch::Scalar<T>>> rho,
-		saw::ref<saw::data<sch::Vector<T,Desc::D>>> mom
+		const kel::lbm::data<sch::FixedArray<T,Desc::Q>>& dfs,
+		kel::lbm::ref<kel::lbm::data<sch::Scalar<T>>> rho,
+		kel::lbm::ref<kel::lbm::data<sch::Vector<T,Desc::D>>> mom
 	)
 {
 	using dfi = df_info<T, Desc>;
@@ -54,7 +54,7 @@ void compute_rho_momentum (
 	for(size_t j = 0; j < Desc::Q; ++j){
 		rho().at({}) = rho().at({}) + dfs.at({j});
 		for(size_t i = 0; i < Desc::D; ++i){
-			mom().at({{i}}) = mom().at({{i}}) + saw::data<T>{static_cast<typename saw::native_data_type<T>::type>(dfi::directions[j][i])} * dfs.at({j});
+			mom().at({{i}}) = mom().at({{i}}) + kel::lbm::data<T>{static_cast<typename kel::lbm::native_data_type<T>::type>(dfi::directions[j][i])} * dfs.at({j});
 		}
 	}
 }

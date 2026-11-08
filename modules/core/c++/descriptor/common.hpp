@@ -5,7 +5,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 template<uint64_t DV, uint64_t QV>
 struct Descriptor {

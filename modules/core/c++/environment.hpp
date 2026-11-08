@@ -1,6 +1,6 @@
 #pragma once
 
-#include <forstio/error.hpp>
+#include "abstract/error.hpp"
 #include <filesystem>
 #include <cstdlib>
 
@@ -18,7 +18,7 @@ public:
 };
 
 template<typename ArgSch>
-saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
+kel::lbm::error_or<environment> init_lbm_env(const kel::lbm::data<ArgSch>& args){
 	namespace fs = std::filesystem;
 
 	auto& args_n = args.template get<"args">();
@@ -26,7 +26,7 @@ saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
 
 	const char* home_dir = std::getenv("HOME");
 	if(not home_dir){
-		return saw::make_error<saw::err::not_found>("Couldn't find home dir");
+		return kel::lbm::make_error<kel::lbm::err::not_found>("Couldn't find home dir");
 	}
 
 	environment env;
@@ -62,12 +62,12 @@ saw::error_or<environment> init_lbm_env(const saw::data<ArgSch>& args){
  * Located outside the project dir because dispatching build jobs with output data in the git directory
  * also copies simulated data which takes a long time.
  */
-saw::error_or<std::filesystem::path> output_directory(){
+kel::lbm::error_or<std::filesystem::path> output_directory(){
 	namespace fs = std::filesystem;
 
 	const char* home_dir = std::getenv("HOME");
 	if(not home_dir){
-		return saw::make_error<saw::err::not_found>("Couldn't find home dir");
+		return kel::lbm::make_error<kel::lbm::err::not_found>("Couldn't find home dir");
 	}
 
 	auto lbm_dir = std::filesystem::path{home_dir} / ".lbm";

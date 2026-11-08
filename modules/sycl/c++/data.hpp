@@ -18,57 +18,58 @@ struct struct_has_only_equal_dimension_array{};
 }
 }
 
-namespace saw {
+namespace kel {
+namespace lbm {
 template<typename Sch, uint64_t... Dims, typename Encode>
-class data<schema::FixedArray<Sch,Dims...>, kel::lbm::encode::Sycl<Encode>> final {
+class data<sch::FixedArray<Sch,Dims...>, kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using Schema = schema::FixedArray<Sch,Dims...>;
+	using Schema = sch::FixedArray<Sch,Dims...>;
 private:
 	acpp::sycl::queue* q_;
 	data<Sch,Encode>* values_;
 
-	SAW_FORBID_COPY(data);
-	SAW_FORBID_MOVE(data);
+	KEL_FORBID_COPY(data);
+	KEL_FORBID_MOVE(data);
 public:
 	data(const data<typename meta_schema<Schema>::MetaSchema>& meta__, acpp::sycl::queue& q__):
 		q_{&q__},
 		values_{nullptr}
 	{
 		(void) meta__;
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(ct_multiply<uint64_t,Dims...>::value,*q_);
-		SAW_ASSERT(values_);
+		KEL_ASSERT(values_);
 	}
 
 	data(acpp::sycl::queue& q__):
 		q_{&q__},
 		values_{nullptr}
 	{
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(ct_multiply<uint64_t,Dims...>::value,*q_);
-		SAW_ASSERT(values_);
+		KEL_ASSERT(values_);
 	}
 
 	~data(){
 		if(not values_){
 			return;
 		}
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 
 		acpp::sycl::free(values_,*q_);
 		values_ = nullptr;
 	}
 
-	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> get_dims() {
-		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
+	static constexpr data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>> get_dims() {
+		return kel::lbm::data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
-		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Dims)>>& index){
+		return values_[kel::lbm::flatten_index<sch::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 	
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
-		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Dims)>>& index) const{
+		return values_[kel::lbm::flatten_index<sch::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 
 	constexpr data<Sch,Encode>* flat_data() const {
@@ -77,21 +78,21 @@ public:
 };
 
 template<typename Sch, uint64_t... Dims, typename Encode>
-class data<schema::Ptr<schema::FixedArray<Sch,Dims...>>, kel::lbm::encode::Sycl<Encode>> final {
+class data<sch::Ptr<sch::FixedArray<Sch,Dims...>>, kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using Schema = schema::Ptr<schema::FixedArray<Sch,Dims...>>;
+	using Schema = sch::Ptr<sch::FixedArray<Sch,Dims...>>;
 private:
 	data<Sch,Encode>* values_;
 
 public:
-	SAW_DEFAULT_COPY(data);
-	SAW_DEFAULT_MOVE(data);
+	KEL_DEFAULT_COPY(data);
+	KEL_DEFAULT_MOVE(data);
 	
 	data():
 		values_{nullptr}
 	{}
 
-	data(data<schema::FixedArray<Sch,Dims...>, kel::lbm::encode::Sycl<Encode>>& values__):
+	data(data<sch::FixedArray<Sch,Dims...>, kel::lbm::encode::Sycl<Encode>>& values__):
 		values_{values__.flat_data()}
 	{}
 
@@ -99,20 +100,20 @@ public:
 		values_{values__}
 	{}
 
-	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> get_dims() {
-		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
+	static constexpr data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>> get_dims() {
+		return kel::lbm::data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
-	static constexpr data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>> meta() {
-		return saw::data<schema::FixedArray<schema::UInt64, sizeof...(Dims)>>{{Dims...}};
+	static constexpr data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>> meta() {
+		return kel::lbm::data<sch::FixedArray<sch::UInt64, sizeof...(Dims)>>{{Dims...}};
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index){
-		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Dims)>>& index){
+		return values_[kel::lbm::flatten_index<sch::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 	
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Dims)>>& index) const{
-		return values_[kel::lbm::flatten_index<schema::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Dims)>>& index) const{
+		return values_[kel::lbm::flatten_index<sch::UInt64,sizeof...(Dims)>::apply(index,get_dims()).get()];
 	}
 
 	constexpr data<Sch,Encode>* flat_data() const {
@@ -121,27 +122,27 @@ public:
 };
 
 template<typename Sch, uint64_t Dims, typename Encode>
-class data<schema::Array<Sch,Dims>, kel::lbm::encode::Sycl<Encode>> final {
+class data<sch::Array<Sch,Dims>, kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using Schema = schema::Array<Sch,Dims>;
+	using Schema = sch::Array<Sch,Dims>;
 private:
 	static_assert(Dims > 0u, "Zero Dim Arrays make no sense here. If you meant to use this for math style approaches then use Tensor instead of Array");
 
 	data<Sch,Encode>* values_;
-	data<schema::FixedArray<schema::UInt64,Dims>,Encode> meta_;
+	data<sch::FixedArray<sch::UInt64,Dims>,Encode> meta_;
 	acpp::sycl::queue* q_;
 
-	SAW_FORBID_COPY(data);
-	SAW_FORBID_MOVE(data);
+	KEL_FORBID_COPY(data);
+	KEL_FORBID_MOVE(data);
 public:
 	data(const data<typename meta_schema<Schema>::MetaSchema>& meta__, acpp::sycl::queue& q__):
 		values_{nullptr},
 		meta_{meta__},
 		q_{&q__}
 	{
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(flat_size().get(),*q_);
-		SAW_ASSERT(values_);
+		KEL_ASSERT(values_);
 	}
 
 	data(acpp::sycl::queue& q__):
@@ -149,40 +150,40 @@ public:
 		meta_{},
 		q_{&q__}
 	{
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 	}
 
 	~data(){
 		if(not values_){
 			return;
 		}
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 
 		acpp::sycl::free(values_,*q_);
 		values_ = nullptr;
 	}
 
-	constexpr data<schema::FixedArray<schema::UInt64, Dims>, Encode> meta() const {
+	constexpr data<sch::FixedArray<sch::UInt64, Dims>, Encode> meta() const {
 		return meta_;
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& index){
-		return values_[kel::lbm::flatten_index<schema::UInt64,Dims>::apply(index,meta()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,Dims>, Encode>& index){
+		return values_[kel::lbm::flatten_index<sch::UInt64,Dims>::apply(index,meta()).get()];
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& index) const{
-		return values_[kel::lbm::flatten_index<schema::UInt64,Dims>::apply(index,meta()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,Dims>, Encode>& index) const{
+		return values_[kel::lbm::flatten_index<sch::UInt64,Dims>::apply(index,meta()).get()];
 	}
 
 	constexpr error_or<void> reset_to(const data<typename meta_schema<Schema>::MetaSchema>& meta_arg){
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 		meta_ = meta_arg;
 
 		if(values_){
 			acpp::sycl::free(values_,*q_);
 		}
 		values_ = acpp::sycl::malloc_device<data<Sch,Encode>>(flat_size().get(),*q_);
-		SAW_ASSERT(q_);
+		KEL_ASSERT(q_);
 
 		return make_void();
 	}
@@ -191,8 +192,8 @@ public:
 		return values_;
 	}
 
-	constexpr data<schema::UInt64,Encode> flat_size() const {
-		data<schema::UInt64> mult{1u};
+	constexpr data<sch::UInt64,Encode> flat_size() const {
+		data<sch::UInt64> mult{1u};
 
 		for(uint64_t i{0u}; i < Dims; ++i){
 			mult = mult * meta_.at({i});
@@ -203,46 +204,46 @@ public:
 };
 
 template<typename Sch, uint64_t Dims, typename Encode>
-class data<schema::Ptr<schema::Array<Sch,Dims>>, kel::lbm::encode::Sycl<Encode>> final {
+class data<sch::Ptr<sch::Array<Sch,Dims>>, kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using Schema = schema::Ptr<schema::Array<Sch,Dims>>;
+	using Schema = sch::Ptr<sch::Array<Sch,Dims>>;
 private:
 	static_assert(Dims > 0u, "Zero Dim Arrays make no sense here. If you meant to use this for math style approaches then use Tensor instead of Array");
 
 	data<Sch,Encode>* values_;
-	data<schema::FixedArray<schema::UInt64,Dims>,Encode> meta_;
+	data<sch::FixedArray<sch::UInt64,Dims>,Encode> meta_;
 
 public:
-	SAW_DEFAULT_COPY(data);
-	SAW_DEFAULT_MOVE(data);
+	KEL_DEFAULT_COPY(data);
+	KEL_DEFAULT_MOVE(data);
 
 	data():
 		values_{nullptr}
 	{}
 
-	data(const data<schema::Array<Sch,Dims>, kel::lbm::encode::Sycl<Encode>>& values__):
+	data(const data<sch::Array<Sch,Dims>, kel::lbm::encode::Sycl<Encode>>& values__):
 		values_{values__.flat_data()},
 		meta_{values__.meta()}
 	{}
 
-	constexpr data<schema::FixedArray<schema::UInt64, Dims>, Encode> meta() const {
+	constexpr data<sch::FixedArray<sch::UInt64, Dims>, Encode> meta() const {
 		return meta_;
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& index){
-		return values_[kel::lbm::flatten_index<schema::UInt64,Dims>::apply(index,meta()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,Dims>, Encode>& index){
+		return values_[kel::lbm::flatten_index<sch::UInt64,Dims>::apply(index,meta()).get()];
 	}
 
-	constexpr data<Sch,Encode>& at(const data<schema::FixedArray<schema::UInt64,Dims>, Encode>& index) const{
-		return values_[kel::lbm::flatten_index<schema::UInt64,Dims>::apply(index,meta()).get()];
+	constexpr data<Sch,Encode>& at(const data<sch::FixedArray<sch::UInt64,Dims>, Encode>& index) const{
+		return values_[kel::lbm::flatten_index<sch::UInt64,Dims>::apply(index,meta()).get()];
 	}
 
 	constexpr data<Sch,Encode>* flat_data() const {
 		return values_;
 	}
 
-	constexpr data<schema::UInt64,Encode> flat_size() const {
-		data<schema::UInt64> mult{1u};
+	constexpr data<sch::UInt64,Encode> flat_size() const {
+		data<sch::UInt64> mult{1u};
 
 		for(uint64_t i{0u}; i < Dims; ++i){
 			mult = mult * meta_.at({i});
@@ -270,11 +271,11 @@ public:
 		values_{q__}
 	{}
 
-	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index){
 		return values_.at(index);
 	}
 
-	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index) const {
 		return values_.at(index);
 	}
 
@@ -286,7 +287,7 @@ public:
 		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::meta();
 	}
 
-	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	data<ValueSchema, Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
 			ind.at({i}) = index.at({i}) + Ghost;
@@ -294,7 +295,7 @@ public:
 		return values_.at(ind);
 	}
 
-	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	data<ValueSchema, Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index) const {
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
 			ind.at({i}) = index.at({i}) + Ghost;
@@ -303,11 +304,11 @@ public:
 	}
 
 	static constexpr auto get_dims(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+		return data<sch::FixedArray<sch::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	static constexpr auto meta(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+		return data<sch::FixedArray<sch::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	auto flat_data() const {
@@ -320,18 +321,18 @@ public:
 };
 
 template<typename Sch, uint64_t Ghost, uint64_t... Sides, typename Encode>
-class data<schema::Ptr<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>>,kel::lbm::encode::Sycl<Encode>> final {
+class data<sch::Ptr<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>>,kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using Schema = schema::Ptr<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>>;
+	using Schema = sch::Ptr<kel::lbm::sch::Chunk<Sch,Ghost,Sides...>>;
 private:
 	using InnerSchema = typename kel::lbm::sch::Chunk<Sch,Ghost,Sides...>::InnerSchema;
 	using ValueSchema = typename InnerSchema::ValueType;
 	
-	data<schema::Ptr<InnerSchema>,kel::lbm::encode::Sycl<Encode>> values_;
+	data<sch::Ptr<InnerSchema>,kel::lbm::encode::Sycl<Encode>> values_;
 
 public:
-	SAW_DEFAULT_MOVE(data);
-	SAW_DEFAULT_COPY(data);
+	KEL_DEFAULT_MOVE(data);
+	KEL_DEFAULT_COPY(data);
 
 	data():
 		values_{nullptr}
@@ -345,11 +346,11 @@ public:
 		values_{values__}
 	{}
 
-	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index){
 		return values_.at(index);
 	}
 
-	constexpr data<ValueSchema, Encode>& ghost_at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	constexpr data<ValueSchema, Encode>& ghost_at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index) const {
 		return values_.at(index);
 	}
 
@@ -361,7 +362,7 @@ public:
 		return data<InnerSchema,kel::lbm::encode::Sycl<Encode>>::meta();
 	}
 
-	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index){
+	data<ValueSchema, Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index){
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
 			ind.at({i}) = index.at({i}) + Ghost;
@@ -369,7 +370,7 @@ public:
 		return values_.at(ind);
 	}
 
-	data<ValueSchema, Encode>& at(const data<schema::FixedArray<schema::UInt64,sizeof...(Sides)>>& index) const {
+	data<ValueSchema, Encode>& at(const data<sch::FixedArray<sch::UInt64,sizeof...(Sides)>>& index) const {
 		std::decay_t<decltype(index)> ind;
 		for(uint64_t i = 0u; i < sizeof...(Sides); ++i){
 			ind.at({i}) = index.at({i}) + Ghost;
@@ -378,11 +379,11 @@ public:
 	}
 
 	static constexpr auto meta(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+		return data<sch::FixedArray<sch::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	static constexpr auto get_dims(){
-		return data<schema::FixedArray<schema::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
+		return data<sch::FixedArray<sch::UInt64, sizeof...(Sides)>,Encode>{{Sides...}};
 	}
 
 	auto flat_data() const {
@@ -395,10 +396,10 @@ public:
 };
 
 template<typename... Members, typename Encode>
-struct data<schema::Tuple<Members...>, kel::lbm::encode::Sycl<Encode>> final {
+struct data<sch::Tuple<Members...>, kel::lbm::encode::Sycl<Encode>> final {
 public:
 	using StorageT = std::tuple<data<Members,kel::lbm::encode::Sycl<Encode>>...>;
-	using Schema = schema::Tuple<Members...>;
+	using Schema = sch::Tuple<Members...>;
 private:
 	StorageT members_;
 
@@ -434,10 +435,10 @@ public:
 };
 
 template<typename... Members, typename Encode>
-struct data<schema::Ptr<schema::Tuple<Members...>>, kel::lbm::encode::Sycl<Encode>> final {
+struct data<sch::Ptr<sch::Tuple<Members...>>, kel::lbm::encode::Sycl<Encode>> final {
 public:
-	using StorageT = std::tuple<data<schema::Ptr<Members>,kel::lbm::encode::Sycl<Encode>>...>;
-	using Schema = schema::Tuple<Members...>;
+	using StorageT = std::tuple<data<sch::Ptr<Members>,kel::lbm::encode::Sycl<Encode>>...>;
+	using Schema = sch::Tuple<Members...>;
 private:
 	StorageT members_;
 
@@ -459,10 +460,10 @@ public:
 };
 
 template<typename... Members, typename Encode>
-class data<schema::Struct<Members...>, kel::lbm::encode::Sycl<Encode> > final {
+class data<sch::Struct<Members...>, kel::lbm::encode::Sycl<Encode> > final {
 public:
 	using StorageT = std::tuple<data<typename Members::ValueType,kel::lbm::encode::Sycl<Encode>>...>;
-	using Schema = schema::Struct<Members...>;
+	using Schema = sch::Struct<Members...>;
 private:
 	/**
 	 * @todo Check by static assert that the members all have the same dimensions. Alternatively
@@ -494,22 +495,22 @@ public:
 		return std::get<i>(members_);
 	}
 
-	template<saw::string_literal K>
+	template<kel::lbm::string_literal K>
 	auto& get(){
 		return std::get<parameter_key_pack_index<K, Members::KeyLiteral...>::value>(members_);
 	}
 	
-	template<saw::string_literal K>
+	template<kel::lbm::string_literal K>
 	auto& get() const {
 		return std::get<parameter_key_pack_index<K, Members::KeyLiteral...>::value>(members_);
 	}
 };
 
-template<typename... Sch, saw::string_literal... Keys, typename Encode>
-class data<schema::Ptr<schema::Struct<schema::Member<Sch,Keys>...>>, kel::lbm::encode::Sycl<Encode> > final {
+template<typename... Sch, kel::lbm::string_literal... Keys, typename Encode>
+class data<sch::Ptr<sch::Struct<sch::Member<Sch,Keys>...>>, kel::lbm::encode::Sycl<Encode> > final {
 public:
-	using StorageT = std::tuple<data<schema::Ptr<Sch>,kel::lbm::encode::Sycl<Encode>>...>;
-	using Schema = schema::Struct<schema::Member<schema::Ptr<Sch>,Keys>...>;
+	using StorageT = std::tuple<data<sch::Ptr<Sch>,kel::lbm::encode::Sycl<Encode>>...>;
+	using Schema = sch::Struct<sch::Member<sch::Ptr<Sch>,Keys>...>;
 private:
 	/**
 	 * @todo Check by static assert that the members all have the same dimensions. Alternatively
@@ -529,16 +530,17 @@ public:
 		return std::get<i>(members_);
 	}
 
-	template<saw::string_literal K>
+	template<kel::lbm::string_literal K>
 	auto& get(){
 		return std::get<parameter_key_pack_index<K, Keys...>::value>(members_);
 	}
 	
-	template<saw::string_literal K>
+	template<kel::lbm::string_literal K>
 	auto& get() const {
 		return std::get<parameter_key_pack_index<K, Keys...>::value>(members_);
 	}
 };
+}
 }
 
 namespace kel {
@@ -552,9 +554,9 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 	using Schema = sch::Struct<Members...>;
 
 	template<uint64_t i>
-	static saw::error_or<void> copy_to_device_member(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device_member(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 			auto& host_member_data = host_data.template get<M::KeyLiteral>();
 			auto& sycl_member_data = sycl_data.template get<M::KeyLiteral>();
 
@@ -566,18 +568,18 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 			return copy_to_device_member<i+1u>(host_data,sycl_data,q);
 		}
 		
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema, encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema, encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 
 		return copy_to_device_member<0u>(host_data, sycl_data, q);
 	}
 
 	template<uint64_t i>
-	static saw::error_or<void> copy_to_host_member(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host_member(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 			auto& host_member_data = host_data.template get<M::KeyLiteral>();
 			auto& sycl_member_data = sycl_data.template get<M::KeyLiteral>();
 
@@ -589,19 +591,19 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 			return copy_to_host_member<i+1u>(sycl_data,host_data,q);
 		}
 		
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 	
 
-	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		return copy_to_host_member<0u>(sycl_data, host_data, q);
 	}
 
 	template<uint64_t i>
-	static saw::error_or<void> malloc_on_device_member(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device_member(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 			auto& host_member_data = host_data.template get<i>();
 			auto& sycl_member_data = sycl_data.template get<i>();
 
@@ -613,10 +615,10 @@ struct sycl_copy_helper<sch::Struct<Members...>, Encode> final {
 			return malloc_on_device_member<i+1u>(host_data,sycl_data,q);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> malloc_on_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		return malloc_on_device_member<0u>(host_data,sycl_data,q);
 	}
 };
@@ -626,9 +628,9 @@ struct sycl_copy_helper<sch::Tuple<Members...>, Encode> final {
 	using Schema = sch::Tuple<Members...>;
 
 	template<uint64_t i>
-	static saw::error_or<void> copy_to_device_member(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device_member(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 			auto& host_member_data = host_data.template get<i>();
 			auto& sycl_member_data = sycl_data.template get<i>();
 
@@ -640,17 +642,17 @@ struct sycl_copy_helper<sch::Tuple<Members...>, Encode> final {
 			return copy_to_device_member<i+1u>(host_data,sycl_data,q);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema, encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema, encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		return copy_to_device_member<0u>(host_data, sycl_data, q);
 	}
 
 	template<uint64_t i>
-	static saw::error_or<void> copy_to_host_member(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host_member(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 
 			auto& host_member_data = host_data.template get<i>();
 			auto& sycl_member_data = sycl_data.template get<i>();
@@ -663,23 +665,23 @@ struct sycl_copy_helper<sch::Tuple<Members...>, Encode> final {
 			return copy_to_host_member<i+1u>(sycl_data,host_data,q);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
 
-	static saw::error_or<void> copy_to_host(
-		saw::data<Schema,Encode>& host_data,
-		saw::data<Schema,encode::Sycl<Encode>>& sycl_data,
+	static kel::lbm::error_or<void> copy_to_host(
+		kel::lbm::data<Schema,Encode>& host_data,
+		kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data,
 		sycl::queue& q
 	){
 		return copy_to_host_member<0u>(sycl_data, host_data, q);
 	}
 
 	template<uint64_t i>
-	static saw::error_or<void> malloc_on_device_member(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device_member(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 
 		if constexpr (i < sizeof...(Members)){
-			using M = typename saw::parameter_pack_type<i,Members...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Members...>::type;
 			auto& host_member_data = host_data.template get<i>();
 			auto& sycl_member_data = sycl_data.template get<i>();
 
@@ -691,10 +693,10 @@ struct sycl_copy_helper<sch::Tuple<Members...>, Encode> final {
 			return malloc_on_device_member<i+1u>(host_data,sycl_data,q);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> malloc_on_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		return malloc_on_device_member<0u>(host_data,sycl_data,q);
 	}
 };
@@ -703,35 +705,35 @@ template<typename Sch, uint64_t... Dims, typename Encode>
 struct sycl_copy_helper<sch::FixedArray<Sch,Dims...>, Encode> final {
 	using Schema = sch::FixedArray<Sch,Dims...>;
 	
-	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
 		q.submit([&](acpp::sycl::handler& h){
-			h.copy(sycl_ptr,host_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+			h.copy(sycl_ptr,host_ptr, kel::lbm::ct_multiply<uint64_t,Dims...>::value);
 		}).wait();
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
 		q.submit([&](acpp::sycl::handler& h){
-			h.copy(host_ptr,sycl_ptr, saw::ct_multiply<uint64_t,Dims...>::value);
+			h.copy(host_ptr,sycl_ptr, kel::lbm::ct_multiply<uint64_t,Dims...>::value);
 		}).wait();
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> malloc_on_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		(void) host_data;
 		(void) sycl_data;
 		(void) q;
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 };
 
@@ -739,7 +741,7 @@ template<typename Sch, uint64_t Ghost, uint64_t... Dims, typename Encode>
 struct sycl_copy_helper<sch::Chunk<Sch,Ghost,Dims...>, Encode> final {
 	using Schema = sch::Chunk<Sch,Ghost,Dims...>;
 
-	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
 
@@ -750,10 +752,10 @@ struct sycl_copy_helper<sch::Chunk<Sch,Ghost,Dims...>, Encode> final {
 		q.submit([&](acpp::sycl::handler& h){
 			h.copy(sycl_ptr,host_ptr, flat_size.get());
 		}).wait();
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
 
@@ -764,7 +766,7 @@ struct sycl_copy_helper<sch::Chunk<Sch,Ghost,Dims...>, Encode> final {
 		q.submit([&](acpp::sycl::handler& h){
 			h.copy(host_ptr,sycl_ptr, flat_size.get());
 		}).wait();
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 };
 
@@ -772,20 +774,20 @@ template<typename Sch, uint64_t Dims, typename Encode>
 struct sycl_copy_helper<sch::Array<Sch,Dims>, Encode> final {
 	using Schema = sch::Array<Sch,Dims>;
 
-	static saw::error_or<void> copy_to_host(saw::data<Schema,encode::Sycl<Encode>>& sycl_data, saw::data<Schema,Encode>& host_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_host(kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Schema,Encode>& host_data, sycl::queue& q){
 		auto host_ptr = host_data.flat_data();
 		auto sycl_ptr = sycl_data.flat_data();
 
 		static_assert(sizeof(std::decay_t<decltype(sycl_ptr)>) == sizeof(std::decay_t<decltype(host_ptr)>), "Unequal size");
 
-		SAW_ASSERT(host_data.flat_size() == sycl_data.flat_size());
+		KEL_ASSERT(host_data.flat_size() == sycl_data.flat_size());
 		q.submit([&](acpp::sycl::handler& h){
 			h.copy(sycl_ptr,host_ptr, host_data.flat_size().get());
 		}).wait();
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> copy_to_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 
 		{
 			auto hm = host_data.meta();
@@ -807,12 +809,12 @@ struct sycl_copy_helper<sch::Array<Sch,Dims>, Encode> final {
 			h.copy(host_ptr,sycl_ptr, host_data.flat_size().get());
 		}).wait();
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 
-	static saw::error_or<void> malloc_on_device(saw::data<Schema,Encode>& host_data, saw::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
+	static kel::lbm::error_or<void> malloc_on_device(kel::lbm::data<Schema,Encode>& host_data, kel::lbm::data<Schema,encode::Sycl<Encode>>& sycl_data, sycl::queue& q){
 		sycl_data = {host_data.meta(),q};
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 };
 
@@ -823,49 +825,49 @@ struct make_view_helper;
 template<typename Sch, uint64_t Dims, typename Encode>
 struct make_view_helper<sch::Array<Sch,Dims>, encode::Sycl<Encode>> {
 public:
-static saw::error_or<void> apply(
-	saw::data<sch::Array<Sch,Dims>, encode::Sycl<Encode>>& dat,
-	saw::data<sch::Ptr<sch::Array<Sch,Dims>>, encode::Sycl<Encode>>& dat_view
+static kel::lbm::error_or<void> apply(
+	kel::lbm::data<sch::Array<Sch,Dims>, encode::Sycl<Encode>>& dat,
+	kel::lbm::data<sch::Ptr<sch::Array<Sch,Dims>>, encode::Sycl<Encode>>& dat_view
 ){
 	dat_view = {dat};
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 };
 
 template<typename Sch, uint64_t... Dims, typename Encode>
 struct make_view_helper<sch::FixedArray<Sch,Dims...>, encode::Sycl<Encode>> {
 public:
-	static saw::error_or<void> apply(
-		saw::data<sch::FixedArray<Sch,Dims...>, encode::Sycl<Encode>>& dat,
-		saw::data<sch::Ptr<sch::FixedArray<Sch,Dims...>>, encode::Sycl<Encode>>& dat_view
+	static kel::lbm::error_or<void> apply(
+		kel::lbm::data<sch::FixedArray<Sch,Dims...>, encode::Sycl<Encode>>& dat,
+		kel::lbm::data<sch::Ptr<sch::FixedArray<Sch,Dims...>>, encode::Sycl<Encode>>& dat_view
 	){
 		dat_view = {dat};
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 };
 
 template<typename Sch, uint64_t Ghost, uint64_t... Dims, typename Encode>
 struct make_view_helper<sch::Chunk<Sch,Ghost,Dims...>, encode::Sycl<Encode>> {
 public:
-	static saw::error_or<void> apply(
-		saw::data<sch::Chunk<Sch,Ghost,Dims...>, encode::Sycl<Encode>>& dat,
-		saw::data<sch::Ptr<sch::Chunk<Sch,Ghost,Dims...>>, encode::Sycl<Encode>>& dat_view
+	static kel::lbm::error_or<void> apply(
+		kel::lbm::data<sch::Chunk<Sch,Ghost,Dims...>, encode::Sycl<Encode>>& dat,
+		kel::lbm::data<sch::Ptr<sch::Chunk<Sch,Ghost,Dims...>>, encode::Sycl<Encode>>& dat_view
 	){
 		dat_view = {dat};
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 };
 
-template<typename... Sch, saw::string_literal... Keys, typename Encode>
+template<typename... Sch, kel::lbm::string_literal... Keys, typename Encode>
 struct make_view_helper<sch::Struct<sch::Member<Sch,Keys>...>, encode::Sycl<Encode>> {
 private:
 template<uint64_t i>
-static saw::error_or<void> apply_i(
-		saw::data<sch::Struct<sch::Member<Sch,Keys>...>, encode::Sycl<Encode>>& dat,
-		saw::data<sch::Ptr<sch::Struct<sch::Member<Sch,Keys>...>>, encode::Sycl<Encode>>& dat_view
+static kel::lbm::error_or<void> apply_i(
+		kel::lbm::data<sch::Struct<sch::Member<Sch,Keys>...>, encode::Sycl<Encode>>& dat,
+		kel::lbm::data<sch::Ptr<sch::Struct<sch::Member<Sch,Keys>...>>, encode::Sycl<Encode>>& dat_view
 	){
 		if constexpr (i < sizeof...(Sch)){
-			using M = typename saw::parameter_pack_type<i,sch::Member<Sch,Keys>...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,sch::Member<Sch,Keys>...>::type;
 
 			auto eov = make_view_helper<typename M::ValueType,encode::Sycl<Encode>>::apply(dat.template get<M::KeyLiteral>(),dat_view.template get<M::KeyLiteral>());
 			if(eov.is_error()){
@@ -875,12 +877,12 @@ static saw::error_or<void> apply_i(
 			return apply_i<i+1u>(dat,dat_view);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 public:
-static saw::error_or<void> apply(
-	saw::data<sch::Struct<sch::Member<Sch,Keys>...>, encode::Sycl<Encode>>& dat,
-	saw::data<sch::Ptr<sch::Struct<sch::Member<Sch,Keys>...>>, encode::Sycl<Encode>>& dat_view
+static kel::lbm::error_or<void> apply(
+	kel::lbm::data<sch::Struct<sch::Member<Sch,Keys>...>, encode::Sycl<Encode>>& dat,
+	kel::lbm::data<sch::Ptr<sch::Struct<sch::Member<Sch,Keys>...>>, encode::Sycl<Encode>>& dat_view
 ){
 	return apply_i<0u>(dat,dat_view);
 }
@@ -890,12 +892,12 @@ template<typename... Sch, typename Encode>
 struct make_view_helper<sch::Tuple<Sch...>, encode::Sycl<Encode>> {
 private:
 	template<uint64_t i>
-	static saw::error_or<void> apply_i(
-		saw::data<sch::Tuple<Sch...>, encode::Sycl<Encode>>& dat,
-		saw::data<sch::Ptr<sch::Tuple<Sch...>>, encode::Sycl<Encode>>& dat_view
+	static kel::lbm::error_or<void> apply_i(
+		kel::lbm::data<sch::Tuple<Sch...>, encode::Sycl<Encode>>& dat,
+		kel::lbm::data<sch::Ptr<sch::Tuple<Sch...>>, encode::Sycl<Encode>>& dat_view
 	){
 		if constexpr (i < sizeof...(Sch)){
-			using M = typename saw::parameter_pack_type<i,Sch...>::type;
+			using M = typename kel::lbm::parameter_pack_type<i,Sch...>::type;
 
 			auto eov = make_view_helper<M,encode::Sycl<Encode>>::apply(dat.template get<i>(), dat_view.template get<i>());
 			if(eov.is_error()){
@@ -905,12 +907,12 @@ private:
 			return apply_i<i+1u>(dat,dat_view);
 		}
 
-		return saw::make_void();
+		return kel::lbm::make_void();
 	}
 public:
-	static saw::error_or<void> apply(
-		saw::data<sch::Tuple<Sch...>, encode::Sycl<Encode>>& dat,
-		saw::data<sch::Ptr<sch::Tuple<Sch...>>, encode::Sycl<Encode>> dat_view
+	static kel::lbm::error_or<void> apply(
+		kel::lbm::data<sch::Tuple<Sch...>, encode::Sycl<Encode>>& dat,
+		kel::lbm::data<sch::Ptr<sch::Tuple<Sch...>>, encode::Sycl<Encode>> dat_view
 	){
 		return apply_i<0u>(dat,dat_view);
 	}
@@ -919,8 +921,8 @@ public:
 
 // Ptr => Ptr<Chunk<T,Ghost,Dims...>>> => Ptr<FixedArray<T,Dims+Ghost...>
 template<typename Schema,typename Encode>
-auto make_view(saw::data<Schema,Encode>& dat){
-	saw::data<sch::Ptr<Schema>,Encode> dat_view;
+auto make_view(kel::lbm::data<Schema,Encode>& dat){
+	kel::lbm::data<sch::Ptr<Schema>,Encode> dat_view;
 	auto eov = impl::make_view_helper<Schema,Encode>::apply(dat,dat_view);
 	(void) eov;
 
@@ -931,26 +933,26 @@ class device final {
 private:
 	sycl::queue q_;
 
-	SAW_FORBID_COPY(device);
-	SAW_FORBID_MOVE(device);
+	KEL_FORBID_COPY(device);
+	KEL_FORBID_MOVE(device);
 public:
 	device() = default;
 	~device() = default;
 
 	template<typename Sch, typename Encode>
-	saw::error_or<void> copy_to_device(saw::data<Sch,Encode>& host_data, saw::data<Sch,encode::Sycl<Encode>>& sycl_data){
+	kel::lbm::error_or<void> copy_to_device(kel::lbm::data<Sch,Encode>& host_data, kel::lbm::data<Sch,encode::Sycl<Encode>>& sycl_data){
 		return impl::sycl_copy_helper<Sch,Encode>::copy_to_device(host_data, sycl_data, q_);
 	}
 
 	template<typename Sch, typename Encode>
-	saw::error_or<void> copy_to_host(saw::data<Sch,encode::Sycl<Encode>>& sycl_data, saw::data<Sch,Encode>& host_data){
+	kel::lbm::error_or<void> copy_to_host(kel::lbm::data<Sch,encode::Sycl<Encode>>& sycl_data, kel::lbm::data<Sch,Encode>& host_data){
 		return impl::sycl_copy_helper<Sch,Encode>::copy_to_host(sycl_data, host_data, q_);
 	}
 
 	template<typename Sch, typename Encode>
-	saw::error_or<void> malloc_on_device(
-			saw::data<Sch,Encode>& host_data,
-			saw::data<Sch,encode::Sycl<Encode>>& sycl_data
+	kel::lbm::error_or<void> malloc_on_device(
+			kel::lbm::data<Sch,Encode>& host_data,
+			kel::lbm::data<Sch,encode::Sycl<Encode>>& sycl_data
 			){
 		auto eov = impl::sycl_copy_helper<Sch,Encode>::malloc_on_device(host_data, sycl_data, q_);
 		q_.wait();

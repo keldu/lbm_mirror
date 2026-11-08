@@ -29,7 +29,6 @@ constexpr uint64_t dim_y = 800ul;
 constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
-using namespace saw::schema;
 
 using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 

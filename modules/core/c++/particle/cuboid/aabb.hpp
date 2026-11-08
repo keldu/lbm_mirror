@@ -20,13 +20,13 @@ public:
 
 public:
 	template<typename Sch, typename Encode>
-	static constexpr saw::error_or<saw::data<AABB>> calculate(const saw::data<Sch,Encode>& pg, const saw::data<sch::FixedArray<sch::UInt64,1u>>& index, const saw::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	static constexpr kel::lbm::error_or<kel::lbm::data<AABB>> calculate(const kel::lbm::data<Sch,Encode>& pg, const kel::lbm::data<sch::FixedArray<sch::UInt64,1u>>& index, const kel::lbm::data<sch::FixedArray<sch::UInt64,D>>& meta){
 		static_assert(PC > 0u, "Can't calculate from no particle");
 		if(not (index.at({0u}).get() < PC)){
-			return saw::make_error<saw::err::critical>("Too large i in particle_aabb coll::Cuboid<T>");
+			return kel::lbm::make_error<kel::lbm::err::critical>("Too large i in particle_aabb coll::Cuboid<T>");
 		}
 
-		saw::data<AABB> aabb;
+		kel::lbm::data<AABB> aabb;
 		auto& parts = pg.template get<"particles">();
 		auto& pi = parts.at(index);
 		auto& pirb = pi.template get<"rigid_body">();

@@ -10,3 +10,4 @@ vgcore.*
 .sconsign.dblite
 .cache
 compile_commands.json
+.claude

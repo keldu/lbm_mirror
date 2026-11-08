@@ -1,27 +1,41 @@
 #pragma once
 
-#include <forstio/error.hpp>
+#include "abstract/error.hpp"
 
-#include <forstio/codec/data.hpp>
-#include <forstio/codec/data_math.hpp>
+#include "abstract/data.hpp"
+#include "abstract/data_math.hpp"
+#include "abstract/json.hpp"
 
-#include <forstio/codec/json/json.hpp>
-
+#include <filesystem>
+#include <fstream>
 
 namespace kel {
 namespace lbm {
 
 template<typename Schema>
-saw::error_or<void> write_json(const std::filesystem::path& file_name, const saw::data<Schema>& field){
-	saw::data<Schema, saw::encode::Json> j_data;
+error_or<void> write_json(const std::filesystem::path& file_name, const data<Schema>& field){
+	data<Schema, enc::Json> j_data;
 	{
-		saw::codec<Schema, saw::encode::Json> j_codec;
+		codec<Schema, enc::Json> j_codec;
+		j_codec.set_pretty(true);
 		auto eov = j_codec.encode(field, j_data);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
-	return saw::make_void();
+
+	std::ofstream json_file{file_name, std::ios::binary | std::ios::trunc};
+	if(!json_file.is_open()){
+		return make_error<err::not_found>("Couldn't open file for writing");
+	}
+
+	const auto& text = j_data.stl_string();
+	json_file.write(text.data(), static_cast<std::streamsize>(text.size()));
+	if(!json_file){
+		return make_error<err::invalid_state>("Couldn't write json file");
+	}
+
+	return make_void();
 }
 }
 }

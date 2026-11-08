@@ -6,11 +6,11 @@ namespace kel {
 namespace lbm {
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> init(
+kel::lbm::error_or<void> init(
 		const converter<T>& conv,
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
+		kel::lbm::data<sch::ChunkStruct<T,Desc>>& fields,
+		kel::lbm::data<sch::MacroStruct<T,Desc>>& macros,
+		kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
 	(void) conv;
 
@@ -44,11 +44,11 @@ saw::error_or<void> init(
 	auto w2 = w * 0.5;
 	auto h4 = h * 0.25;
 
-	saw::data<T> e{0.1};
-	saw::data<T> c = w * (saw::data<T>{1.0} - e) * 0.5;
+	kel::lbm::data<T> e{0.1};
+	kel::lbm::data<T> c = w * (kel::lbm::data<T>{1.0} - e) * 0.5;
 
-	saw::data<T> d{0.2};
-	auto b = h * (saw::data<T>{1.0} - d) * 0.5;
+	kel::lbm::data<T> d{0.2};
+	auto b = h * (kel::lbm::data<T>{1.0} - d) * 0.5;
 
 	auto p_r = (c*c + b*b) / (b*2);
 	auto p_r_2 = p_r * p_r;
@@ -56,14 +56,14 @@ saw::error_or<void> init(
 	auto p_i = p_r - b;
 
 	// Circle Top
-	saw::data<sch::FixedArray<sch::Int64,Desc::D>> top_pos;
+	kel::lbm::data<sch::FixedArray<sch::Int64,Desc::D>> top_pos;
 	{
 		top_pos.at({0u}) = w2.get();
 		top_pos.at({1u}) = (h + p_i).get();
 	}
 
 	// Circle Bot
-	saw::data<sch::FixedArray<sch::Int64,Desc::D>> bot_pos;
+	kel::lbm::data<sch::FixedArray<sch::Int64,Desc::D>> bot_pos;
 	{
 		bot_pos.at({0u}) = w2.get();
 		bot_pos.at({1u}) = -p_i.get();
@@ -80,11 +80,11 @@ saw::error_or<void> init(
 				bp_diff.at(i) = bot_pos.at(i) - index.at(i).template cast_to<sch::Int64>();
 			}
 
-			auto tpd_v = saw::math::vectorize_data(tp_diff);
-			auto tpd_dot = saw::math::dot(tpd_v,tpd_v);
+			auto tpd_v = kel::lbm::math::vectorize_data(tp_diff);
+			auto tpd_dot = kel::lbm::math::dot(tpd_v,tpd_v);
 			
-			auto bpd_v = saw::math::vectorize_data(bp_diff);
-			auto bpd_dot = saw::math::dot(bpd_v,bpd_v);
+			auto bpd_v = kel::lbm::math::vectorize_data(bp_diff);
+			auto bpd_dot = kel::lbm::math::dot(bpd_v,bpd_v);
 
 			if(
 				(tpd_dot.at({}).template cast_to<T>() <= p_r_2 ) or
@@ -157,10 +157,10 @@ saw::error_or<void> init(
 	);
 
 	{
-		saw::data<sch::Scalar<T>> radius_p;
+		kel::lbm::data<sch::Scalar<T>> radius_p;
 		radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
 		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
-		saw::data<sch::Scalar<T>> dense_p;
+		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{64u}});
 		auto& parts = particles.template get<"particles">();
@@ -177,7 +177,7 @@ saw::error_or<void> init(
 		}
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

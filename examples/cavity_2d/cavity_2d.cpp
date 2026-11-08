@@ -9,7 +9,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 /**
  * Basic distribution function
@@ -66,9 +65,9 @@ class df_cell_view<sch::Cell<sch::T, Desc, SN, DN, QN>, Encode> {
 public:
 	using Schema = sch::Cell<sch::T,Desc,SN,DN,QN>;
 private:
-		std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN> view_;
+		std::array<std::decay_t<typename kel::lbm::native_data_type<sch::T>::type>*, QN> view_;
 public:
-		df_cell_view(const std::array<std::decay_t<typename saw::native_data_type<sch::T>::type>*, QN>& view):
+		df_cell_view(const std::array<std::decay_t<typename kel::lbm::native_data_type<sch::T>::type>*, QN>& view):
 				view_{view}
 		{}
 };
@@ -84,11 +83,11 @@ struct MovingWall {};
 template<typename Desc>
 class component<sch::T, Desc, cmpt::MovingWall> {
 public:
-	std::array<typename saw::native_data_type<sch::T>::type, Desc::D> lid_vel;
+	std::array<typename kel::lbm::native_data_type<sch::T>::type, Desc::D> lid_vel;
 
 public:
 	void apply(
-		saw::data<sch::DfCell<Desc>>& dfs
+		kel::lbm::data<sch::DfCell<Desc>>& dfs
 	){
 		using dfi = df_info<sch::T,Desc>;
 
@@ -111,18 +110,18 @@ constexpr size_t dim_y = 128;
 
 
 template<typename Func>
-void apply_for_cells(Func&& func, saw::data<kel::lbm::sch::CavityFieldD2Q9>& dat){
+void apply_for_cells(Func&& func, kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& dat){
 	for(std::size_t i = 0; i < dat.meta().at({1u}).get(); ++i){
 		for(std::size_t j = 0; j < dat.meta().at({0u}).get(); ++j){
-			saw::data<saw::schema::UInt64> di{i};
-			saw::data<saw::schema::UInt64> dj{j};
+			kel::lbm::data<kel::lbm::sch::UInt64> di{i};
+			kel::lbm::data<kel::lbm::sch::UInt64> dj{j};
 			auto& cell_v = dat({{dj,di}});
 			func(cell_v, j, i);
 		}
 	}
 }
 
-void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_geometry(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 	apply_for_cells([](auto& cell, std::size_t i, std::size_t j){
 		uint8_t val = 0;
@@ -142,12 +141,12 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}, latt);
 }
 
-void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_initial_conditions(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 	
-	saw::data<sch::T> rho{1.0};
+	kel::lbm::data<sch::T> rho{1.0};
 	{
-		saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
+		kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
 		auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 		apply_for_cells([&eq](auto& cell, std::size_t i, std::size_t j){
@@ -164,7 +163,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}
 	
 	{
-		saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.1,0.0}};
+		kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.1,0.0}};
 		auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 		apply_for_cells([&eq](auto& cell, std::size_t i, std::size_t j){
@@ -184,7 +183,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
 	bool even_step,
 	uint64_t time_step
 ){
@@ -203,8 +202,8 @@ void lbm_step(
 	auto meta = latt.meta();
 
 	// Collide
-	for(saw::data<sch::UInt64> i{0u}; i < meta.at(0u); ++i){
-		for(saw::data<sch::UInt64> j{0u}; j < meta.at(1u); ++j ){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < meta.at(0u); ++i){
+		for(kel::lbm::data<sch::UInt64> j{0u}; j < meta.at(1u); ++j ){
 			auto& cell = latt({{i,j}});
 			auto& info = cell.template get<"info">();
 
@@ -259,9 +258,9 @@ void lbm_step(
 int main(){
 	using namespace kel::lbm;
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{dim_x, dim_y}};
 
-	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
+	kel::lbm::data<sch::CavityFieldD2Q9, kel::lbm::enc::Native> lattice{dim};
 
 	converter<sch::T> conv{
 		{0.1},
@@ -309,19 +308,19 @@ int main(){
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
 
 		if(step % print_every == 0u){
 			std::cout<<"\n";
-			typename saw::native_data_type<sch::T>::type sum = 0.0;
+			typename kel::lbm::native_data_type<sch::T>::type sum = 0.0;
 
 
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 				auto& dfs = cell.template get<"dfs">();
-				typename saw::native_data_type<sch::T>::type rho;
-				std::array<typename saw::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
+				typename kel::lbm::native_data_type<sch::T>::type rho;
+				std::array<typename kel::lbm::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
 
 				if(i > 1 && (i+2) < dim_x && j > 1 && (j+2) < dim_y){

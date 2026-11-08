@@ -13,7 +13,7 @@ class component<Schema, Desc, cmpt::PoiseulleChannel, Encode> final {
 private:
 public:
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema,Encode>& field, const saw::data<sch::FixedArraysch::UInt64,Desc::D>){
+	void apply(kel::lbm::data<CellFieldSchema,Encode>& field, const kel::lbm::data<sch::FixedArraysch::UInt64,Desc::D>){
 		auto& info_f = field.template get<"info">();
 	}
 };

@@ -12,12 +12,12 @@ template<typename T, typename Descriptor, typename Encode>
 class component<T,Descriptor, cmpt::Stream, Encode> final {
 private:
 public:
-	static constexpr saw::string_literal name = "streaming";
-	static constexpr saw::string_literal after = "collide";
-	static constexpr saw::string_literal before = "";
+	static constexpr kel::lbm::string_literal name = "streaming";
+	static constexpr kel::lbm::string_literal after = "collide";
+	static constexpr kel::lbm::string_literal before = "";
 
 	template<typename CellFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		using dfi = df_info<T,Descriptor>;
 		auto g_index = index;
 

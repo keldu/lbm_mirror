@@ -2,20 +2,19 @@
 
 namespace kel {
 namespace sch {
-using namespace saw::schema;
 }
 
-saw::error_or<void> kmain(int argc, char** argv){
-	saw::data<sch::Args> args;
+kel::lbm::error_or<void> kmain(int argc, char** argv){
+	kel::lbm::data<sch::Args> args;
 	// Decode the args
 	{
-		saw::data<sch::Args,encode::Args> arge;
+		kel::lbm::data<sch::Args,encode::Args> arge;
 		auto eov = saw::parse_args<sch::Args>(arge,args);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

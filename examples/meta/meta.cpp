@@ -7,7 +7,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 using MetaArgsStruct = Struct<
 	Member<Float64, "dx">,
@@ -28,7 +27,7 @@ using Prec = Float64;
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> meta_lbm_info(const saw::data<kel::lbm::sch::MetaArgsStruct>& args_str){
+kel::lbm::error_or<void> meta_lbm_info(const kel::lbm::data<kel::lbm::sch::MetaArgsStruct>& args_str){
 	using namespace kel::lbm;
 	converter<T> conv{
 		{args_str.template get<"dx">()},
@@ -36,11 +35,11 @@ saw::error_or<void> meta_lbm_info(const saw::data<kel::lbm::sch::MetaArgsStruct>
 	};
 	print_lbm_meta<T,Desc>(conv, {args_str.template get<"kin_vis">()},{args_str.template get<"char_vel">()},{args_str.template get<"char_len">()});
 	
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 
-saw::error_or<void> meta_main(int argc, char** argv){
+kel::lbm::error_or<void> meta_main(int argc, char** argv){
 	using namespace kel::lbm;
 
 	std::string_view cfg_file_name = "config.json";
@@ -48,15 +47,15 @@ saw::error_or<void> meta_main(int argc, char** argv){
 		cfg_file_name = argv[1];
 	}
 
-	saw::data<sch::MetaArgs> args_dat;
+	kel::lbm::data<sch::MetaArgs> args_dat;
 	auto& args_str = args_dat.template get<"args">();
 	{
 		{
 			args_str.template get<"dx">().set(1);
 			args_str.template get<"dt">().set(1);
 		}
-		saw::data<sch::MetaArgs, saw::encode::Args> args_enc{argc,argv};
-		saw::codec<sch::MetaArgs, saw::encode::Args> args_codec;
+		kel::lbm::data<sch::MetaArgs, saw::encode::Args> args_enc{argc,argv};
+		kel::lbm::codec<sch::MetaArgs, saw::encode::Args> args_codec;
 
 		auto eov = args_codec.decode(args_enc,args_dat);
 		if(eov.is_error()){
@@ -75,7 +74,7 @@ saw::error_or<void> meta_main(int argc, char** argv){
 				meta_lbm_info<sch::Prec,sch::Descriptor<1u,3u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
+				return kel::lbm::make_error<kel::lbm::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;
@@ -89,7 +88,7 @@ saw::error_or<void> meta_main(int argc, char** argv){
 				meta_lbm_info<sch::Prec,sch::Descriptor<2u,9u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
+				return kel::lbm::make_error<kel::lbm::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;
@@ -97,26 +96,26 @@ saw::error_or<void> meta_main(int argc, char** argv){
 		{
 			switch(args_pos.get<1u>().get()){
 			case 7u:
-				return saw::make_error<saw::err::not_implemented>("D3Q7 Velocity Set is not implemented");
+				return kel::lbm::make_error<kel::lbm::err::not_implemented>("D3Q7 Velocity Set is not implemented");
 				// meta_lbm_info<sch::Prec,sch::Descriptor<3u,19u>>(args_str);
 				break;
 			case 19u:
-				return saw::make_error<saw::err::not_implemented>("D3Q17 Velocity Set is not implemented");
+				return kel::lbm::make_error<kel::lbm::err::not_implemented>("D3Q17 Velocity Set is not implemented");
 				// meta_lbm_info<sch::Prec,sch::Descriptor<3u,19u>>(args_str);
 				break;
 			case 27u:
 				meta_lbm_info<sch::Prec,sch::Descriptor<3u,27u>>(args_str);
 				break;
 			default:
-				return saw::make_error<saw::err::critical>("Second positional needs to be a valid momentum set");
+				return kel::lbm::make_error<kel::lbm::err::critical>("Second positional needs to be a valid momentum set");
 			}
 		}
 		break;
 	default:
-		return saw::make_error<saw::err::critical>("First positional needs to be Dimension 1,2 or 3");
+		return kel::lbm::make_error<kel::lbm::err::critical>("First positional needs to be Dimension 1,2 or 3");
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 int main(int argc, char** argv){

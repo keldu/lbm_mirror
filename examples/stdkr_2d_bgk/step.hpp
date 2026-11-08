@@ -6,26 +6,26 @@ namespace kel {
 namespace lbm {
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> step(
+kel::lbm::error_or<void> step(
 		const converter<T>& conv,
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::UInt64> t_i,
+		kel::lbm::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& fields,
+		kel::lbm::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& macros,
+		kel::lbm::data<sch::UInt64> t_i,
 		device& dev
 ){
-	static constexpr saw::data<sch::UInt64> sub_steps{0u};
+	static constexpr kel::lbm::data<sch::UInt64> sub_steps{0u};
 
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
 
 	{
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> collision{1.0};
-			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHePressureX<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<kel::lbm::enc::Native>> collision{1.0};
+			component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+			component<T,Desc,cmpt::ZouHePressureX<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -43,12 +43,12 @@ saw::error_or<void> step(
 						break;
 					case 3u:
 						{
-							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
-								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
-									saw::data<sch::Vector<T,Desc::D>> vel;
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
+								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
+									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -69,7 +69,7 @@ saw::error_or<void> step(
 		}).wait();
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

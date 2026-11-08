@@ -16,7 +16,6 @@ struct Spheroid {
 }
 
 namespace sch {
-using namespace saw::schema;
 
 namespace impl {
 template<typename T,uint64_t D>

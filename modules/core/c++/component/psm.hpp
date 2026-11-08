@@ -2,7 +2,7 @@
 
 #include "../macroscopic.hpp"
 #include "../equilibrium.hpp"
-#include "common.hpp"
+#include "../component.hpp"
 
 namespace kel {
 namespace lbm {
@@ -16,21 +16,21 @@ struct PSM {};
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::PSM, Encode> {
 private:
-	saw::data<T> relaxation_;
-	saw::data<T> frequency_;
+	kel::lbm::data<T> relaxation_;
+	kel::lbm::data<T> frequency_;
 public:
 	component(
-		typename saw::native_data_type<T>::type relaxation__
+		typename kel::lbm::native_data_type<T>::type relaxation__
 	):
 		relaxation_{relaxation__}
 	{
-		saw::data<T> one;
+		kel::lbm::data<T> one;
 		one = 1.0;
 		frequency_ = one / relaxation_;
 	}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 	
 		using dfi = df_info<T,Descriptor>;
 		bool is_even = ((time_step.get() % 2) == 0);
@@ -41,14 +41,14 @@ public:
 		auto& rho_f = macros.template get<"density">();
 		auto& vel_f = macros.template get<"momentum">();
 		
-		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
-		saw::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
+		kel::lbm::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		kel::lbm::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
 
 		compute_rho_u<T,Descriptor>(dfs_old_f.at(index),rho,vel);
 		
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
-		saw::data<T> one{1.0};
+		kel::lbm::data<T> one{1.0};
 		auto& porous = porous_f.at(index);
 		auto flip_porous = one - porous.at({});
 

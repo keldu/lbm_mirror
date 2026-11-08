@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
 
-namespace saw {
+namespace kel {
+namespace lbm {
 
 #define KEL_CONCAT_(x, y) x##y
 #define KEL_CONCAT(x, y) KEL_CONCAT_(x, y)
@@ -138,8 +140,11 @@ struct void_t {};
 
 /**
  * Helper function since changing returns between void_t{} and make_error<...>() is a bit annoying.
+ *
+ * Inline, because lbm's core is header only and the SConscript globs cpp files
+ * directly under c++ only, so a unit under abstract would never be compiled.
  */
-void_t make_void();
+inline void_t make_void() { return {}; }
 
 template <typename T> struct void_fix { typedef T Type; };
 template <> struct void_fix<void> { typedef void_t Type; };
@@ -150,4 +155,5 @@ template <> struct void_unfix<void_t> { typedef void Type; };
 template <typename T> using unfix_void = typename void_unfix<T>::Type;
 
 template <typename... T> constexpr bool always_false = false;
-} // namespace saw
+} // namespace lbm
+} // namespace kel

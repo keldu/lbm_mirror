@@ -6,11 +6,11 @@ namespace kel {
 namespace lbm {
 
 template<typename T, uint64_t D>
-saw::data<sch::FixedArray<sch::UInt64,D>> round_to_unsigned(const saw::data<sch::Vector<T,D>>& inp){
-	saw::data<sch::FixedArray<sch::UInt64,D>> rv;
+kel::lbm::data<sch::FixedArray<sch::UInt64,D>> round_to_unsigned(const kel::lbm::data<sch::Vector<T,D>>& inp){
+	kel::lbm::data<sch::FixedArray<sch::UInt64,D>> rv;
 				
-	auto zero = static_cast<saw::native_data_type<T>::type>(0);
-	auto half = static_cast<saw::native_data_type<T>::type>(0.5);
+	auto zero = static_cast<kel::lbm::native_data_type<T>::type>(0);
+	auto half = static_cast<kel::lbm::native_data_type<T>::type>(0.5);
 
 	for(uint64_t i{0u}; i < D; ++i){
 		auto val = inp.at({{i}}).get()+half;

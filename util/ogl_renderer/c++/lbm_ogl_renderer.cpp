@@ -5,12 +5,11 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 }
 
 }
 
-saw::error_or<void> lbm_main(int argc, char** argv){
+kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 	auto eo_state = lbm::create_ogl_renderer();
 	if(eo_state.is_error()){
 		return std::move(eo_state.get_error());
@@ -40,7 +39,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 }
 

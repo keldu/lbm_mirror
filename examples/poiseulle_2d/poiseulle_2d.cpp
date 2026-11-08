@@ -8,7 +8,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 /**
  * Basic distribution function
@@ -73,16 +72,16 @@ struct PressureBoundaryRestrictedVelocityTo {};
 template<typename FP,typename Descriptor, bool East>
 struct component<FP,Descriptor, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
 private:
-	saw::data<FP> pressure_setting_;
-	saw::data<FP> rho_setting_;
+	kel::lbm::data<FP> pressure_setting_;
+	kel::lbm::data<FP> rho_setting_;
 public:
-	component(const saw::data<FP>& pressure_setting__):
+	component(const kel::lbm::data<FP>& pressure_setting__):
 		pressure_setting_{pressure_setting__},
 		rho_setting_{pressure_setting__ * df_info<FP,Descriptor>::inv_cs2}
 	{}
 
 	template<typename CellFieldSchema>
-	void apply(saw::data<CellFieldSchema>& field, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
+	void apply(kel::lbm::data<CellFieldSchema>& field, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, uint64_t time_step){
 		using dfi = df_info<FP,Descriptor>;
 
 		bool is_even = ((time_step % 2) == 0);
@@ -98,8 +97,8 @@ public:
 		/**
 		 * Sum all known DFs
 		 */
-		saw::data<FP> sum_df{0};
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+		kel::lbm::data<FP> sum_df{0};
+		for(kel::lbm::data<sch::UInt64> k{0u}; k < kel::lbm::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
 			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
 			auto& info_n = cell_n.template get<"info">();
@@ -114,9 +113,9 @@ public:
 		 * Get the sum of the unknown dfs and precalculate the direction
 		 */
 		constexpr int known_dir = East ? 1 : -1;
-		auto sum_unknown_dfs = (rho_setting_ - sum_df) * saw::data<FP>{known_dir};
+		auto sum_unknown_dfs = (rho_setting_ - sum_df) * kel::lbm::data<FP>{known_dir};
 
-		for(saw::data<sch::UInt64> k{0u}; k < saw::data<sch::UInt64>{Descriptor::Q}; ++k){
+		for(kel::lbm::data<sch::UInt64> k{0u}; k < kel::lbm::data<sch::UInt64>{Descriptor::Q}; ++k){
 			auto c_k = dfi::directions[k.get()];
 			auto& cell_n = field({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}});
 			auto& info_n = cell_n.template get<"info">();
@@ -131,20 +130,20 @@ public:
 		auto vel_x = sum_unknown_dfs / rho_setting_;
 
 		if constexpr (East) {
-			dfs_old({2u}) = dfs_old({1u}) + saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({6u}) = dfs_old({5u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-			dfs_old({8u}) = dfs_old({7u}) + saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
+			dfs_old({2u}) = dfs_old({1u}) + kel::lbm::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old({6u}) = dfs_old({5u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
+			dfs_old({8u}) = dfs_old({7u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
 		}else if constexpr (not East){
-			dfs_old({1u}) = dfs_old({2u}) - saw::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({5u}) = dfs_old({6u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-			dfs_old({7u}) = dfs_old({8u}) - saw::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + saw::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
+			dfs_old({1u}) = dfs_old({2u}) - kel::lbm::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
+			dfs_old({5u}) = dfs_old({6u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
+			dfs_old({7u}) = dfs_old({8u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
 		}
 	}
 };
 }
 }
 
-void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_geometry(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
 	auto meta = latt.meta();
@@ -152,7 +151,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set ghost
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -163,7 +162,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set wall
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -174,7 +173,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set fluid
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -185,7 +184,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set inflow
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -196,7 +195,7 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set outflow
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -205,11 +204,11 @@ void set_geometry(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	}, {{meta.at({0u})-2u,0u}}, {{meta.at({0u})-1u, meta.at({1u})}}, {{0u,2u}});
 }
 
-void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
+void set_initial_conditions(kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	using namespace kel::lbm;
 
-	saw::data<sch::T> rho{1.0};
-	saw::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
+	kel::lbm::data<sch::T> rho{1.0};
+	kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::D>> vel{{0.0,0.0}};
 	auto eq = equilibrium<sch::T,sch::D2Q9>(rho, vel);
 
 	auto meta = latt.meta();
@@ -217,12 +216,12 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 	/**
 	 * Set distribution
 	 */
-	iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+	iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 		auto& cell = latt(index);
 		auto& dfs = cell.template get<"dfs">();
 		auto& dfs_old = cell.template get<"dfs_old">();
 
-		for(saw::data<sch::UInt64> k = 0; k < saw::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
+		for(kel::lbm::data<sch::UInt64> k = 0; k < kel::lbm::data<sch::UInt64>{sch::D2Q9::Q}; ++k){
 			dfs(k) = eq.at(k);
 			dfs_old(k) = eq.at(k);
 		}
@@ -231,7 +230,7 @@ void set_initial_conditions(saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt){
 }
 
 void lbm_step(
-	saw::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
+	kel::lbm::data<kel::lbm::sch::CavityFieldD2Q9>& latt,
 	uint64_t time_step
 ){
 	using namespace kel::lbm;
@@ -251,7 +250,7 @@ void lbm_step(
 	/**
 	 * Collision
 	 */
-	iterator<sch::D2Q9::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+	iterator<sch::D2Q9::D>::apply([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
 		auto& cell = latt(index);
 		auto& info = cell.template get<"info">();
 
@@ -279,7 +278,7 @@ void lbm_step(
 	}, {{0u,0u}}, meta);
 
 	// Stream
-	iterator<sch::D2Q9::D>::apply([&](const saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
+	iterator<sch::D2Q9::D>::apply([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>>& index){
 		auto& cell = latt(index);
 		auto& df_new = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 		auto& info_new = cell.template get<"info">();
@@ -334,8 +333,8 @@ int main(int argc, char** argv){
 
 	print_lbm_meta<sch::Float64,sch::Descriptor<2u,9u>>(conv, {conf.template get<"kinematic_viscosity">()});
 
-	saw::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
-	saw::data<sch::CavityFieldD2Q9, saw::encode::Native> lattice{dim};
+	kel::lbm::data<sch::FixedArray<sch::UInt64,sch::D2Q9::D>> dim{{1024u, 128u}};
+	kel::lbm::data<sch::CavityFieldD2Q9, kel::lbm::enc::Native> lattice{dim};
 	auto meta = lattice.meta();
 
 	/**
@@ -345,9 +344,9 @@ int main(int argc, char** argv){
 
 	{
 
-		saw::data<sch::Array<sch::GeometryStruct<sch::T>, sch::D2Q9::D>> geo{dim};
+		kel::lbm::data<sch::Array<sch::GeometryStruct<sch::T>, sch::D2Q9::D>> geo{dim};
 
-		iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+		iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 			auto& cell = lattice(index);
 			auto& info = cell.template get<"info">();
 
@@ -363,21 +362,21 @@ int main(int argc, char** argv){
 	 */
 	set_initial_conditions(lattice);
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
 
 	for(uint64_t i = 0u; i < 4096u*16u; ++i){
 		bool even_step = ((i % 2u) == 0u);
 
 		{
 			// Stream
-			iterate_over([&](const saw::data<sch::FixedArray<sch::UInt64,2u>>& index){
+			iterate_over([&](const kel::lbm::data<sch::FixedArray<sch::UInt64,2u>>& index){
 				auto& cell = lattice(index);
 				auto& dfs = even_step ? cell.template get<"dfs">() : cell.template get<"dfs_old">();
 
 				auto& rho = macros.at(index).template get<"pressure">();
 				auto& vel = macros.at(index).template get<"momentum">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
-				rho = rho * saw::data<sch::T>{dfi::cs2};
+				rho = rho * kel::lbm::data<sch::T>{dfi::cs2};
 
 			}, {{0u,0u}}, meta);
 			std::string vtk_f_name{"poiseulle_2d_"};

@@ -6,15 +6,15 @@ namespace kel {
 namespace lbm {
 
 template<typename T, typename Desc, typename Coll, uint64_t N>
-saw::error_or<void> step(
+kel::lbm::error_or<void> step(
 		const converter<T>& conv,
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc,N>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc,N>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<saw::encode::Native>>& particles,
-		saw::data<sch::UInt64> t_i,
+		kel::lbm::data<sch::Ptr<sch::ChunkStruct<T,Desc,N>>,encode::Sycl<kel::lbm::enc::Native>>& fields,
+		kel::lbm::data<sch::Ptr<sch::MacroStruct<T,Desc,N>>,encode::Sycl<kel::lbm::enc::Native>>& macros,
+		kel::lbm::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& particles,
+		kel::lbm::data<sch::UInt64> t_i,
 		device& dev
 ){
-	static constexpr saw::data<sch::UInt64> sub_steps{0u};
+	static constexpr kel::lbm::data<sch::UInt64> sub_steps{0u};
 
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
@@ -22,9 +22,9 @@ saw::error_or<void> step(
 	
 	if constexpr ( std::is_same_v<Coll, method::Hlbm> ){
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::HlbmReset,encode::Sycl<saw::encode::Native>> hlbm_reset;
+			component<T,Desc,cmpt::HlbmReset,encode::Sycl<kel::lbm::enc::Native>> hlbm_reset;
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -33,10 +33,10 @@ saw::error_or<void> step(
 			});
 		}).wait();
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::HlbmOneParticle,encode::Sycl<saw::encode::Native>> hlbm_one_part;
+			component<T,Desc,cmpt::HlbmOneParticle,encode::Sycl<kel::lbm::enc::Native>> hlbm_one_part;
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
-				saw::data<sch::FixedArray<sch::UInt64,1u>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index;
 				for(uint64_t i = 0u; i < 1u; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -46,12 +46,12 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Hlbm,encode::Sycl<saw::encode::Native>> collision{0.59};
-			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+			component<T,Desc,cmpt::Hlbm,encode::Sycl<kel::lbm::enc::Native>> collision{0.59};
+			component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -69,12 +69,12 @@ saw::error_or<void> step(
 						break;
 					case 3u:
 						{
-							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
-								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
-									saw::data<sch::Vector<T,Desc::D>> vel;
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
+								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
+									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -95,9 +95,9 @@ saw::error_or<void> step(
 		}).wait();
 	}else if constexpr ( std::is_same_v<Coll, method::FpLbm> ){
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::FpLbmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
+			component<T,Desc,cmpt::FpLbmReset,encode::Sycl<kel::lbm::enc::Native>> fplbm_reset;
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -107,10 +107,10 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<kel::lbm::enc::Native>> fplbm_one_part;
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
-				saw::data<sch::FixedArray<sch::UInt64,1u>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index;
 				for(uint64_t i = 0u; i < 1u; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -121,13 +121,13 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.59};
-			component<T,Desc,cmpt::FpLbm,encode::Sycl<saw::encode::Native>> collision{0.59};
-			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<kel::lbm::enc::Native>> bgk{0.59};
+			component<T,Desc,cmpt::FpLbm,encode::Sycl<kel::lbm::enc::Native>> collision{0.59};
+			component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -145,12 +145,12 @@ saw::error_or<void> step(
 						break;
 					case 3u:
 						{
-							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
-								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
-									saw::data<sch::Vector<T,Desc::D>> vel;
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
+								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
+									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -171,9 +171,9 @@ saw::error_or<void> step(
 		}).wait();
 	}else if constexpr ( std::is_same_v<Coll, method::Psm> ){
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::PsmReset,encode::Sycl<saw::encode::Native>> fplbm_reset;
+			component<T,Desc,cmpt::PsmReset,encode::Sycl<kel::lbm::enc::Native>> fplbm_reset;
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -183,10 +183,10 @@ saw::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::PsmOneParticle,encode::Sycl<saw::encode::Native>> fplbm_one_part;
+			component<T,Desc,cmpt::PsmOneParticle,encode::Sycl<kel::lbm::enc::Native>> fplbm_one_part;
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
-				saw::data<sch::FixedArray<sch::UInt64,1u>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index;
 				for(uint64_t i = 0u; i < 1u; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -197,13 +197,13 @@ saw::error_or<void> step(
 
 		// auto coll_ev = 
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::BGK,encode::Sycl<saw::encode::Native>> bgk{0.59};
-			component<T,Desc,cmpt::Psm,encode::Sycl<saw::encode::Native>> collision{0.59};
-			component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+			component<T,Desc,cmpt::BGK,encode::Sycl<kel::lbm::enc::Native>> bgk{0.59};
+			component<T,Desc,cmpt::Psm,encode::Sycl<kel::lbm::enc::Native>> collision{0.59};
+			component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+			component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x*N,dim_y*N}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -221,12 +221,12 @@ saw::error_or<void> step(
 						break;
 					case 3u:
 						{
-							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<saw::encode::Native>> flow_in{
-								[&]() -> saw::data<sch::Vector<T,Desc::D>> {
-									saw::data<sch::Vector<T,Desc::D>> vel;
+							component<T,Desc,cmpt::ZouHeVelocityX<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
+								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
+									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
 										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename saw::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -248,7 +248,7 @@ saw::error_or<void> step(
 
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

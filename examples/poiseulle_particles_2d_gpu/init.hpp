@@ -6,11 +6,11 @@ namespace kel {
 namespace lbm {
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> init(
+kel::lbm::error_or<void> init(
 		const converter<T>& conv,
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros,
-		saw::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
+		kel::lbm::data<sch::ChunkStruct<T,Desc>>& fields,
+		kel::lbm::data<sch::MacroStruct<T,Desc>>& macros,
+		kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>>& particles
 ){
 	(void) conv;
 
@@ -95,7 +95,7 @@ saw::error_or<void> init(
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
+			kel::lbm::data<sch::Vector<T,Desc::D>> middle, ind_vec;
 			middle.at({{0u}}) = dim_x * 0.25;
 			middle.at({{1u}}) = dim_y * 0.5;
 
@@ -103,7 +103,7 @@ saw::error_or<void> init(
 			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
 
 			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
+			auto dist_2 = kel::lbm::math::dot(dist,dist);
 			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
 				porous_f.at(index).at({}) = 0.0;
 			}
@@ -113,14 +113,14 @@ saw::error_or<void> init(
 	);
 
 	{
-		saw::data<sch::Scalar<T>> radius_p;
+		kel::lbm::data<sch::Scalar<T>> radius_p;
 		radius_p.at({}).set(2);
-		saw::data<sch::Scalar<T>> dense_p;
+		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{16u}});
 	}
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }

@@ -4,7 +4,7 @@
 
 namespace {
 namespace sch {
-using namespace saw::schema;
+using namespace kel::lbm::sch;
 
 using TStruct = Struct<
 	Member<Float32,"a">,

@@ -6,7 +6,6 @@
 namespace kel {
 namespace lbm {
 namespace sch {
-using namespace saw::schema;
 
 /**
  * struct lbm_data {
@@ -44,9 +43,9 @@ using namespace saw::schema;
  *
  * template<...>
  * class data<LbmData<...>,encode::Sycl<Encoding>> final {
- *   saw::data<sch::FixedArray<sch::UInt64,Dim>> meta;
- *   saw::data<FixedArray<Float32u,9>>* dfs;
- *   saw::data<UInt8>* info;
+ *   kel::lbm::data<sch::FixedArray<sch::UInt64,Dim>> meta;
+ *   kel::lbm::data<FixedArray<Float32u,9>>* dfs;
+ *   kel::lbm::data<UInt8>* info;
  * };
  */
 
@@ -59,19 +58,19 @@ using CellStruct = Struct<
 
 }
 template<typename T, typename Desc>
-saw::error_or<void> simulate(int argc, char** argv,
-	const saw::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta
+kel::lbm::error_or<void> simulate(int argc, char** argv,
+	const kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta
 {
-	constexpr auto cell_size = sizeof(saw::data<sch::CellStruct<T,Desc>>);
+	constexpr auto cell_size = sizeof(kel::lbm::data<sch::CellStruct<T,Desc>>);
 
-	auto lbm_data = saw::heap<saw::data<sch::Chunk<CellStruct<>,Desc::D, 64u>>>{meta};
+	auto lbm_data = kel::lbm::heap<kel::lbm::data<sch::Chunk<CellStruct<>,Desc::D, 64u>>>{meta};
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 }
 
-saw::error_or<void> lbm_main(int argc, char** argv){
+kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 	using namespace lbm;
 	return simulate<sch::Float64,sch::D2Q9>(argc, argv);
 }

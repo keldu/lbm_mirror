@@ -16,12 +16,11 @@ stdenv.mkDerivation {
     clang-tools
   ];
 
+  # The library itself is forstio free; only the test suite still uses
+  # forstio/test/suite.hpp, which needs core for its common.hpp and the
+  # forstio-test runner.
   buildInputs = [
     forstio.core
-    forstio.async
-    forstio.codec
-    forstio.codec-unit
-    forstio.codec-json
   ];
 
   doCheck = true;

@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -12,7 +13,8 @@
 
 #include "common.hpp"
 
-namespace saw {
+namespace kel {
+namespace lbm {
 /**
  * Utility class for generating errors. Has a base distinction between
  * critical and recoverable errors. Additional code ids can be provided to the
@@ -39,10 +41,10 @@ private:
 	std::variant<std::string_view, std::string> error_message_;
 
 public:
-	error(error::code id, bool is_critical);
-	error(error::code id, bool is_critical, const std::string_view &msg);
-	error(error::code id, bool is_critical, std::string&& msg);
-	error(error &&error);
+	inline error(error::code id, bool is_critical);
+	inline error(error::code id, bool is_critical, const std::string_view &msg);
+	inline error(error::code id, bool is_critical, std::string&& msg);
+	inline error(error &&error);
 
 	KEL_FORBID_COPY(error);
 
@@ -51,37 +53,37 @@ public:
 	/**
 	 * Returns a string view to the message
 	 */
-	const std::string_view get_message() const;
+	inline const std::string_view get_message() const;
 
 	/**
 	 * Returns a string view which describes which error this is.
 	 */
-	const std::string_view get_category() const;
+	inline const std::string_view get_category() const;
 
 	/**
 	 * Checks if it's an error at all, since 0 is reserved for no error.
 	 */
-	bool failed() const;
+	inline bool failed() const;
 
 	/**
 	 * Checks if the error is critical.
 	 */
-	bool is_critical() const;
+	inline bool is_critical() const;
 
 	/**
 	 * Checks if the error is recoverable.
 	 */
-	bool is_recoverable() const;
+	inline bool is_recoverable() const;
 
 	/**
 	 * Replaces the copy constructor. We need this since we want to explicitly copy and not implicitly
 	 */
-	error copy_error() const;
+	inline error copy_error() const;
 
 	/**
 	 * Return the id.
 	 */
-	code get_id() const;
+	inline code get_id() const;
 
 	/**
 	 * Provide an error struct and check if it matches the type
@@ -113,21 +115,21 @@ private:
 
 	std::vector<error_info> infos_;
 public:
-	error_registry();
+	inline error_registry();
 
 	KEL_FORBID_COPY(error_registry);
 	KEL_FORBID_MOVE(error_registry);
 
-	error_or<const std::string_view> search_category(const error::code& id) const;
+	inline error_or<const std::string_view> search_category(const error::code& id) const;
 
-	error_or<error::code> search_id(const std::string_view& desc) const;
+	inline error_or<error::code> search_id(const std::string_view& desc) const;
 
-	error_or<error::code> search_or_register_id(const std::string_view& desc, bool is_critical);
+	inline error_or<error::code> search_or_register_id(const std::string_view& desc, bool is_critical);
 
-	bool is_critical(error::code cd) const;
+	inline bool is_critical(error::code cd) const;
 };
 
-error_registry& get_error_registry();
+inline error_registry& get_error_registry();
 
 template<typename T>
 error::code get_template_error_id(){
@@ -148,12 +150,28 @@ error::code get_template_error_id(){
 }
 }
 
-error make_error(error::code code, const std::string_view &generic);
+inline error make_error(error::code code, const std::string_view &generic);
 
 template<typename T> error make_error(const std::string_view& generic){
 	error::code id = impl::get_template_error_id<T>();
 	// Keep error, don't use make_error
 	return error{id, T::is_critical, generic};
+}
+
+/**
+ * Overload taking ownership of the message.
+ *
+ * The string_view overload above stores the view, not a copy, so it is only
+ * safe for messages that outlive the error -- string literals, in practice.
+ * Use this one whenever the text is built at runtime or borrowed from
+ * something about to go away.
+ */
+template<typename T, typename S>
+requires std::is_same_v<std::remove_cvref_t<S>, std::string>
+error make_error(S&& generic){
+	error::code id = impl::get_template_error_id<T>();
+	// Keep error, don't use make_error
+	return error{id, T::is_critical, std::string{std::forward<S>(generic)}};
 }
 
 template<typename T> error make_error(){
@@ -179,7 +197,7 @@ public:
 			func_ = [](){return "";};
 			return error{id, T::is_critical, std::move(err_str)};
 		}catch(const std::exception&){}
-		return make_error<T>(generic);
+		return lbm::make_error<T>(generic);
 	}
 };
 
@@ -243,7 +261,7 @@ struct already_exists {
 /**
  * Shorthand for no error happened
  */
-error no_error();
+inline error no_error();
 
 /**
  * Exception alternative. Since I code without exceptions this class is
@@ -318,7 +336,183 @@ bool error::is_type() const {
 	return error_code_ == impl::get_template_error_id<T>();
 }
 
-} // namespace saw
+/**
+ * Implementation.
+ *
+ * These live in the header and are inline, because lbm's core is header only:
+ * the SConscript globs cpp files directly under c++ only, so a translation
+ * unit placed under abstract would never be handed to the compiler.
+ */
+
+inline error::error(error::code code_, bool is_critical__)
+	: error_code_{static_cast<error::code>(code_)}, is_critical_{is_critical__} {}
+
+inline error::error(error::code code_, bool is_critical__, const std::string_view &msg)
+	:
+	error_code_{static_cast<error::code>(code_)}
+	, is_critical_{is_critical__}, error_message_{msg}{}
+
+inline error::error(error::code code_, bool is_critical__, std::string&& msg):
+	error_code_{static_cast<error::code>(code_)},
+	is_critical_{is_critical__},
+	error_message_{std::move(msg)}
+{}
+
+inline error::error(error &&error)
+	:
+	error_code_{std::move(error.error_code_)}
+	, is_critical_{std::move(error.is_critical_)}
+	, error_message_{std::move(error.error_message_)}{}
+
+inline const std::string_view error::get_category() const {
+	auto& reg = impl::get_error_registry();
+
+	auto eov = reg.search_category(error_code_);
+	KEL_ASSERT(eov.is_value()){
+		return "Error category not found. Report this error to the lbm maintainer";
+	}
+
+	return eov.get_value();
+}
+
+inline const std::string_view error::get_message() const {
+	return std::visit(
+		[](auto &&arg) -> const std::string_view {
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, std::string>) {
+				return std::string_view{arg};
+			} else if constexpr (std::is_same_v<T, std::string_view>) {
+				return arg;
+			} else {
+				return "Error in class Error. Good luck :)";
+			}
+		},
+		error_message_);
+}
+
+inline bool error::failed() const {
+	return !this->is_type<err::no_error>();
+}
+
+inline bool error::is_critical() const {
+	return is_critical_;
+}
+
+inline bool error::is_recoverable() const {
+	return !is_critical_;
+}
+
+inline error error::copy_error() const {
+	auto copy_error_code = error_code_;
+	error error{copy_error_code, is_critical_};
+
+	try {
+		error.error_message_ = error_message_;
+	} catch (const std::bad_alloc &) {
+		error.error_message_ =
+			std::string_view{"Error while copying Error string. Out of memory"};
+	}
+
+	return error;
+}
+
+inline error::code error::get_id() const { return error_code_; }
+
+namespace impl {
+inline error_registry& get_error_registry() {
+	static own<error_registry> reg = nullptr;
+	if(!reg){
+		reg = heap<error_registry>();
+	}
+
+	assert(reg);
+	return *reg;
+}
+}
+
+inline error no_error(){
+	return make_error<err::no_error>();
+}
+
+namespace impl {
+inline error_registry::error_registry():
+	infos_{
+		{
+			err::no_error::description,
+			err::no_error::is_critical
+		},
+		{
+			err::not_found::description,
+			err::not_found::is_critical
+		},
+		{
+			err::out_of_memory::description,
+			err::out_of_memory::is_critical
+		}
+	}
+{}
+
+inline error_or<const std::string_view> error_registry::search_category(const error::code& id) const {
+	if( id >= infos_.size()){
+		return make_error<err::not_found>();
+	}
+
+	return infos_.at(id).description;
+}
+
+inline error_or<error::code> error_registry::search_id(const std::string_view& desc)const{
+	/**
+	 * Search the index in the vector
+	 */
+	size_t i{};
+	size_t info_max_size = std::min<std::size_t>(infos_.size(), std::numeric_limits<error::code>::max());
+	for(i = 0; i < info_max_size; ++i){
+		if(infos_.at(i).description == desc){
+			break;
+		}
+	}
+
+	if(i == info_max_size){
+		return make_error<err::not_found>();
+	}
+
+	return static_cast<error::code>(i);
+}
+
+inline error_or<error::code> error_registry::search_or_register_id(const std::string_view& desc, bool is_critical){
+	auto err_or_id = search_id(desc);
+
+	if(err_or_id.is_value()){
+		return err_or_id.get_value();
+	}
+
+	auto& err = err_or_id.get_error();
+
+	if(err.is_type<err::not_found>()){
+		size_t new_index = infos_.size();
+		if(new_index == std::numeric_limits<error::code>::max()){
+			return make_error<err::out_of_memory>("Error registry ids are exhausted");
+		}
+		infos_.emplace_back(error_info{desc, is_critical});
+		return static_cast<error::code>(new_index);
+	}
+
+	return std::move(err);
+}
+
+inline bool error_registry::is_critical(error::code cd) const {
+	return infos_.at(cd).is_critical;
+}
+}
+
+inline error make_error(error::code cd, const std::string_view& generic){
+	auto& reg = impl::get_error_registry();
+	return error{cd, reg.is_critical(cd), generic};
+}
+
+} // namespace lbm
+} // namespace kel
 
 #define KEL_MAKE_ERROR(ErrType, ErrMsg) \
-	return saw::make_error<ErrType>(ErrMsg)
+	return ::kel::lbm::make_error<ErrType>(ErrMsg)

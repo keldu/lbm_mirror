@@ -44,7 +44,7 @@ SAW_TEST("VTK Write test example"){
 
 	std::stringstream sstream;
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
 
 	auto& cell_0 = cells.at({{{0,0}}});
 	cell_0.template get<"momentum">()= {{0.5,-0.1}};
@@ -69,7 +69,7 @@ SAW_TEST("VTK Write raw test example"){
 
 	std::stringstream sstream;
 
-	saw::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
+	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
 
 	auto meta = cells.dims();
 

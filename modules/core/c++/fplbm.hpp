@@ -26,7 +26,7 @@ public:
 	component() = default;
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		auto& por_f = macros.template get<"porosity">();
 
 		auto& por = por_f.at(index);
@@ -57,39 +57,39 @@ public:
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::FpLbm, Encode> final {
 private:
-	saw::data<T> relaxation_;
-	saw::data<T> frequency_;
+	kel::lbm::data<T> relaxation_;
+	kel::lbm::data<T> frequency_;
 public:
 	using Component = cmpt::FpLbm;
 public:
 
-	component(typename saw::native_data_type<T>::type relaxation__):
+	component(typename kel::lbm::native_data_type<T>::type relaxation__):
 		relaxation_{{relaxation__}},
-		frequency_{saw::data<T>{1} / relaxation_}
+		frequency_{kel::lbm::data<T>{1} / relaxation_}
 	{}
 
-	component(const saw::data<T>& relaxation__):
+	component(const kel::lbm::data<T>& relaxation__):
 		relaxation_{relaxation__},
-		frequency_{saw::data<T>{1} / relaxation_}
+		frequency_{kel::lbm::data<T>{1} / relaxation_}
 	{}
 
-	component(const saw::data<sch::Pure<T>>& relaxation__):
+	component(const kel::lbm::data<sch::Pure<T>>& relaxation__):
 		relaxation_{relaxation__.handle()},
-		frequency_{saw::data<T>{typename saw::native_data_type<T>::type(1)} / relaxation_}
+		frequency_{kel::lbm::data<T>{typename kel::lbm::native_data_type<T>::type(1)} / relaxation_}
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, saw::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, saw::data<sch::UInt64> time_step) const {
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step) const {
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 		auto& dfs = dfs_old_f.at(index);
 
-		saw::data<sch::Scalar<T>> half;
+		kel::lbm::data<sch::Scalar<T>> half;
 		half.at({}) = 0.5f;
 
 		auto& rho_f = macros.template get<"density">();
-		saw::data<sch::Scalar<T>>& rho = rho_f.at(index);
+		kel::lbm::data<sch::Scalar<T>>& rho = rho_f.at(index);
 
 		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
@@ -108,23 +108,23 @@ public:
 		auto& por_f = macros.template get<"porosity">();
 		auto& por = por_f.at(index);
 
-		saw::data<sch::Scalar<T>> dfi_inv_cs2;
+		kel::lbm::data<sch::Scalar<T>> dfi_inv_cs2;
 		dfi_inv_cs2.at({}).set(dfi::inv_cs2);
 
 		for(uint64_t i{0u}; i < Descriptor::Q; ++i){
-			saw::data<sch::Vector<T,Descriptor::D>> ci;
+			kel::lbm::data<sch::Vector<T,Descriptor::D>> ci;
 			for(uint64_t d{0u}; d < Descriptor::D; ++d){
-				ci.at({{d}}).set(static_cast<typename saw::native_data_type<T>::type>(dfi::directions[i][d]));
+				ci.at({{d}}).set(static_cast<typename kel::lbm::native_data_type<T>::type>(dfi::directions[i][d]));
 			}
-			auto ci_dot_u = saw::math::dot(ci,vel);
+			auto ci_dot_u = kel::lbm::math::dot(ci,vel);
 
-			saw::data<sch::Scalar<T>> w;
+			kel::lbm::data<sch::Scalar<T>> w;
 			w.at({}).set(dfi::weights[i]);
 
 			auto term1 = (ci-vel) * dfi_inv_cs2;
 			auto term2 = ci * (ci_dot_u * dfi_inv_cs2 * dfi_inv_cs2);
 
-			auto force_projection = saw::math::dot(term1 + term2, force);
+			auto force_projection = kel::lbm::math::dot(term1 + term2, force);
 
 			auto F_i = w * force_projection;
 
@@ -132,7 +132,7 @@ public:
 									+ frequency_
 										* (eq.at(i) - dfs.at({i}) )
 									+ F_i.at({})
-										* (saw::data<T>{1} - saw::data<T>{0.5f} * frequency_);
+										* (kel::lbm::data<T>{1} - kel::lbm::data<T>{0.5f} * frequency_);
 		}
 	}
 };
@@ -142,18 +142,18 @@ class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
 public:
 	using Component = cmpt::FpLbmOneParticle;
 private:
-	saw::data<sch::Vector<T,Descriptor::D>> global_force_;
+	kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force_;
 public:
 	component():
 		global_force_{}
 	{}
-	component(saw::data<sch::Vector<T,Descriptor::D>> global_force__):
+	component(kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force__):
 		global_force_{global_force__}
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const saw::data<CellFieldSchema, Encode>& field, const saw::data<MacroFieldSchema,Encode>& macros, const saw::data<ParticleSchema,Encode>& pg, saw::data<sch::FixedArray<sch::UInt64,1u>> index, saw::data<sch::UInt64> time_step, saw::data<sch::UInt64> sub_steps) const {
-	// void apply(saw::data<CellFieldSchema, Encode>& field, saw::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, saw::data<sch::UInt64> time_step){
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& pg, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
+	// void apply(kel::lbm::data<CellFieldSchema, Encode>& field, kel::lbm::data<sch::FixedArray<sch::UInt64, Descriptor::D>> index, kel::lbm::data<sch::UInt64> time_step){
 		bool is_even = ((time_step.get() % 2) == 0);
 
 		//auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
@@ -188,23 +188,23 @@ public:
 		}
 		auto& aabb = eo_aabb.get_value();
 
-		saw::data<sch::Scalar<T>> three;
+		kel::lbm::data<sch::Scalar<T>> three;
 		three.at({}).set(3.0f);
 
-		saw::data<sch::Scalar<T>> two;
+		kel::lbm::data<sch::Scalar<T>> two;
 		two.at({}).set(2.0f);
 
-		saw::data<sch::Scalar<T>> one;
+		kel::lbm::data<sch::Scalar<T>> one;
 		one.at({}) = 1.0f;
 		
-		saw::data<sch::Scalar<T>> eps;
+		kel::lbm::data<sch::Scalar<T>> eps;
 		eps.at({}) = 1.5f;
 		
-		saw::data<sch::Scalar<T>> sss;
+		kel::lbm::data<sch::Scalar<T>> sss;
 		sss.at({}) = sub_steps.template cast_to<T>();
 		auto vel_s = (pirb_pos-pirb_pos_old) * sss;
 
-		saw::data<sch::Vector<T,Descriptor::D>> force_p{{}};
+		kel::lbm::data<sch::Vector<T,Descriptor::D>> force_p{{}};
 		//= global_force_;
 
 		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
@@ -213,7 +213,7 @@ public:
 			auto& por = por_f.at(index_f);
 			auto& rho = rho_f.at(index_f);
 
-			saw::data<sch::Vector<T,Descriptor::D>> rel_dist = saw::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
+			kel::lbm::data<sch::Vector<T,Descriptor::D>> rel_dist = kel::lbm::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
 
 			por = particle_porosity<T,Descriptor::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
 			auto flip_por = one - por;
@@ -232,7 +232,7 @@ public:
 
 		if(sub_steps.get() > 0u){
 			auto sss_inv = one / sss;
-			for(saw::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
+			for(kel::lbm::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
 				verlet_step_lambda<T,Descriptor::D>(pi,sss_inv);
 			}
 		}

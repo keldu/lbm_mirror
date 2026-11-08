@@ -8,7 +8,6 @@
  * For deciding what parameters to use maybe?
  */
 namespace args {
-using namespace saw::schema;
 
 using LbmArgsStruct = Struct<
 	Member<String, "coupling">
@@ -21,7 +20,7 @@ using LbmArgs = Args<
 }
 
 template<typename T, typename Desc, typename Coll>
-saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
+kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 	using namespace kel::lbm;
 
 	auto& an = args.template get<"args">();
@@ -40,7 +39,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		std::error_code ec;
 		std::filesystem::create_directories(out_dir,ec);
 		if(ec != std::errc{}){
-			return saw::make_error<saw::err::critical>("Could not create output directory");
+			return kel::lbm::make_error<kel::lbm::err::critical>("Could not create output directory");
 		}
 	}
 
@@ -50,23 +49,24 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		// delta_t
 		{{3e-7}}
 	};
-	saw::data<sch::SiKinematicViscosity<T>> kin_vis_si{1e-3};
+	kel::lbm::data<sch::SiKinematicViscosity<T>> kin_vis_si{1e-3};
 	auto kin_vis_lbm = conv.kinematic_viscosity_si_to_lbm(kin_vis_si);
 	auto tau = conv.template kinematic_viscosity_lbm_to_tau<Desc>(kin_vis_lbm);
 	
 	print_lbm_meta<T,Desc>(conv,kin_vis_si,{1e-4},{2});
 	std::cout<<"Position: "<<conv.meter_si_to_lbm({{0.01}}).handle().get()<<", "<<conv.meter_si_to_lbm({{0.04}}).handle().get()<<std::endl;
 
-	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
-	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
-	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
-	auto lbm_particle_data_ptr = saw::heap<saw::data<sch::ParticleSpheroidGroup<T,Desc>>>();
+	// kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	auto lbm_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ChunkStruct<T,Desc>>>();
+	auto lbm_macro_data_ptr = kel::lbm::heap<kel::lbm::data<sch::MacroStruct<T,Desc>>>();
+	auto lbm_particle_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>>>();
 
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
-		return std::move(eo_aio.get_error());
+		return kel::lbm::make_error<kel::lbm::err::critical>(
+			std::string{eo_aio.get_error().get_message()});
 	}
 	auto& aio = eo_aio.get_value();
 	saw::wait_scope wait{aio.event_loop};
@@ -98,9 +98,9 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 	}
 
-	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
-	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
-	saw::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_particle_data{sycl_q};
+	kel::lbm::data<sch::ChunkStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_data{sycl_q};
+	kel::lbm::data<sch::MacroStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_macro_data{sycl_q};
+	kel::lbm::data<sch::ParticleSpheroidGroup<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_particle_data{sycl_q};
 	sycl_q.wait();
 
 	{
@@ -134,7 +134,7 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	}
 	std::cout<<"Steps for 1 sec: "<<record_steps.at(10u)<<std::endl;
 
-	for(saw::data<sch::UInt64> i{0u},j{0u}; j.get() < 11u and krun; ++i){
+	for(kel::lbm::data<sch::UInt64> i{0u},j{0u}; j.get() < 11u and krun; ++i){
 
 		// BC + Collision
 		{
@@ -170,10 +170,10 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 		}
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
+			component<T,Desc,cmpt::Stream,encode::Sycl<kel::lbm::enc::Native>> stream;
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -209,16 +209,16 @@ saw::error_or<void> lbm_main(const saw::data<args::LbmArgs>& args){
 	}
 
 	sycl_q.wait();
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 using FloatT = kel::lbm::sch::Float32;
 using DescT = kel::lbm::sch::D2Q9;
 
-saw::error_or<void> k_main(int argc, char** argv){
+kel::lbm::error_or<void> k_main(int argc, char** argv){
 	using namespace kel::lbm;
 	
-	saw::data<args::LbmArgs> args;
+	kel::lbm::data<args::LbmArgs> args;
 	{
 		auto eov = saw::parse_args(args,argc,argv);
 		if(eov.is_error()){
@@ -237,7 +237,7 @@ saw::error_or<void> k_main(int argc, char** argv){
 		return lbm_main<FloatT,DescT,method::Psm>(args);
 	}
 
-	return saw::make_error<saw::err::critical>("Invalid coupling");
+	return kel::lbm::make_error<kel::lbm::err::critical>("Invalid coupling");
 }
 
 

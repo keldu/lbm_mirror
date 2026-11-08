@@ -17,7 +17,6 @@ constexpr uint64_t dim_x = dim_y * 20ul;
 constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
-using namespace saw::schema;
 
 using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 
@@ -56,9 +55,9 @@ using MacroStruct = Struct<
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> setup_initial_conditions(
-		saw::data<sch::ChunkStruct<T,Desc>>& fields,
-		saw::data<sch::MacroStruct<T,Desc>>& macros
+kel::lbm::error_or<void> setup_initial_conditions(
+		kel::lbm::data<sch::ChunkStruct<T,Desc>>& fields,
+		kel::lbm::data<sch::MacroStruct<T,Desc>>& macros
 ){
 	auto& info_f = fields.template get<"info">();
 	// Set everything as walls
@@ -138,7 +137,7 @@ saw::error_or<void> setup_initial_conditions(
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
-			saw::data<sch::Vector<T,Desc::D>> middle, ind_vec;
+			kel::lbm::data<sch::Vector<T,Desc::D>> middle, ind_vec;
 			middle.at({{0u}}) = dim_x * 0.25;
 			middle.at({{1u}}) = dim_y * 0.5;
 
@@ -146,7 +145,7 @@ saw::error_or<void> setup_initial_conditions(
 			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
 
 			auto dist = middle - ind_vec;
-			auto dist_2 = saw::math::dot(dist,dist);
+			auto dist_2 = kel::lbm::math::dot(dist,dist);
 			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
 				info_f.at(index) = 1u;
 			}
@@ -155,14 +154,14 @@ saw::error_or<void> setup_initial_conditions(
 		df_f.get_dims()
 	);
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> step(
-		saw::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& fields,
-		saw::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<saw::encode::Native>>& macros,
-		saw::data<sch::UInt64> t_i,
+kel::lbm::error_or<void> step(
+		kel::lbm::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& fields,
+		kel::lbm::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& macros,
+		kel::lbm::data<sch::UInt64> t_i,
 		device& dev
 ){
 	auto& q = dev.get_handle();
@@ -171,18 +170,18 @@ saw::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<saw::encode::Native>> collision{0.8};
-		component<T,Desc,cmpt::BounceBack,encode::Sycl<saw::encode::Native>> bb;
-		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<saw::encode::Native>> abb;
+		component<T,Desc,cmpt::BGK, encode::Sycl<kel::lbm::enc::Native>> collision{0.8};
+		component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<kel::lbm::enc::Native>> abb;
 
-		saw::data<sch::Scalar<T>> rho_b;
+		kel::lbm::data<sch::Scalar<T>> rho_b;
 		rho_b.at({}) = 1.0;
-		saw::data<sch::Vector<T,Desc::D>> vel_b;
+		kel::lbm::data<sch::Vector<T,Desc::D>> vel_b;
 		vel_b.at({{0u}}) = 0.015;
 
-		component<T,Desc,cmpt::Equilibrium,encode::Sycl<saw::encode::Native>> equi{rho_b,vel_b};
+		component<T,Desc,cmpt::Equilibrium,encode::Sycl<kel::lbm::enc::Native>> equi{rho_b,vel_b};
 
-		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<saw::encode::Native>> flow_in{
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
 			[&](){
 				uint64_t target_t_i = 32u;
 				if(t_i.get() < target_t_i){
@@ -191,11 +190,11 @@ saw::error_or<void> step(
 				return 1.0002;
 			}()
 		};
-		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<saw::encode::Native>> flow_out{1.0};
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
 
 
 		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-			saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 			for(uint64_t i = 0u; i < Desc::D; ++i){
 				index.at({{i}}).set(idx[i]);
 			}
@@ -234,13 +233,13 @@ saw::error_or<void> step(
 	}).wait();
 	*/
 
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 }
 }
 
 template<typename T, typename Desc>
-saw::error_or<void> lbm_main(int argc, char** argv){
+kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
 
 	/*
@@ -265,7 +264,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		std::error_code ec;
 		std::filesystem::create_directories(out_dir,ec);
 		if(ec != std::errc{}){
-			return saw::make_error<saw::err::critical>("Could not create output directory");
+			return kel::lbm::make_error<kel::lbm::err::critical>("Could not create output directory");
 		}
 	}
 
@@ -278,15 +277,16 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	
 	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});
 
-	// saw::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
-	auto lbm_data_ptr = saw::heap<saw::data<sch::ChunkStruct<T,Desc>>>();
-	auto lbm_macro_data_ptr = saw::heap<saw::data<sch::MacroStruct<T,Desc>>>();
+	// kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	auto lbm_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ChunkStruct<T,Desc>>>();
+	auto lbm_macro_data_ptr = kel::lbm::heap<kel::lbm::data<sch::MacroStruct<T,Desc>>>();
 	
 	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
 	auto eo_aio = saw::setup_async_io();
 	if(eo_aio.is_error()){
-		return std::move(eo_aio.get_error());
+		return kel::lbm::make_error<kel::lbm::err::critical>(
+			std::string{eo_aio.get_error().get_message()});
 	}
 	auto& aio = eo_aio.get_value();
 	saw::wait_scope wait{aio.event_loop};
@@ -318,8 +318,8 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	saw::data<sch::ChunkStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_data{sycl_q};
-	saw::data<sch::MacroStruct<T,Desc>, encode::Sycl<saw::encode::Native>> lbm_sycl_macro_data{sycl_q};
+	kel::lbm::data<sch::ChunkStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_data{sycl_q};
+	kel::lbm::data<sch::MacroStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_macro_data{sycl_q};
 	sycl_q.wait();
 
 	{
@@ -337,11 +337,11 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	sycl_q.wait();
 	auto lsd_view = make_view(lbm_sycl_data);
 	auto lsdm_view = make_view(lbm_sycl_macro_data);
-	saw::data<sch::UInt64> time_steps{16u*4096ul};
+	kel::lbm::data<sch::UInt64> time_steps{16u*4096ul};
 
 	auto& info_f = lsd_view.template get<"info">();
 
-	for(saw::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
 			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
@@ -384,10 +384,10 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 		*/
 		// Stream
 		sycl_q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::Stream,encode::Sycl<saw::encode::Native>> stream;
+			component<T,Desc,cmpt::Stream,encode::Sycl<kel::lbm::enc::Native>> stream;
 
 			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
-				saw::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
 				for(uint64_t i = 0u; i < Desc::D; ++i){
 					index.at({{i}}).set(idx[i]);
 				}
@@ -429,7 +429,7 @@ saw::error_or<void> lbm_main(int argc, char** argv){
 	}
 
 	sycl_q.wait();
-	return saw::make_void();
+	return kel::lbm::make_void();
 }
 
 using FloatT = kel::lbm::sch::Float32;

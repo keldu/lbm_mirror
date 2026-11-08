@@ -10,10 +10,10 @@ namespace cmpt {
 /**
  * Maybe for the future
  */
-template<saw::string_literal Name, uint64_t Dist, bool Read, bool Write, bool SkipSync = false>
+template<kel::lbm::string_literal Name, uint64_t Dist, bool Read, bool Write, bool SkipSync = false>
 class access {
 public:
-	static constexpr saw::string_literal name = Name;
+	static constexpr kel::lbm::string_literal name = Name;
 	static constexpr uint64_t distance = Dist;
 	static constexpr bool read = Read;
 	static constexpr bool write = Write;
@@ -32,7 +32,7 @@ public:
 /**
  * Component class which forms the basis of each processing step
  */
-template<typename T, typename Descriptor, typename Cmpt, typename Encode = saw::encode::Native>
+template<typename T, typename Descriptor, typename Cmpt, typename Encode = kel::lbm::enc::Native>
 class component {};
 }
 }

@@ -11,13 +11,13 @@ namespace lbm {
 template<typename InfoSchema>
 class domain_registry final {
 private:
-	saw::data<sch::Array<InfoSchema>> infos_;
+	kel::lbm::data<sch::Array<InfoSchema>> infos_;
 public:
 	template<typename T>
-	saw::data<InfoSchema> get_template_id() {
-		static saw::data<InfoSchema> id{std::numeric_limits<typename saw::native_data_type<InfoSchema>::type>::max()};
+	kel::lbm::data<InfoSchema> get_template_id() {
+		static kel::lbm::data<InfoSchema> id{std::numeric_limits<typename kel::lbm::native_data_type<InfoSchema>::type>::max()};
 
-		if( id == std::numeric_limits<typename saw::native_data_type<InfoSchema>::type>::max() ){
+		if( id == std::numeric_limits<typename kel::lbm::native_data_type<InfoSchema>::type>::max() ){
 			auto err_or_id = search_or_register_id(T::name);
 			if(err_or_id.is_error()){
 				// Unsure about recovery from this
@@ -28,7 +28,7 @@ public:
 };
 
 template<typename Schema>
-void clean_grid(saw::data<Schema>& info_field){
+void clean_grid(kel::lbm::data<Schema>& info_field){
 }
 }
 }

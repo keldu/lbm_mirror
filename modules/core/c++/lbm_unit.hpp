@@ -3,7 +3,7 @@
 	 * Get the conversion parameter with the conversion type
 	 */
 
-#include <forstio/codec/unit/unit.hpp>
+#include "abstract/unit.hpp"
 
 #include <string_view>
 
@@ -34,7 +34,6 @@ struct second {
 }
 
 namespace sch {
-using namespace saw::schema;
 template<typename S>
 using SiMeter = Unit<S, UnitElement<si_type::meter, 1>>;
 
