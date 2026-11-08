@@ -1,6 +1,6 @@
 { pkgs ? (import <nixpkgs> {})
-, llvmPackages ? pkgs.llvmPackages_18
-, lld ? pkgs.lld_18
+, llvmPackages ? pkgs.llvmPackages_20
+, lld ? pkgs.lld_20
 , stdenv ? llvmPackages.stdenv
 , clang-tools ? llvmPackages.clang-tools
 }:
@@ -46,7 +46,7 @@ let
 
 		 src = builtins.fetchurl {
 			url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-			sha256 = "sha256:0jg8a057zqqniv4cmwq0v7xmh42bn5vsjwyvpswpf9r3p5fpgxhb";
+			sha256 = "sha256:1kb2f2g549hklpld5bsv6wzcmrfwfs0b6qp6fcbws3g5gz621cjj";
 		 };
 
 		 phases = [ "unpackPhase" "installPhase" ];
