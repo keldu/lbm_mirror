@@ -186,20 +186,10 @@ void apply(
          * --------------------------------------------------------
          */
 
-        auto eo_aabb =
-            particle_aabb<
-                typename ParticleSchema::ValueType
-            >::calculate(
-                pg,
-                index,
-                vel_f.meta()
-            );
-
-        if(eo_aabb.is_error()){
+        kel::lbm::data<typename particle_aabb<typename ParticleSchema::ValueType>::AABB> aabb;
+        if(not particle_aabb<typename ParticleSchema::ValueType>::try_calculate(pg,index,vel_f.meta(),aabb)){
             return;
         }
-
-        auto& aabb = eo_aabb.get_value();
 
         kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> start;
         kel::lbm::data<sch::FixedArray<sch::UInt64,Descriptor::D>> stop;

@@ -88,7 +88,6 @@ public:
 	}
 };
 
-
 template<typename T, uint64_t D, uint64_t PC>
 class particle_porosity<T, D, PC, coll::Spheroid<T>> final {
 public:

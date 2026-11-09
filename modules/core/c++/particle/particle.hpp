@@ -1,15 +1,10 @@
 #pragma once
 
-#include "../abstract/math.hpp"
-#include "../abstract/data_math.hpp"
-#include "../abstract/data.hpp"
-
-#include "../iterator.hpp"
+#include "common.hpp"
 
 #include "schema.hpp"
 #include "aabb.hpp"
 #include "mask.hpp"
-#include "../abstract/data_ptr.hpp"
 #include "particle_opa.hpp"
 
 namespace kel {
@@ -232,7 +227,6 @@ constexpr auto handle_collision = [](
 	}
 };
 
-
 /**
  * Bounding-sphere overlap test.
  *
@@ -280,8 +274,6 @@ constexpr auto particle_dem_lambda = [](kel::lbm::data<sch::ParticleGroup<T,D,Pa
 		auto has_collided = false;
 	}
 };
-
-
 
 }
 }

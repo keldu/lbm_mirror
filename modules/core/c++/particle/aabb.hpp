@@ -22,14 +22,30 @@ public:
 		sch::Member<sch::FixedArray<sch::UInt64,D>,"b">
 	>;
 public:
+	/**
+	 * Device-side entry point: reports success as a bool rather than an
+	 * error_or.
+	 *
+	 * This matters more than it looks. error_or carries an `error`, and
+	 * building one reaches get_template_error_id -> a function-local static
+	 * (__cxa_guard_acquire) -> the error registry -> heap<> (operator new) ->
+	 * std::vector (__throw_length_error) -> std::string (strlen). Returning
+	 * error_or from a function called inside a kernel therefore pulls the
+	 * whole host allocator and exception machinery into device code, which
+	 * AdaptiveCpp's LoopSplitterInlining pass then has to walk -- it reports
+	 * each of those symbols as undefined and chokes on the call graph.
+	 *
+	 * Nothing is lost: the only failure here is an out of range particle
+	 * index, which a caller can act on just as well from a bool.
+	 */
 	template<typename Sch, typename Encode>
-	static constexpr kel::lbm::error_or<kel::lbm::data<AABB>> calculate(const kel::lbm::data<Sch,Encode>& p_grp, const kel::lbm::data<sch::FixedArray<sch::UInt64,1u>>& index, const kel::lbm::data<sch::FixedArray<sch::UInt64,D>>& meta){
+	static constexpr bool try_calculate(const kel::lbm::data<Sch,Encode>& p_grp, const kel::lbm::data<sch::FixedArray<sch::UInt64,1u>>& index, const kel::lbm::data<sch::FixedArray<sch::UInt64,D>>& meta, kel::lbm::data<AABB>& out){
 		static_assert(PC > 0u, "Can't calculate from no particles");
 		if(not (index.at({{0u}}).get() < PC) ){
-			return kel::lbm::make_error<kel::lbm::err::critical>("Too large i in particle_aabb");
+			return false;
 		}
 
-		kel::lbm::data<AABB> aabb;
+		kel::lbm::data<AABB>& aabb = out;
 		auto& parts = p_grp.template get<"particles">();
 
 		auto& pi = parts.at(index);
@@ -64,6 +80,19 @@ public:
 			b.at({i}) = (b_i < meta.at({i})) ? b_i : meta.at({i});
 		}
 		
+		return true;
+	}
+
+	/**
+	 * Host-side convenience wrapper. Keeps the error_or interface for callers
+	 * that are not inside a kernel.
+	 */
+	template<typename Sch, typename Encode>
+	static kel::lbm::error_or<kel::lbm::data<AABB>> calculate(const kel::lbm::data<Sch,Encode>& p_grp, const kel::lbm::data<sch::FixedArray<sch::UInt64,1u>>& index, const kel::lbm::data<sch::FixedArray<sch::UInt64,D>>& meta){
+		kel::lbm::data<AABB> aabb;
+		if(not try_calculate(p_grp,index,meta,aabb)){
+			return kel::lbm::make_error<kel::lbm::err::critical>("Too large i in particle_aabb");
+		}
 		return aabb;
 	}
 };

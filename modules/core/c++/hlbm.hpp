@@ -151,11 +151,10 @@ public:
 				/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
 			);
 
-			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,index,mvel_f.meta());
-			if(eo_aabb.is_error()){
+			kel::lbm::data<typename particle_aabb<typename ParticleSchema::ValueType>::AABB> aabb;
+			if(not particle_aabb<typename ParticleSchema::ValueType>::try_calculate(part_spheroid_group,index,mvel_f.meta(),aabb)){
 				return;
 			}
-			auto& aabb = eo_aabb.get_value();
 
 			auto start = aabb.template get<"a">();
 			auto stop = aabb.template get<"b">();
@@ -258,11 +257,10 @@ public:
 			/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
 		);
 
-		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_group,index,mvel_f.meta());
-		if(eo_aabb.is_error()){
+		kel::lbm::data<typename particle_aabb<typename ParticleSchema::ValueType>::AABB> aabb;
+		if(not particle_aabb<typename ParticleSchema::ValueType>::try_calculate(part_group,index,mvel_f.meta(),aabb)){
 			return;
 		}
-		auto& aabb = eo_aabb.get_value();
 
 		auto vel_p = (pirb_pos-pirb_pos_old) / ts;
 

@@ -35,7 +35,6 @@ inline uint64_t particle_sub_steps(kel::lbm::data<sch::UInt64> sub_steps){
 template<uint64_t D>
 constexpr bool particle_angular_supported = (D == 2u);
 
-
 /**
  * Turns the accumulated force/torque into acceleration and advances the body.
  *

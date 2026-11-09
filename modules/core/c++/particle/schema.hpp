@@ -75,7 +75,6 @@ using ParticleRigidBody = Struct<
 	Member<Scalar<T>, "density">
 >;
 
-
 /**
  * CollisionType is defaulted so the plain `Particle<T,D>` spelling used by the
  * integrator and the tests keeps working.

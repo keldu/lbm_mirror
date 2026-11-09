@@ -48,7 +48,7 @@ public:
 };
 */
 
-void print_progress_bar(const uint32_t progress, const uint32_t progress_target){
+inline void print_progress_bar(const uint32_t progress, const uint32_t progress_target){
 	std::cout<<"\r";
 	//	<<"Progress: "
 	//	<<((100 * progress) / progress_target)

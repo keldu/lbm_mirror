@@ -183,11 +183,10 @@ public:
 		
 
 
-		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,index,mom_f.meta());
-		if(eo_aabb.is_error()){
+		kel::lbm::data<typename particle_aabb<typename ParticleSchema::ValueType>::AABB> aabb;
+		if(not particle_aabb<typename ParticleSchema::ValueType>::try_calculate(pg,index,mom_f.meta(),aabb)){
 			return;
 		}
-		auto& aabb = eo_aabb.get_value();
 
 		kel::lbm::data<sch::Scalar<T>> three;
 		three.at({}).set(3.0f);

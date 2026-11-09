@@ -7,10 +7,12 @@
 , forstio
 , kel
 , adaptive-cpp
+# Names the build so the ROCm and non-ROCm variants land in distinct outputs.
+, variant ? ""
 }:
 
 stdenv.mkDerivation {
-	pname = "${pname}-sycl";
+	pname = "${pname}-sycl${variant}";
 	inherit version;
 	src = ./..;
 
@@ -33,6 +35,11 @@ stdenv.mkDerivation {
 
 	doCheck = true;
 	checkPhase = ''
+		# AdaptiveCpp caches JIT output under $HOME, which is /homeless-shelter
+		# in a nix build. Point it somewhere writable or the tests die before
+		# running a single case.
+		export HOME="$TMPDIR"
+
 		scons test
 		./bin/tests
 	'';

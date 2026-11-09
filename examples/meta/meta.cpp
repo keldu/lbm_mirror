@@ -1,7 +1,5 @@
 #include <kel/lbm/lbm.hpp>
 
-#include <forstio/codec/args.hpp>
-
 #include <iostream>
 
 namespace kel {
@@ -34,7 +32,7 @@ kel::lbm::error_or<void> meta_lbm_info(const kel::lbm::data<kel::lbm::sch::MetaA
 		{args_str.template get<"dt">()}
 	};
 	print_lbm_meta<T,Desc>(conv, {args_str.template get<"kin_vis">()},{args_str.template get<"char_vel">()},{args_str.template get<"char_len">()});
-	
+
 	return kel::lbm::make_void();
 }
 
@@ -42,22 +40,15 @@ kel::lbm::error_or<void> meta_lbm_info(const kel::lbm::data<kel::lbm::sch::MetaA
 kel::lbm::error_or<void> meta_main(int argc, char** argv){
 	using namespace kel::lbm;
 
-	std::string_view cfg_file_name = "config.json";
-	if(argc > 1){
-		cfg_file_name = argv[1];
-	}
-
 	kel::lbm::data<sch::MetaArgs> args_dat;
 	auto& args_str = args_dat.template get<"args">();
-	{
-		{
-			args_str.template get<"dx">().set(1);
-			args_str.template get<"dt">().set(1);
-		}
-		kel::lbm::data<sch::MetaArgs, saw::encode::Args> args_enc{argc,argv};
-		kel::lbm::codec<sch::MetaArgs, saw::encode::Args> args_codec;
 
-		auto eov = args_codec.decode(args_enc,args_dat);
+	// Defaults for anything the caller leaves out.
+	args_str.template get<"dx">().set(1);
+	args_str.template get<"dt">().set(1);
+
+	{
+		auto eov = parse_args(args_dat, argc, argv);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -65,11 +56,10 @@ kel::lbm::error_or<void> meta_main(int argc, char** argv){
 
 	auto& args_pos = args_dat.template get<"positionals">();
 
-
-	switch(args_pos.get<0u>().get()){
+	switch(args_pos.template get<0u>().get()){
 	case 1u:
 		{
-			switch(args_pos.get<1u>().get()){
+			switch(args_pos.template get<1u>().get()){
 			case 3u:
 				meta_lbm_info<sch::Prec,sch::Descriptor<1u,3u>>(args_str);
 				break;
@@ -80,7 +70,7 @@ kel::lbm::error_or<void> meta_main(int argc, char** argv){
 		break;
 	case 2u:
 		{
-			switch(args_pos.get<1u>().get()){
+			switch(args_pos.template get<1u>().get()){
 			case 5u:
 				meta_lbm_info<sch::Prec,sch::Descriptor<2u,5u>>(args_str);
 				break;
@@ -94,7 +84,7 @@ kel::lbm::error_or<void> meta_main(int argc, char** argv){
 		break;
 	case 3u:
 		{
-			switch(args_pos.get<1u>().get()){
+			switch(args_pos.template get<1u>().get()){
 			case 7u:
 				return kel::lbm::make_error<kel::lbm::err::not_implemented>("D3Q7 Velocity Set is not implemented");
 				// meta_lbm_info<sch::Prec,sch::Descriptor<3u,19u>>(args_str);

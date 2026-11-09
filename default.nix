@@ -36,13 +36,21 @@ let
 		'';
 	};
 
-	adaptive-cpp = pkgs.callPackage .nix/adaptive-cpp.nix {
+	# One builder, two instances, so the ROCm and non-ROCm toolchains differ in
+	# exactly one input and nothing else.
+	mkAdaptiveCpp = enableRocm: pkgs.callPackage .nix/adaptive-cpp.nix {
 		inherit stdenv llvmPackages lld;
 
 		config = {
-			inherit rocm;
+			rocm = enableRocm;
 		};
 	};
+
+	adaptive-cpp-base = mkAdaptiveCpp false;
+	adaptive-cpp-rocm = mkAdaptiveCpp true;
+
+	# What the examples and the default build use. Flip with --arg rocm true.
+	adaptive-cpp = if rocm then adaptive-cpp-rocm else adaptive-cpp-base;
 
 	forstio = let
 		forstioSrc = stdenv.mkDerivation {
@@ -77,8 +85,16 @@ in rec {
 			core = pkgs.callPackage ./modules/core/.nix/derivation.nix {
 				inherit forstio stdenv clang-tools pname version;
 			};
+			# Both toolchains, same sources, same everything else -- so a failure
+			# in one and not the other points at the backend rather than the code.
 			sycl = pkgs.callPackage ./modules/sycl/.nix/derivation.nix {
-				inherit forstio stdenv clang-tools pname version kel adaptive-cpp;
+				inherit forstio stdenv clang-tools pname version kel;
+				adaptive-cpp = adaptive-cpp-base;
+			};
+			sycl-rocm = pkgs.callPackage ./modules/sycl/.nix/derivation.nix {
+				inherit forstio stdenv clang-tools pname version kel;
+				adaptive-cpp = adaptive-cpp-rocm;
+				variant = "-rocm";
 			};
 		};
 	};

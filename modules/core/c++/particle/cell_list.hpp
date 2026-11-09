@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../component.hpp"
-#include "../iterator.hpp"
 #include "common.hpp"
 #include "schema.hpp"
 #include "particle.hpp"

@@ -2,8 +2,6 @@
 
 #include <cmath>
 
-#include "../abstract/math.hpp"
-#include "../iterator.hpp"
 #include "common.hpp"
 #include "schema.hpp"
 

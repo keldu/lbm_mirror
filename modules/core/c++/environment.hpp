@@ -62,7 +62,7 @@ kel::lbm::error_or<environment> init_lbm_env(const kel::lbm::data<ArgSch>& args)
  * Located outside the project dir because dispatching build jobs with output data in the git directory
  * also copies simulated data which takes a long time.
  */
-kel::lbm::error_or<std::filesystem::path> output_directory(){
+inline kel::lbm::error_or<std::filesystem::path> output_directory(){
 	namespace fs = std::filesystem;
 
 	const char* home_dir = std::getenv("HOME");

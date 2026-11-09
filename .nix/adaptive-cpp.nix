@@ -20,7 +20,7 @@
 
 let
 	version = "25.02.0";
-in stdenv.mkDerivation {
+in stdenv.mkDerivation ({
 	pname = "adaptive-cpp-kel-custom";
 	inherit version;
 
@@ -54,7 +54,25 @@ in stdenv.mkDerivation {
 
   cmakeFlags = [
     "-DCLANG_INCLUDE_PATH=${llvmPackages.libclang.dev}/include"
+  ] ++ lib.optionals config.rocm [
+    "-DWITH_ROCM_BACKEND=ON"
+
+    # Keep OpenCL and Level Zero off. src/CMakeLists.txt turns WITH_LLVM_TO_SPIRV
+    # on for either of them, and that target FetchContent-clones
+    # SPIRV-LLVM-Translator at configure time, which a nix build cannot do --
+    # it has neither git nor network. ROCm is the backend we want here and it
+    # does not go through SPIR-V.
+    #
+    # This only bites when rocm = true: rocmPackages.clr brings OpenCL in, so
+    # the backend autodetects on, where in the base build it stays off.
+    "-DWITH_OPENCL_BACKEND=OFF"
+    "-DWITH_LEVEL_ZERO_BACKEND=OFF"
   ];
+
+  # nixpkgs 26.05 turns the zerocallusedregs hardening flag on by default, and
+  # clang rejects -fzero-call-used-regs for the amdgcn-amd-amdhsa target, so
+  # every device bitcode object under src/libkernel/sscp/amdgpu fails to build.
+  # Not an AdaptiveCpp problem -- the same source built fine on 25.11.
 
   postInstall = ''
     if [ -d "$out/include/AdaptiveCpp" ]; then
@@ -76,4 +94,13 @@ in stdenv.mkDerivation {
   postPatch = ''
     patchShebangs .
   '';
-}
+} // lib.optionalAttrs config.rocm {
+  # nixpkgs 26.05 turns the zerocallusedregs hardening flag on by default, and
+  # clang rejects -fzero-call-used-regs for the amdgcn-amd-amdhsa target, so
+  # every device bitcode object under src/libkernel/sscp/amdgpu fails to build.
+  # Not an AdaptiveCpp problem -- the same source built fine on 25.11.
+  #
+  # Set via optionalAttrs rather than lib.optionals so the attribute is absent
+  # (not just empty) without rocm, which keeps the base derivation hash stable.
+  hardeningDisable = [ "zerocallusedregs" ];
+})
