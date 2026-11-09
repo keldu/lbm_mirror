@@ -3,12 +3,14 @@
 #include "macroscopic.hpp"
 #include "component.hpp"
 #include "equilibrium.hpp"
+#include "particle/integrate.hpp"
 
 namespace kel {
 namespace lbm {
 namespace cmpt {
 struct PsmReset {};
 struct PsmOneParticle {};
+struct PsmOneParticleGather {};
 struct Psm {};
 }
 namespace method {
@@ -91,7 +93,7 @@ public:
  * PSM collision operator for LBM
  */
 template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::PsmOneParticle, Encode> final {
+class component<T, Descriptor, cmpt::PsmOneParticleGather, Encode> final {
 private:
 public:
 	component() = default;
@@ -140,14 +142,10 @@ void apply(
 
     {
         auto parts = pg.template get<"particles">();
-
-        auto& p_coll =
-            pg.template get<"collision">().at({});
+        auto& pi = parts.at(index);
 
         auto& p_rad =
-            p_coll.template get<"radius">();
-
-        auto& pi = parts.at(index);
+            pi.template get<"collision">().template get<"radius">();
 
         auto& pirb =
             pi.template get<"rigid_body">();
@@ -193,7 +191,7 @@ void apply(
                 typename ParticleSchema::ValueType
             >::calculate(
                 pg,
-                {{0u}},
+                index,
                 vel_f.meta()
             );
 
@@ -443,31 +441,42 @@ void apply(
          * ------------------------------------------------------------
          */
 
-        auto& pirb_acc =
-            pirb.template get<"acceleration">();
-
-        pirb_acc =
-            force_p
-            / pg.template get<"total_mass">().at({});
-
-
-        /*
-         * ------------------------------------------------------------
-         * Integrate particle
-         * ------------------------------------------------------------
+        /**
+         * Accumulate rather than assign, so a contact pass can add to this
+         * before cmpt::ParticleIntegrate turns the total into motion.
          */
-
-        for(kel::lbm::data<sch::UInt64> i{0u};
-            i < sub_steps;
-            ++i){
-
-            verlet_step_lambda<T,Descriptor::D>(
-                pi,
-                ts
-            );
-        }
+        auto& pirb_force = pirb.template get<"force">();
+        pirb_force = pirb_force + force_p;
     }
 }
+};
+
+/**
+ * The original fused one-particle step, kept so existing call sites keep
+ * working.
+ */
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::PsmOneParticle, Encode> final {
+public:
+	component() = default;
+
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(
+		const kel::lbm::data<CellFieldSchema, Encode>& field,
+		const kel::lbm::data<MacroFieldSchema, Encode>& macros,
+		const kel::lbm::data<ParticleSchema, Encode>& pg,
+		kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index,
+		kel::lbm::data<sch::UInt64> time_step,
+		kel::lbm::data<sch::UInt64> sub_steps
+	) const {
+		component<T,Descriptor,cmpt::ParticleForceReset,Encode> reset;
+		component<T,Descriptor,cmpt::PsmOneParticleGather,Encode> gather;
+		component<T,Descriptor,cmpt::ParticleIntegrate,Encode> integrate;
+
+		reset.apply(pg,index,time_step);
+		gather.apply(field,macros,pg,index,time_step,sub_steps);
+		integrate.apply(pg,index,time_step,sub_steps);
+	}
 };
 
 }

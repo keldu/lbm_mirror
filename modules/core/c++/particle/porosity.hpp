@@ -3,32 +3,53 @@
 #include "common.hpp"
 #include "schema.hpp"
 #include "../math/n_closest.hpp"
+#include "mask.hpp"
 
 namespace kel {
 namespace lbm {
 namespace por {
 template<typename T>
 struct ParticleSpheroid {};
+
+/**
+ * Porosity read off the group's voxel mask rather than an analytic sphere.
+ *
+ * Shape agnostic: anything that can be voxelized participates, and the fluid
+ * then sees exactly the body the contact resolution uses, because both go
+ * through the same signed distance field.
+ */
+template<typename T>
+struct ParticleVoxel {};
 }
 
+/**
+ * Mask-based porosity.
+ *
+ * Replaces a stub that computed a distance and then returned a
+ * default-constructed value, so every caller silently got zero.
+ */
 template<typename T, uint64_t D, uint64_t PC, typename Coll>
 class particle_porosity {
 public:
-
-	static kel::lbm::data<sch::Scalar<T>> calculate(const kel::lbm::data<sch::ParticleGroup<T,D,PC,Coll>>& part_group, uint64_t p_i, const kel::lbm::data<sch::Vector<T,D>>& lbm_pos){
+	template<typename GroupRef>
+	static kel::lbm::data<sch::Scalar<T>> calculate(
+		const GroupRef& part_group,
+		uint64_t p_i,
+		const kel::lbm::data<sch::Vector<T,D>>& lbm_pos,
+		kel::lbm::data<sch::Scalar<T>> eps
+	){
 		auto& mask = part_group.template get<"mask">();
+		auto& part_i = part_group.template get<"particles">().at({p_i});
 
-		auto& particles = part_group.template get<"particles">();
-		auto& part_i = particles.at({p_i});
+		const uint64_t resolution = mask.get_dims().at({0u}).get();
 
-		auto& part_i_rb = part_i.template get<"rigid_body">();
-		auto& pirb = part_i_rb.template get<"position">();
+		auto sdf = mask_signed_distance<T,D>(part_group,part_i,lbm_pos,resolution);
+		auto solid = solid_fraction_from_sdf<T>(sdf,eps.at({}).get());
 
-		auto dist = lbm_pos - pirb;
-
-		// index 0 is at 
-
-		return {};
+		// Convention: 1 = fluid, 0 = solid, matching the analytic path.
+		kel::lbm::data<sch::Scalar<T>> por;
+		por.at({}).set(1 - solid);
+		return por;
 	}
 };
 
@@ -85,8 +106,7 @@ public:
 
 		kel::lbm::data<sch::Scalar<T>> dist_len = kel::lbm::math::dot(dist,dist);
 		dist_len.at({}).set(std::sqrt(dist_len.at({}).get()));
-
-		auto& coll = part_group.template get<"collision">().at({});
+		auto& coll = pi.template get<"collision">();
 		const kel::lbm::data<sch::Scalar<T>>& rad_d = coll.template get<"radius">();
 		const auto& eps = part_group.template get<"epsilon">().at({});
 		// Move this somewhere

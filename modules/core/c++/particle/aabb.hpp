@@ -39,7 +39,8 @@ public:
 		auto& a = aabb.template get<"a">();
 		auto& b = aabb.template get<"b">();
 
-		const kel::lbm::data<sch::Scalar<T>>& rad_d = p_grp.template get<"collision">().at({{0u}}).template get<"radius">();
+		// Radius is per particle now, so a group can hold mixed sizes.
+		const kel::lbm::data<sch::Scalar<T>>& rad_d = pi.template get<"collision">().template get<"radius">();
 
 		kel::lbm::data<sch::Vector<T,D>> lower;
 		kel::lbm::data<sch::Vector<T,D>> upper;
@@ -47,8 +48,20 @@ public:
 		for(uint64_t i{0u}; i < D; ++i){
 			lower.at({{i}}) = ((pirb_pos.at({{i}}) >= rad_d.at({})) ? (pirb_pos.at({{i}}) - rad_d.at({})) : kel::lbm::data<T>{0});
 			a.at({i}) = lower.at({{i}}).template cast_to<sch::UInt64>();
+
 			upper.at({{i}}) = pirb_pos.at({{i}}) + rad_d.at({});
-			b.at({i}) = (upper.at({{i}})+kel::lbm::data<T>{1}).template cast_to<sch::UInt64>();
+			/**
+			 * Clamp against the field extent. Callers hand the result straight
+			 * to iterator<D>::apply as [a,b), so an unclamped b reads past the
+			 * end for any particle within a radius of the far wall.
+			 *
+			 * Note this bounds the cell itself, not its neighbours: HLBM also
+			 * reads neighbour_at on dfs, which is safe because DfChunk carries
+			 * Ghost = 1. The macro chunks have Ghost = 0 and are only ever
+			 * read at the cell itself.
+			 */
+			auto b_i = (upper.at({{i}})+kel::lbm::data<T>{1}).template cast_to<sch::UInt64>();
+			b.at({i}) = (b_i < meta.at({i})) ? b_i : meta.at({i});
 		}
 		
 		return aabb;

@@ -5,6 +5,7 @@
 #include "equilibrium.hpp"
 
 #include "particle/particle.hpp"
+#include "particle/integrate.hpp"
 
 #include <iostream>
 
@@ -16,6 +17,8 @@ struct Hlbm {};
 struct HlbmOneParticle {};
 struct HlbmParticle {};
 struct HlbmOneParticleMomentumExchange {};
+struct HlbmOneParticleGather {};
+struct HlbmOneParticleStamp {};
 }
 namespace method {
 struct Hlbm {};
@@ -103,61 +106,59 @@ public:
 
 	}
 };
-
+/**
+ * Gathers the hydrodynamic force on one particle and stamps its porosity.
+ *
+ * Accumulates into the particle's force member rather than writing
+ * acceleration, so contact forces can be added before cmpt::ParticleIntegrate
+ * turns the total into motion.
+ */
 template<typename T, typename Desc, typename Encode>
-class component<T, Desc, cmpt::HlbmOneParticle, Encode> final {
+class component<T, Desc, cmpt::HlbmOneParticleGather, Encode> final {
 private:
 public:
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& part_group, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
-		/// Figure out how to access the particle list
-		// auto& p = particles.at(i);
-
-		/// Iterate over the grid bounds
-		// auto& grid = p.template get<"grid">();
 		using dfi = df_info<T,Desc>;
 		bool is_even = ((time_step.get() % 2) == 0);
-		
+
 		kel::lbm::data<sch::Scalar<T>> one;
 		one.at({}) = 1.0;
-		
+
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& part_spheroid_group = part_group;
 		auto& mvel_f = macros.template get<"momentum">();
 		auto& mrho_f = macros.template get<"density">();
 		auto& mpor_f = macros.template get<"porosity">();
-		
-		auto& particle_N_f = field.template get<"particle_N">();
-		auto& particle_D_f = field.template get<"particle_D">();
 		{
 			auto parts = part_spheroid_group.template get<"particles">();
-			auto parts_size = parts.meta().at({0u});
-
-			auto& p_coll = part_spheroid_group.template get<"collision">().at({});
-			auto& p_rad = p_coll.template get<"radius">();
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
+			auto& p_rad = pi.template get<"collision">().template get<"radius">();
 			kel::lbm::data<sch::Vector<T,Desc::D>>& pirb_pos = pirb.template get<"position">();
 			auto& pirb_pos_old = pirb.template get<"position_old">();
-				
-			// TODO !!!! Divide by actual time step - for now it's ok
+
+			// Matches cmpt::ParticleIntegrate: zero sub steps means one step.
+			uint64_t steps = sub_steps.get();
+			if(steps == 0u){
+				steps = 1u;
+			}
 			kel::lbm::data<sch::Scalar<T>> ts;
-			ts.at({}) = one.at({}) / sub_steps.template cast_to<T>();
+			ts.at({}).set(
+				typename kel::lbm::native_data_type<T>::type(1)
+				/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
+			);
 
-			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> start;
-			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> stop;
-
-			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,{{0u}},mvel_f.meta());
+			auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_spheroid_group,index,mvel_f.meta());
 			if(eo_aabb.is_error()){
 				return;
 			}
 			auto& aabb = eo_aabb.get_value();
 
-			/// Ok, I iterate over the space which covers our particle? So lower bounds to upper bounds
-			start = aabb.template get<"a">();
-			stop = aabb.template get<"b">();
+			auto start = aabb.template get<"a">();
+			auto stop = aabb.template get<"b">();
 
 			kel::lbm::data<sch::Vector<T,Desc::D>> force_p;
 			for(uint64_t i{0u}; i < Desc::D; ++i){
@@ -170,7 +171,7 @@ public:
 				kel::lbm::data<sch::Vector<T,Desc::D>> rel_dist = kel::lbm::math::vectorize_data(index_f).template cast_to<T>() - pirb_pos;
 				kel::lbm::data<sch::Scalar<T>> eps;
 				eps.at({}) = 1.5f;
-				
+
 				auto& mpor = mpor_f.at(index_f);
 				mpor = particle_porosity<T,Desc::D,1u,por::ParticleSpheroid<T>>::calculate(rel_dist,p_rad,eps);
 
@@ -206,30 +207,99 @@ public:
 				// TODO technically needs to adjust for rotation as well
 
 				auto& rho = mrho_f.at(index_f);
+				(void) rho;
 
 				macros.template get<"force">().at(index_f) = momentum;
 				force_p = force_p + momentum;
 			},start,stop);
-			
-			auto& pirb_acc = pirb.template get<"acceleration">();
-			pirb_acc = - force_p / part_spheroid_group.template get<"total_mass">().at({});
 
-			for(kel::lbm::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
-				verlet_step_lambda<T,Desc::D>(pi,ts);
-			}
-			auto vel_p = (pirb_pos-pirb_pos_old) / ts;
-
-			iterator<Desc::D>::apply([&](const auto& index_f){
-				auto& N = particle_N_f.at(index_f);
-				auto& D = particle_D_f.at(index_f);
-				auto& mpor = mpor_f.at(index_f);
-				auto flip_porosity = one - mpor;
-
-				D = D + flip_porosity;
-				N = N + vel_p * flip_porosity;
-			},start,stop);
-			// Check
+			// Accumulate, do not assign: contact adds to this before integration.
+			auto& pirb_force = pirb.template get<"force">();
+			pirb_force = pirb_force - force_p;
 		}
+	}
+};
+
+/**
+ * Writes the HLBM solid-fraction coupling terms.
+ *
+ * Must run AFTER cmpt::ParticleIntegrate, because it uses the post-move
+ * particle velocity.
+ */
+template<typename T, typename Desc, typename Encode>
+class component<T, Desc, cmpt::HlbmOneParticleStamp, Encode> final {
+private:
+public:
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& part_group, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
+		(void) time_step;
+
+		kel::lbm::data<sch::Scalar<T>> one;
+		one.at({}) = 1.0;
+
+		auto& mvel_f = macros.template get<"momentum">();
+		auto& mpor_f = macros.template get<"porosity">();
+		auto& particle_N_f = field.template get<"particle_N">();
+		auto& particle_D_f = field.template get<"particle_D">();
+
+		auto parts = part_group.template get<"particles">();
+		auto& pi = parts.at(index);
+		auto& pirb = pi.template get<"rigid_body">();
+		auto& pirb_pos = pirb.template get<"position">();
+		auto& pirb_pos_old = pirb.template get<"position_old">();
+
+		uint64_t steps = sub_steps.get();
+		if(steps == 0u){
+			steps = 1u;
+		}
+		kel::lbm::data<sch::Scalar<T>> ts;
+		ts.at({}).set(
+			typename kel::lbm::native_data_type<T>::type(1)
+			/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
+		);
+
+		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(part_group,index,mvel_f.meta());
+		if(eo_aabb.is_error()){
+			return;
+		}
+		auto& aabb = eo_aabb.get_value();
+
+		auto vel_p = (pirb_pos-pirb_pos_old) / ts;
+
+		iterator<Desc::D>::apply([&](const auto& index_f){
+			auto& N = particle_N_f.at(index_f);
+			auto& D = particle_D_f.at(index_f);
+			auto& mpor = mpor_f.at(index_f);
+			auto flip_porosity = one - mpor;
+
+			D = D + flip_porosity;
+			N = N + vel_p * flip_porosity;
+		},aabb.template get<"a">(),aabb.template get<"b">());
+	}
+};
+
+/**
+ * The original fused one-particle step, kept so existing call sites keep
+ * working: gather, integrate, then stamp, in that order.
+ *
+ * New code should launch the three components separately, which is what makes
+ * room for a contact pass between the gather and the integrate.
+ */
+template<typename T, typename Desc, typename Encode>
+class component<T, Desc, cmpt::HlbmOneParticle, Encode> final {
+private:
+public:
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& part_group, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
+		component<T,Desc,cmpt::ParticleForceReset,Encode> reset;
+		component<T,Desc,cmpt::HlbmOneParticleGather,Encode> gather;
+		component<T,Desc,cmpt::ParticleIntegrate,Encode> integrate;
+		component<T,Desc,cmpt::HlbmOneParticleStamp,Encode> stamp;
+
+		reset.apply(part_group,index,time_step);
+		gather.apply(field,macros,part_group,index,time_step,sub_steps);
+		integrate.apply(part_group,index,time_step,sub_steps);
+		stamp.apply(field,macros,part_group,index,time_step,sub_steps);
 	}
 };
 }

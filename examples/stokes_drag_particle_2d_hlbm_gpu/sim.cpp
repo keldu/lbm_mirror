@@ -194,7 +194,6 @@ kel::lbm::error_or<void> step(
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::BGK, encode::Sycl<kel::lbm::enc::Native>> bgk{0.8};
 		component<T,Desc,cmpt::Hlbm,encode::Sycl<kel::lbm::enc::Native>> collision{0.8};
-		component<T,Desc,cmpt::HlbmOneParticle,encode::Sycl<kel::lbm::enc::Native>> one_part_moment;
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
 		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<kel::lbm::enc::Native>> abb;
 
@@ -241,7 +240,6 @@ kel::lbm::error_or<void> step(
 				break;
 				case 2u:
 					opa.apply(macros,index,t_i);
-					one_part_moment.apply(fields,macros,index,t_i);
 					collision.apply(fields,macros,index,t_i);
 					fg.apply(fields,macros,index,t_i);
 					break;

@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "particle/particle.hpp"
+#include "particle/integrate.hpp"
 #include "iterator.hpp"
 
 namespace kel {
@@ -12,6 +13,7 @@ struct FpLbm {};
 struct FpLbmOneParticle {};
 struct FpLbmMomentumOneParticle {};
 struct FpLbmOneParticleNoVelocity{};
+struct FpLbmOneParticleGather {};
 }
 namespace method {
 struct FpLbm {};
@@ -138,9 +140,9 @@ public:
 };
 
 template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
+class component<T, Descriptor, cmpt::FpLbmOneParticleGather, Encode> final {
 public:
-	using Component = cmpt::FpLbmOneParticle;
+	using Component = cmpt::FpLbmOneParticleGather;
 private:
 	kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force_;
 public:
@@ -177,12 +179,11 @@ public:
 		auto& pirb = pi.template get<"rigid_body">();
 		auto& pirb_pos = pirb.template get<"position">();
 		auto& pirb_pos_old = pirb.template get<"position_old">();
+		auto& p_rad = pi.template get<"collision">().template get<"radius">();
 		
 
-		auto& p_coll = pg.template get<"collision">().at({});
-		auto& p_rad = p_coll.template get<"radius">();
 
-		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,{{0u}},mom_f.meta());
+		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,index,mom_f.meta());
 		if(eo_aabb.is_error()){
 			return;
 		}
@@ -227,15 +228,43 @@ public:
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
 
-		auto& pirb_acc = pirb.template get<"acceleration">();
-		pirb_acc = global_force_ +  force_p / (pg.template get<"total_mass">().at({}));
+		/**
+		 * Accumulate rather than assign, so a contact pass can add to this
+		 * before cmpt::ParticleIntegrate turns the total into motion.
+		 */
+		auto& pirb_force = pirb.template get<"force">();
+		pirb_force = pirb_force + force_p;
+	}
+};
 
-		if(sub_steps.get() > 0u){
-			auto sss_inv = one / sss;
-			for(kel::lbm::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
-				verlet_step_lambda<T,Descriptor::D>(pi,sss_inv);
-			}
-		}
+/**
+ * The original fused one-particle step, kept so existing call sites keep
+ * working. global_force_ is an acceleration, so it rides along as the
+ * integrator's body acceleration.
+ */
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
+public:
+	using Component = cmpt::FpLbmOneParticle;
+private:
+	kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force_;
+public:
+	component():
+		global_force_{}
+	{}
+	component(kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force__):
+		global_force_{global_force__}
+	{}
+
+	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
+	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& pg, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
+		component<T,Descriptor,cmpt::ParticleForceReset,Encode> reset;
+		component<T,Descriptor,cmpt::FpLbmOneParticleGather,Encode> gather;
+		component<T,Descriptor,cmpt::ParticleIntegrate,Encode> integrate{global_force_};
+
+		reset.apply(pg,index,time_step);
+		gather.apply(field,macros,pg,index,time_step,sub_steps);
+		integrate.apply(pg,index,time_step,sub_steps);
 	}
 };
 }
