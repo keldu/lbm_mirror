@@ -3,6 +3,10 @@
 , lld ? pkgs.lld_20
 , stdenv ? llvmPackages.stdenv
 , clang-tools ? llvmPackages.clang-tools
+# Build AdaptiveCpp with the ROCm backend. Off by default so the usual
+# host/OpenMP path stays cheap to build; turn on with
+#   nix-build -A <attr> --arg rocm true
+, rocm ? false
 }:
 
 let
@@ -36,7 +40,7 @@ let
 		inherit stdenv llvmPackages lld;
 
 		config = {
-			rocm = false;
+			inherit rocm;
 		};
 	};
 

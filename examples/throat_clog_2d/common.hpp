@@ -22,10 +22,15 @@ namespace lbm {
  */
 
 // Base resolution.
-constexpr uint64_t dim_y = 64ul;
+//
+// Kept small on purpose: the SYCL JIT has to compile the whole kernel set
+// before the first step runs, and on a modest machine a large domain plus a
+// large particle set will exhaust memory during that compile rather than
+// during the simulation itself.
+constexpr uint64_t dim_y = 32ul;
 constexpr uint64_t dim_x = dim_y * 4ul;
 
-constexpr uint64_t particle_amount = 1ul;
+constexpr uint64_t particle_amount = 20ul;
 
 namespace sch {
 

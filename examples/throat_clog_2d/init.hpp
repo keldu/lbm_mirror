@@ -162,17 +162,42 @@ kel::lbm::error_or<void> init(
 		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
-		particles = create_spheroid_particle_group<T,Desc::D,1u>(radius_p, dense_p, {{64u}});
+		particles = create_spheroid_particle_group<T,Desc::D,particle_amount>(radius_p, dense_p, {{64u}});
 		auto& parts = particles.template get<"particles">();
 
-		{
-			auto& p = parts.at({0u});
+		/**
+		 * Seed the particles upstream of the throat on a staggered grid.
+		 *
+		 * Spacing is 2.4 radii, so they start clear of one another -- any
+		 * initial overlap would be resolved as a contact on the first step and
+		 * fire them apart.
+		 */
+		const auto radius = radius_p.at({}).get();
+		const auto pitch = radius * 2.4;
+
+		const auto x0 = conv.meter_si_to_lbm({{0.10}}).handle().get();
+		const auto y_mid = conv.meter_si_to_lbm({{0.25}}).handle().get();
+
+		constexpr uint64_t per_column = 4ul;
+
+		for(uint64_t i = 0u; i < particle_amount; ++i){
+			auto col = i / per_column;
+			auto row = i % per_column;
+
+			// Offset alternate columns by half a pitch so they interleave.
+			auto y_off = (static_cast<double>(row) - (per_column - 1u) * 0.5) * pitch
+				+ ((col % 2u == 1u) ? pitch * 0.5 : 0.0);
+
+			auto& p = parts.at({i});
 			auto& prb = p.template get<"rigid_body">();
 			auto& p_pos = prb.template get<"position">();
 			auto& p_pos_old = prb.template get<"position_old">();
-			p_pos.at({{0u}}) = conv.meter_si_to_lbm({{0.16}}).handle();
-			p_pos.at({{1u}}) = conv.meter_si_to_lbm({{0.25}}).handle();
 
+			p_pos.at({{0u}}).set(x0 + static_cast<double>(col) * pitch);
+			p_pos.at({{1u}}).set(y_mid + y_off);
+
+			// Start at rest: position_old defaults to zero, which would read
+			// as an enormous velocity.
 			p_pos_old = p_pos;
 		}
 	}

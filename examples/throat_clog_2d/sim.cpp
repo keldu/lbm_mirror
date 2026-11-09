@@ -2,29 +2,16 @@
 #include "init.hpp"
 #include "step.hpp"
 
-#include <forstio/codec/args.hpp>
+#include <string_view>
 
 /**
- * For deciding what parameters to use maybe?
+ * The coupling method is the only thing this example takes from the command
+ * line, so it is read straight from argv rather than through a codec -- the
+ * args codec is forstio's and would need a schema round trip for one string.
  */
-namespace args {
-
-using LbmArgsStruct = Struct<
-	Member<String, "coupling">
-	//,Member<UInt64, "refinement">
->;
-
-using LbmArgs = Args<
-	LbmArgsStruct,
-	Tuple<>
->;
-}
-
 template<typename T, typename Desc, typename Coll, uint64_t N>
-kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
+kel::lbm::error_or<void> lbm_main(std::string_view coupling){
 	using namespace kel::lbm;
-
-	auto& an = args.template get<"args">();
 
 	using dfi = df_info<T,Desc>;
 
@@ -34,7 +21,7 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_dir / "throat_clog_2d" / an.template get<"coupling">().stl_view();
+	auto out_dir = lbm_dir / "throat_clog_2d" / coupling;
 
 	{
 		std::error_code ec;
@@ -151,7 +138,7 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 				}
 			}
 			{
-				auto eov = write_vtk_file(out_dir,std::string{"throat_clog_2d_"}+an.template get<"coupling">().stl_string(),i.get(), *lbm_macro_data_ptr);
+				auto eov = write_vtk_file(out_dir,std::string{"throat_clog_2d_"}+std::string{coupling},i.get(), *lbm_macro_data_ptr);
 				if(eov.is_error()){
 					return eov;
 				}
@@ -191,7 +178,7 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 		}
 	}
 	{
-		auto eov = write_vtk_file(out_dir,std::string{"throat_clog_2d_"}+an.template get<"coupling">().stl_string(),time_steps.get(), *lbm_macro_data_ptr);
+		auto eov = write_vtk_file(out_dir,std::string{"throat_clog_2d_"}+std::string{coupling},time_steps.get(), *lbm_macro_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
@@ -211,36 +198,35 @@ using DescT = kel::lbm::sch::D2Q9;
 
 kel::lbm::error_or<void> k_main(int argc, char** argv){
 	using namespace kel::lbm;
-	
-	kel::lbm::data<args::LbmArgs> args;
-	{
-		auto eov = saw::parse_args(args,argc,argv);
-		if(eov.is_error()){
-			return eov;
-		}
+
+	// Default to fplbm so the example runs with no arguments at all.
+	std::string_view coupling{"fplbm"};
+	if(argc > 1){
+		coupling = argv[1];
 	}
-	auto& an = args.template get<"args">();
-	auto& coupling = an.template get<"coupling">();
 
 	auto resolution_resolve = [&]<typename Cpl>() -> kel::lbm::error_or<void>{
-		return lbm_main<FloatT,DescT,Cpl,1u>(args);
+		return lbm_main<FloatT,DescT,Cpl,1u>(coupling);
 	};
 
-	auto coupling_resolve = [&]() -> kel::lbm::error_or<void> {
-		if(coupling.stl_view() == "hlbm"){
-			return resolution_resolve.template operator()<method::Hlbm>();
-		} else if(coupling.stl_view() == "fplbm"){
-			return resolution_resolve.template operator()<method::FpLbm>();
-		} else if(coupling.stl_view() == "psm"){
-			return resolution_resolve.template operator()<method::Psm>();
-		}
-	};
+	if(coupling == "hlbm"){
+		return resolution_resolve.template operator()<method::Hlbm>();
+	}
+	if(coupling == "fplbm"){
+		return resolution_resolve.template operator()<method::FpLbm>();
+	}
+	if(coupling == "psm"){
+		return resolution_resolve.template operator()<method::Psm>();
+	}
 
-	return coupling_resolve();
-
-	return kel::lbm::make_error<kel::lbm::err::critical>("Invalid coupling");
+	/**
+	 * Previously the dispatch lambda had no return on the unmatched path, so
+	 * an unknown coupling fell off the end of a non-void function.
+	 */
+	return kel::lbm::make_error<kel::lbm::err::critical>(
+		std::string{"Unknown coupling '"} + std::string{coupling}
+		+ "', expected one of hlbm, fplbm, psm");
 }
-
 
 int main(int argc, char** argv){
 	auto eov = k_main(argc, argv);
