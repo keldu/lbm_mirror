@@ -43,7 +43,7 @@ kel::lbm::data<sch::Scalar<T>> cell_porosity(
 	for_each_bin_candidate<T,D,CellCapacity>(cl,cell,[&](uint64_t p){
 		auto& pi = parts.at({p});
 		auto& pos = pi.template get<"rigid_body">().template get<"position">();
-		auto rad = pi.template get<"collision">().template get<"radius">();
+		auto rad = pi.template get<"collision">().template get<"radius">().handle();
 
 		kel::lbm::data<sch::Vector<T,D>> rel;
 		for(uint64_t i{0u}; i < D; ++i){

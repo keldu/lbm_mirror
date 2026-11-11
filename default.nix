@@ -52,13 +52,24 @@ let
 	# What the examples and the default build use. Flip with --arg rocm true.
 	adaptive-cpp = if rocm then adaptive-cpp-rocm else adaptive-cpp-base;
 
+	# forstio master as of 2026-11-09. Bump together with the sha256 below.
+	forstioRev = "97ae1a8f23074fea3784a008921c5d9fc3c1e8fb";
+
 	forstio = let
 		forstioSrc = stdenv.mkDerivation {
 			name = "forstio-src";
 
+		 # Pinned to a commit, not to master. A branch snapshot is a moving
+		 # target: every push to forstio regenerates the tarball and the sha256
+		 # below stops matching, so the build breaks with a hash mismatch for
+		 # reasons that have nothing to do with this repo.
+		 #
+		 # To bump: set forstioRev, then run
+		 #   nix-prefetch-url --type sha256 \
+		 #     https://git.keldu.de/forstio-forstio/snapshot/<rev>.tar.gz
 		 src = builtins.fetchurl {
-			url = "https://git.keldu.de/forstio-forstio/snapshot/master.tar.gz";
-			sha256 = "sha256:1kb2f2g549hklpld5bsv6wzcmrfwfs0b6qp6fcbws3g5gz621cjj";
+			url = "https://git.keldu.de/forstio-forstio/snapshot/${forstioRev}.tar.gz";
+			sha256 = "sha256:0rmss3d83ryb24s8nirjrnxz32irws3hzwqkkxhk4xcf3rn8p8ls";
 		 };
 
 		 phases = [ "unpackPhase" "installPhase" ];
@@ -121,6 +132,26 @@ in rec {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
+
+		# Same case on a 32x16x16 domain, so it runs end to end in seconds.
+		poiseulle_3d_gpu_minimal = pkgs.callPackage ./examples/poiseulle_3d_gpu_minimal/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
+		# 32^3 channel carrying one HLBM-coupled sphere. The first 3D case with
+		# a particle at all, and the stepping stone to the fixed-axis rotor.
+		poiseulle_particle_3d_hlbm_gpu = pkgs.callPackage ./examples/poiseulle_particle_3d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
+
+		# Fixed-position rotor, free to spin about one arbitrary fixed axis and
+		# driven by the fluid. Angular velocity is an output.
+		vawt_3d_hlbm_gpu = pkgs.callPackage ./examples/vawt_3d_hlbm_gpu/.nix/derivation.nix {
+			inherit pname version stdenv forstio adaptive-cpp;
+			inherit kel;
+		};
 		
 		cavity_2d = pkgs.callPackage ./examples/cavity_2d/.nix/derivation.nix {
 			inherit pname version stdenv forstio;
@@ -132,13 +163,8 @@ in rec {
 			inherit kel;
 		};
 
-		planetary_3d = pkgs.callPackage ./examples/planetary_3d/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel;
-		};
-
 		poiseulle_2d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
-			inherit pname version stdenv forstio;
+			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
 		

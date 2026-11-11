@@ -48,7 +48,7 @@ public:
 
 			auto& rho_f = macros.template get<"density">();
 			auto& rho = rho_f.at(index);
-			auto& vel_f = macros.template get<"momentum">();
+			auto& vel_f = macros.template get<"velocity">();
 			auto& vel = vel_f.at(index);
 
 			compute_rho_momentum<T,Descriptor>(dfs,rho,vel);
@@ -96,7 +96,7 @@ public:
 		auto& force_f = macros.template get<"force">();
 		auto& force = force_f.at(index);
 
-		auto& mom_f = macros.template get<"momentum">();
+		auto& mom_f = macros.template get<"velocity">();
 		auto& mom = mom_f.at(index);
 
 		// We already computed this in reset
@@ -144,13 +144,14 @@ class component<T, Descriptor, cmpt::FpLbmOneParticleGather, Encode> final {
 public:
 	using Component = cmpt::FpLbmOneParticleGather;
 private:
-	kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force_;
+	// An acceleration, as the comment above says -- now typed as one.
+	kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration_;
 public:
 	component():
-		global_force_{}
+		body_acceleration_{}
 	{}
-	component(kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force__):
-		global_force_{global_force__}
+	component(kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration__):
+		body_acceleration_{body_acceleration__}
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
@@ -162,7 +163,7 @@ public:
 		// auto& dfs = dfs_old_f.at(index);
 
 		auto& rho_f = macros.template get<"density">();
-		auto& mom_f = macros.template get<"momentum">();
+		auto& mom_f = macros.template get<"velocity">();
 		auto& por_f = macros.template get<"porosity">();
 		auto& force_f = macros.template get<"force">();
 
@@ -177,9 +178,9 @@ public:
 		auto& pi = parts.at(index);		
 
 		auto& pirb = pi.template get<"rigid_body">();
-		auto& pirb_pos = pirb.template get<"position">();
-		auto& pirb_pos_old = pirb.template get<"position_old">();
-		auto& p_rad = pi.template get<"collision">().template get<"radius">();
+		auto& pirb_pos = pirb.template get<"position">().handle();
+		auto& pirb_pos_old = pirb.template get<"position_old">().handle();
+		auto& p_rad = pi.template get<"collision">().template get<"radius">().handle();
 		
 
 
@@ -205,7 +206,7 @@ public:
 		auto vel_s = (pirb_pos-pirb_pos_old) * sss;
 
 		kel::lbm::data<sch::Vector<T,Descriptor::D>> force_p{{}};
-		//= global_force_;
+		//= body_acceleration_;
 
 		iterator<Descriptor::D>::apply([&](const auto& index_f) -> void {
 			auto& force = force_f.at(index_f);
@@ -220,7 +221,7 @@ public:
 
 			// vel_s is technically time the density of the particle?
 
-			// force = global_force_ * por + ( vel_s - mom) * two * flip_por;
+			// force = body_acceleration_ * por + ( vel_s - mom) * two * flip_por;
 			force = ( vel_s - mom) * two * flip_por;
 			// force = (vel_s - mom) * flip_por / (flip_por / two + one);
 
@@ -238,28 +239,30 @@ public:
 
 /**
  * The original fused one-particle step, kept so existing call sites keep
- * working. global_force_ is an acceleration, so it rides along as the
- * integrator's body acceleration.
+ * working. The body acceleration rides straight through to the integrator;
+ * it used to be called global_force_, which it never was -- the integrator
+ * takes an acceleration, not a force.
  */
 template<typename T, typename Descriptor, typename Encode>
 class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
 public:
 	using Component = cmpt::FpLbmOneParticle;
 private:
-	kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force_;
+	// An acceleration, as the comment above says -- now typed as one.
+	kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration_;
 public:
 	component():
-		global_force_{}
+		body_acceleration_{}
 	{}
-	component(kel::lbm::data<sch::Vector<T,Descriptor::D>> global_force__):
-		global_force_{global_force__}
+	component(kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration__):
+		body_acceleration_{body_acceleration__}
 	{}
 
 	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
 	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& pg, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
 		component<T,Descriptor,cmpt::ParticleForceReset,Encode> reset;
 		component<T,Descriptor,cmpt::FpLbmOneParticleGather,Encode> gather;
-		component<T,Descriptor,cmpt::ParticleIntegrate,Encode> integrate{global_force_};
+		component<T,Descriptor,cmpt::ParticleIntegrate,Encode> integrate{body_acceleration_};
 
 		reset.apply(pg,index,time_step);
 		gather.apply(field,macros,pg,index,time_step,sub_steps);

@@ -4,6 +4,7 @@
 
 #include "data.hpp"
 #include "data_math.hpp"
+#include "unit.hpp"
 
 namespace kel {
 namespace lbm {
@@ -83,6 +84,68 @@ normalize(const data<sch::Vector<T, D>, Encoding> &input) {
 		out.flat_at(i) = input.flat_at(i) / sqrt_inp_dot.flat_at(0u);
 	}
 	return out;
+}
+
+/**
+ * Square root of a unit carrying scalar: the exponents halve, so the root of
+ * an area is a length.
+ *
+ * Only defined when every exponent is even -- a half power of a base unit is
+ * not expressible here, and silently truncating would be worse than refusing.
+ */
+template <typename T, typename... U, int64_t... E, int64_t... S,
+		  typename Encoding = KEL_LBM_DEFAULT_DATA_ENCODING>
+data<sch::Unit<sch::Scalar<T>, sch::UnitElement<U, E / 2, S>...>, Encoding>
+sqrt(const data<sch::Unit<sch::Scalar<T>, sch::UnitElement<U, E, S>...>,
+				 Encoding> &inp) {
+	static_assert(((E % 2 == 0) && ...),
+				  "sqrt of a unit needs even exponents");
+	return data<sch::Unit<sch::Scalar<T>, sch::UnitElement<U, E / 2, S>...>,
+				Encoding>{sqrt<T, Encoding>(inp.handle())};
+}
+
+/**
+ * Unit aware vector algebra.
+ *
+ * A unit belongs to the vector as a whole (see unit.hpp), so each of these
+ * recovers the raw vector, reuses the plain implementation above, and then
+ * re-attaches the unit the result actually carries. The result unit is
+ * computed rather than copied: the dot product of two lengths is an area, and
+ * a normalised vector is a direction and therefore dimensionless.
+ */
+template <typename T, uint64_t D, typename... EleL, typename... EleR,
+		  typename Encoding = KEL_LBM_DEFAULT_DATA_ENCODING>
+auto dot(const data<sch::Unit<sch::Vector<T, D>, EleL...>, Encoding> &left,
+		 const data<sch::Unit<sch::Vector<T, D>, EleR...>, Encoding> &right) {
+	using ResultSchema =
+		typename kel::lbm::unit_multiplication<sch::Unit<sch::Scalar<T>, EleL...>,
+											   sch::Unit<sch::Scalar<T>, EleR...>>::Schema;
+	return data<ResultSchema, Encoding>{
+		dot<T, D, Encoding>(left.handle(), right.handle())};
+}
+
+/**
+ * Length of a unit carrying vector. sqrt of an area is a length, so the unit
+ * is unchanged.
+ */
+template <typename T, uint64_t D, typename... Ele,
+		  typename Encoding = KEL_LBM_DEFAULT_DATA_ENCODING>
+data<sch::Unit<sch::Scalar<T>, Ele...>, Encoding>
+norm(const data<sch::Unit<sch::Vector<T, D>, Ele...>, Encoding> &input) {
+	return data<sch::Unit<sch::Scalar<T>, Ele...>, Encoding>{
+		sqrt<T, Encoding>(dot<T, D, Encoding>(input.handle(), input.handle()))};
+}
+
+/**
+ * A direction is dimensionless, and dimensionless is spelled Pure -- a bare
+ * Vector would only mean "carries no annotation", which is a different claim.
+ */
+template <typename T, uint64_t D, typename... Ele,
+		  typename Encoding = KEL_LBM_DEFAULT_DATA_ENCODING>
+data<sch::Pure<sch::Vector<T, D>>, Encoding>
+normalize(const data<sch::Unit<sch::Vector<T, D>, Ele...>, Encoding> &input) {
+	return data<sch::Pure<sch::Vector<T, D>>, Encoding>{
+		normalize<T, D, Encoding>(input.handle())};
 }
 
 /**

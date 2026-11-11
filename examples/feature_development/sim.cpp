@@ -46,9 +46,9 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});

@@ -26,7 +26,8 @@ constexpr uint64_t D = 3u;
 
 template<uint64_t PC>
 auto make_group(double radius, double density, uint64_t res = 12u){
-	kel::lbm::data<sch::Scalar<sch::T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<sch::T>>> r;
+	kel::lbm::data<sch::Scalar<sch::T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(density);
 	return kel::lbm::create_spheroid_particle_group<sch::T,D,PC>(r,d,{res});

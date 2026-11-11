@@ -30,7 +30,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 			auto& old_pos = body.template get<"position_old">();
 			auto& acceleration = body.template get<"acceleration">();
 			auto& p_rad = part.template get<"collision">().template get<"radius">();
-			p_rad = {0.4f};
+			// Scalar<T> base, so the value goes through the element rather than a
+			// braced whole-unit assignment.
+			p_rad.at({}).set(0.4f);
 
 			if(j.get() % 2u == 0) acceleration.at({{1u}}) = {-9.81};
 
@@ -41,7 +43,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 		}
 	}
 
-	kel::lbm::data<sch::Scalar<sch::Float32>> time_step;
+	// A timestep is a lattice time, which makes (pos - pos_old)/time_step a
+	// velocity rather than an unlabelled vector.
+	kel::lbm::data<sch::LbmSecond<sch::Scalar<sch::Float32>>> time_step;
 	time_step.at({}).set(0.05f);
 
 	for(kel::lbm::data<sch::UInt64> dt{0u}; dt < kel::lbm::data<sch::UInt64>{32ul}; ++dt){

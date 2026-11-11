@@ -45,7 +45,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y, dim_z>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<MomChunk<T,Desc>, "momentum">,
+	Member<MomChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
 	Member<ScalarChunk<T,Desc>, "porosity">
 >;
@@ -100,7 +100,7 @@ kel::lbm::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& mom_f = macros.template get<"momentum">();
+	auto& mom_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
@@ -155,7 +155,7 @@ kel::lbm::error_or<void> step(
 	// auto coll_ev = 
 	q.submit([&](acpp::sycl::handler& h){
 		// Need nicer things to handle the flow. I see improvement here
-		component<T,Desc,cmpt::BGK, encode::Sycl<kel::lbm::enc::Native>> collision{conv.template kinematic_viscosity_si_to_tau<Desc>({0.1}).handle()};
+		component<T,Desc,cmpt::BGK, encode::Sycl<kel::lbm::enc::Native>> collision{conv.template kinematic_viscosity_si_to_tau<Desc>({0.1})};
 		// component<T,Desc,cmpt::HLBM,encode::Sycl<kel::lbm::enc::Native>> collision{0.6};
 		component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
 
@@ -254,9 +254,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 
 	print_lbm_meta<T,Desc>(conv,{0.1},{0.01},{1024.0});

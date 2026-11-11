@@ -269,7 +269,7 @@ contact_response<T,D> soft_shell_response(
  * Velocity is implicit in position-Verlet, recovered from the position pair.
  */
 template<typename T, uint64_t D, typename PRef>
-kel::lbm::data<sch::Vector<T,D>> surface_velocity(
+kel::lbm::data<sch::LbmVelocity<sch::Vector<T,D>>> surface_velocity(
 	const PRef& p,
 	const kel::lbm::data<sch::Vector<T,D>>& r,
 	typename kel::lbm::native_data_type<T>::type steps
@@ -304,7 +304,10 @@ kel::lbm::data<sch::Vector<T,D>> surface_velocity(
 		}
 	}
 
-	return v;
+	// (position difference) * steps is a lattice velocity, and saying so is
+	// the whole point of the label. The force law downstream is still untyped,
+	// because there is no mass base unit yet.
+	return kel::lbm::as_unit<sch::LbmVelocity<sch::Vector<T,D>>>(v);
 }
 }
 
@@ -348,16 +351,16 @@ contact_response<T,D> particle_contact_response(
 	auto v_s = impl::surface_velocity<T,D>(self,r_s,steps);
 	auto v_o = impl::surface_velocity<T,D>(other,r_o,steps);
 
-	kel::lbm::data<sch::Vector<T,D>> v_rel;
-	for(uint64_t i{0u}; i < D; ++i){
-		v_rel.at({{i}}).set(v_s.at({{i}}).get() - v_o.at({{i}}).get());
-	}
+	// Velocity minus velocity is a velocity, checked rather than assumed.
+	auto v_rel = v_s - v_o;
 
 	auto m_s = self.template get<"rigid_body">().template get<"mass">().at({}).get();
 	auto m_o = other.template get<"rigid_body">().template get<"mass">().at({}).get();
 	auto m_eff = (m_s * m_o) / (m_s + m_o);
 
-	return impl::soft_shell_response<T,D>(m,r_s,v_rel,m_eff,dem);
+	// Unwrapped here: the spring-dashpot produces a force, and force has no
+	// unit until there is a mass base unit.
+	return impl::soft_shell_response<T,D>(m,r_s,v_rel.handle(),m_eff,dem);
 }
 
 /**
@@ -390,7 +393,8 @@ contact_response<T,D> wall_contact_response(
 
 	auto m_s = self.template get<"rigid_body">().template get<"mass">().at({}).get();
 
-	return impl::soft_shell_response<T,D>(m,r_s,v_rel,m_s,dem);
+	// Same boundary as the pair case: the force law is untyped.
+	return impl::soft_shell_response<T,D>(m,r_s,v_rel.handle(),m_s,dem);
 }
 
 /**

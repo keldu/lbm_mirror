@@ -83,8 +83,8 @@ kel::lbm::error_or<void> step(
 										}());
 									}
 									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((0.1 / 0.64) * y_si.get() - (0.1 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle() * scale;
+										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((0.1 / 0.64) * y_si.get() - (0.1 / (0.64*0.64)) * y_si.get() * y_si.get())}).handle() * scale;
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -178,8 +178,8 @@ kel::lbm::error_or<void> step(
 								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
 									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((0.01 / 0.64) * y_si.get() - (0.01 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
+										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((0.01 / 0.64) * y_si.get() - (0.01 / (0.64*0.64)) * y_si.get() * y_si.get())}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -254,8 +254,8 @@ kel::lbm::error_or<void> step(
 								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
 									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}}).handle();
+										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.64) * y_si.get() - (1.2 / (0.64*0.64)) * y_si.get() * y_si.get())}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;

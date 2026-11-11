@@ -55,7 +55,7 @@ kel::lbm::error_or<void> init(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -93,13 +93,13 @@ kel::lbm::error_or<void> init(
 		[&](const auto& index){
 			auto& info = info_f.at(index);
 			kel::lbm::data<sch::Scalar<T>> radius_p;
-			radius_p.at({}).set(conv.meter_si_to_lbm({{0.05}}).handle().get());
+			radius_p.at({}).set(conv.meter_si_to_lbm({0.05}).handle().get());
 			kel::lbm::data<sch::Scalar<T>> dense_p;
 			dense_p.at({}).set(1);
 
 			kel::lbm::data<sch::Vector<T,Desc::D>> middle,ind_vec;
-			middle.at({{0u}}) = conv.meter_si_to_lbm({{0.16}}).handle();
-			middle.at({{1u}}) = conv.meter_si_to_lbm({{0.2}}).handle();
+			middle.at({{0u}}) = conv.meter_si_to_lbm({0.16}).handle();
+			middle.at({{1u}}) = conv.meter_si_to_lbm({0.2}).handle();
 
 			for(uint64_t i{0u}; i < Desc::D; ++i){
 				ind_vec.at({{i}}) = index.at({i}).template cast_to<T>();

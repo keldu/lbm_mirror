@@ -106,7 +106,7 @@ public:
 		kel::lbm::data<sch::Scalar<T>> dist_len = kel::lbm::math::dot(dist,dist);
 		dist_len.at({}).set(std::sqrt(dist_len.at({}).get()));
 		auto& coll = pi.template get<"collision">();
-		const kel::lbm::data<sch::Scalar<T>>& rad_d = coll.template get<"radius">();
+		const kel::lbm::data<sch::Scalar<T>>& rad_d = coll.template get<"radius">().handle();
 		const auto& eps = part_group.template get<"epsilon">().at({});
 		// Move this somewhere
 		

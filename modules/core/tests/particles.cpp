@@ -26,7 +26,8 @@ SAW_TEST("Verlet step 2D - Planar"){
 
 	acc.at({{0}}).set({1.0});
 
-	kel::lbm::data<sch::Scalar<sch::T>> dt;
+	// A timestep is a lattice time.
+	kel::lbm::data<sch::LbmSecond<sch::Scalar<sch::T>>> dt;
 	dt.at({}).set(0.5);
 	lbm::verlet_step_lambda<sch::T,2u>(particle,dt);
 
@@ -131,7 +132,8 @@ SAW_TEST("Moving particles 2D"){
 		acc.at({{0u}}) = -0.1;
 	}
 
-	kel::lbm::data<sch::Scalar<sch::T>> dt;
+	// A timestep is a lattice time.
+	kel::lbm::data<sch::LbmSecond<sch::Scalar<sch::T>>> dt;
 	dt.at({}).set(0.5);
 	bool has_collided = false;
 	for(uint64_t i = 0u; i < 32u; ++i){
@@ -284,7 +286,8 @@ SAW_TEST("Spheroid Particle / AABB"){
 	constexpr uint64_t D = 2u;
 	constexpr uint64_t PC = 1u;
 
-	kel::lbm::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radi;
+	kel::lbm::data<sch::Scalar<T>> dense;
 	radi.at({}) = 2.2f;
 	dense.at({}) = 1.0f;
 	auto spheroid_pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{8u});
@@ -331,7 +334,8 @@ SAW_TEST("Spheroid Particle / AABB per particle"){
 	constexpr uint64_t D = 2u;
 	constexpr uint64_t PC = 3u;
 
-	kel::lbm::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radi;
+	kel::lbm::data<sch::Scalar<T>> dense;
 	radi.at({}) = 2.2f;
 	dense.at({}) = 1.0f;
 	auto pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{8u});
@@ -390,7 +394,8 @@ SAW_TEST("Spheroid Particle / per-particle inertial fan-out"){
 	constexpr uint64_t D = 2u;
 	constexpr uint64_t PC = 4u;
 
-	kel::lbm::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radi;
+	kel::lbm::data<sch::Scalar<T>> dense;
 	radi.at({}) = 2.0;
 	dense.at({}) = 3.0;
 	auto pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{8u});
@@ -466,7 +471,8 @@ SAW_TEST("Particle / force accumulates then integrates"){
 
 
 
-	kel::lbm::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radi;
+	kel::lbm::data<sch::Scalar<T>> dense;
 	radi.at({}) = 1.0;
 	dense.at({}) = 1.0 / 3.14159265358979323846;   // gives mass == 1
 	auto pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{4u});
@@ -502,7 +508,8 @@ SAW_TEST("Particle / zero sub steps still advances"){
 
 
 
-	kel::lbm::data<sch::Scalar<T>> radi,dense;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radi;
+	kel::lbm::data<sch::Scalar<T>> dense;
 	radi.at({}) = 1.0;
 	dense.at({}) = 1.0 / 3.14159265358979323846;
 	auto pgrp = lbm::create_spheroid_particle_group<T,D,PC>(radi,dense,{4u});
@@ -530,7 +537,8 @@ constexpr uint64_t D = 2u;
 
 template<uint64_t PC>
 auto make_group(double radius, double density){
-	kel::lbm::data<sch::Scalar<T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> r;
+	kel::lbm::data<sch::Scalar<T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(density);
 	return kel::lbm::create_spheroid_particle_group<T,D,PC>(r,d,{4u});

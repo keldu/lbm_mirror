@@ -18,7 +18,7 @@ namespace lbm {
  */
 template<typename T, uint64_t D,uint64_t PartAmount>
 kel::lbm::data<sch::ParticleGroup<T, D, PartAmount, coll::Spheroid<T>>> create_spheroid_particle_group(
-		kel::lbm::data<sch::Scalar<T>> radius_p,
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radius_p,
 		kel::lbm::data<sch::Scalar<T>> density_p,
 		const kel::lbm::data<sch::UInt64>& mask_resolution
 ){
@@ -169,7 +169,7 @@ kel::lbm::data<sch::Particle<T,D, sch::ParticleCollisionSpheroid<T>>> create_sph
 */
 
 template<typename T,uint64_t D>
-constexpr auto verlet_step_lambda = [](kel::lbm::data<sch::Particle<T,D>>& particle, kel::lbm::data<sch::Scalar<T>> time_step_delta){
+constexpr auto verlet_step_lambda = [](kel::lbm::data<sch::Particle<T,D>>& particle, kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> time_step_delta){
 	auto& body = particle.template get<"rigid_body">();
 
 	auto& pos = body.template get<"position">();
@@ -184,10 +184,13 @@ constexpr auto verlet_step_lambda = [](kel::lbm::data<sch::Particle<T,D>>& parti
 
 	auto tsd_squared = time_step_delta * time_step_delta;
 
-	kel::lbm::data<sch::Vector<T,D>> pos_new;
+	kel::lbm::data<sch::LbmMeter<sch::Vector<T,D>>> pos_new;
 	// Actual step
-	kel::lbm::data<sch::Scalar<T>> two;
+	// Dimensionless, and spelled as such: Pure is the claim, Scalar is only
+	// the shape.
+	kel::lbm::data<sch::Pure<sch::Scalar<T>>> two;
 	two.at({}).set(2.0);
+	// m + (m/s^2)*s^2 = m.
 	pos_new = pos * two - pos_old + pos_acc * tsd_squared;
 
 	// Swap - Could be std::swap? No, this is device code
@@ -196,7 +199,12 @@ constexpr auto verlet_step_lambda = [](kel::lbm::data<sch::Particle<T,D>>& parti
 
 	// Angular
 	kel::lbm::data<typename sch::impl::rotation_type_helper<T,D>::Schema> rot_new;
-	rot_new = rot * two - rot_old + rot_acc * tsd_squared;
+	/**
+	 * The angular half runs on raw values. Torque and inertia have no units
+	 * yet (there is no mass base unit), so angular acceleration cannot be
+	 * typed either, and the timestep has to be unwrapped to meet it.
+	 */
+	rot_new = rot * two.handle() - rot_old + rot_acc * tsd_squared.handle();
 	
 	rot_old = rot;
 	rot = rot_new;
@@ -240,7 +248,8 @@ template<typename T, uint64_t D, typename Collision = coll::Spheroid<T>>
 constexpr auto broadphase_collision_distance_squared = []<typename PRef>(
 	const PRef& left,
 	const PRef& right
-) -> std::pair<bool,kel::lbm::data<sch::Scalar<T>>>{
+) -> std::pair<bool, kel::lbm::data<typename kel::lbm::unit_multiplication<
+			sch::LbmMeter<sch::Scalar<T>>, sch::LbmMeter<sch::Scalar<T>>>::Schema>>{
 
 	auto rad_l = left.template get<"collision">().template get<"radius">();
 	auto rad_r = right.template get<"collision">().template get<"radius">();
@@ -252,9 +261,10 @@ constexpr auto broadphase_collision_distance_squared = []<typename PRef>(
 
 	auto norm_2 = kel::lbm::math::dot(pos_dist,pos_dist);
 
-	kel::lbm::data<sch::Scalar<T>> two;
+	// Dimensionless factor, so it has to say Pure.
+	kel::lbm::data<sch::Pure<sch::Scalar<T>>> two;
 	two.at({}) = 2.0;
-	// (r_l + r_r)^2
+	// (r_l + r_r)^2 -- an area, matching the squared centre distance above.
 	auto rad_ab_2 = rad_l * rad_l + rad_r * rad_r + rad_r * rad_l * two;
 
 	return std::make_pair((norm_2.at({}).get() < rad_ab_2.at({}).get()), norm_2);

@@ -44,17 +44,14 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
+	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
 	Member<VectorChunk<T,Desc>, "force">
 >;
 
 template<typename T, typename Desc>
-using ParticleSpheroidGroup = ParticleGroup<
-	T,
-	Desc::D,
-	sch::ParticleCollisionSpheroid<T,2.0f>
->;
+using ParticleSpheroidGroup =
+	ParticleGroup<T,Desc::D,particle_amount,coll::Spheroid<T>>;
 
 template<typename T, typename Desc>
 using ParticleGroups = Tuple<
@@ -90,9 +87,9 @@ kel::lbm::error_or<void> setup_initial_conditions(
 		{{1u,1u}}
 	);
 	//
-	auto& df_f = fields.template gStarted hearing about similar cases not long after, many of which were successful on the part of the crooks. Scary stuff. et<"dfs_old">();
+	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -110,20 +107,22 @@ kel::lbm::error_or<void> setup_initial_conditions(
 
 	// Particles
 	{
+		// Radius is per particle now, and a lattice length.
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> rad_p;
+		rad_p.at({}).set(2.0);
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		// auto& spheroid_group = particles.template get<0u>();
 		auto& spheroid_group = particles;
 
-		spheroid_group = create_spheroid_particle_group<T,Desc::D,2.0f>(
+		spheroid_group = create_spheroid_particle_group<T,Desc::D,particle_amount>(
+			rad_p,
 			dense_p,
 			{64u}
 		);
 
 		{
 			auto& p = spheroid_group.template get<"particles">();
-
-			p = {{{16u}}};
 
 			iterator<1u>::apply(
 				[&](auto& index){
@@ -139,7 +138,7 @@ kel::lbm::error_or<void> setup_initial_conditions(
 					p_pos_old = p_pos;
 				},
 				{},
-				p.meta()
+				p.get_dims()
 			);
 		}
 	}
@@ -162,7 +161,7 @@ kel::lbm::error_or<void> step(
 
 	auto& parts = p_group.template get<"particles">();
 	auto& p_mask = p_group.template get<"mask">();
-	auto& vels = macros.template get<"momentum">();
+	auto& vels = macros.template get<"velocity">();
 	auto& forces = macros.template get<"force">();
 
 	auto p_meta = parts.meta();
@@ -189,13 +188,13 @@ kel::lbm::error_or<void> step(
 
 			auto& p = parts.at(index);
 			auto& p_rb = p.template get<"rigid_body">();
-			kel::lbm::data<sch::Scalar<T>> delta_t;
+			kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> delta_t; // verlet takes a lattice time
 			delta_t.at({}).set(1.0f);
 
-			auto& p_pos = p_rb.template get<"position">();
+			auto& p_pos = p_rb.template get<"position">().handle(); // raw: IBM works in lattice offsets
 			auto& p_rot = p_rb.template get<"rotation">();
 
-			auto& p_acc = p_rb.template get<"acceleration">();
+			auto& p_acc = p_rb.template get<"acceleration">().handle(); // raw: the force below is not divided by mass yet (see TODO)
 
 			iterator<Desc::D>::apply(
 				[&](auto& m_ind){
@@ -227,12 +226,12 @@ kel::lbm::error_or<void> step(
 					// this is our relative position to the particle
 					auto rel_cell_to_part_pos = p_cell_pos_vec.template cast_to<T>() - p_pos;
 
-					auto p_vel = (p_pos - p_rb.template get<"position_old">()) * delta_t;
+					auto p_vel = (p_pos - p_rb.template get<"position_old">().handle()) * delta_t.handle();
 
 					auto u_solid = p_vel + kel::lbm::math::cross(p_rot,rel_cell_to_part_pos);
 
 					// Force
-					auto force = (u_solid - u_fluid) / delta_t;
+					auto force = (u_solid - u_fluid) / delta_t.handle();
 
 					// TODO HERE ATOMIC! !!!!
 					forces.at(p_cell_pos) = forces.at(p_cell_pos) + force;
@@ -295,13 +294,13 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_env = lbm_directory();
-	if(eo_lbm_env.is_error()){
-		return std::move(eo_lbm_env.get_error());
+	auto eo_lbm_dir = output_directory();
+	if(eo_lbm_dir.is_error()){
+		return std::move(eo_lbm_dir.get_error());
 	}
-	auto& lbm_env = eo_lbm_env.get_value();
+	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_env.data_dir / "settling_cubes_2d_ibm_gpu";
+	auto out_dir = lbm_dir / "settling_cubes_2d_ibm_gpu";
 
 	{
 		std::error_code ec;
@@ -313,9 +312,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{0.05},{0.01},{0.4 * dim_y});

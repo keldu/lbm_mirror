@@ -15,7 +15,7 @@ namespace lbm {
 constexpr uint64_t dim_y = 256ul;
 constexpr uint64_t dim_x = dim_y * 20ul;
 
-// constexpr uint64_t particle_amount = 1ul;
+constexpr uint64_t particle_amount = 1ul;
 
 namespace sch {
 
@@ -45,7 +45,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
+	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
 	Member<VelChunk<T,Desc>, "force">
 >;
@@ -56,11 +56,8 @@ using MacroStruct = Struct<
 //>;
 
 template<typename T, typename Desc>
-using ParticleSpheroidGroup = ParticleGroup<
-	T,
-	Desc::D,
-	sch::ParticleCollisionSpheroid<T,2.0f>
->;
+using ParticleSpheroidGroup =
+	ParticleGroup<T,Desc::D,particle_amount,coll::Spheroid<T>>;
 
 }
 
@@ -112,7 +109,7 @@ kel::lbm::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	auto& force_f = macros.template get<"force">();
 	
 	iterator<Desc::D>::apply(
@@ -152,20 +149,22 @@ kel::lbm::error_or<void> setup_initial_conditions(
 
 	// Particles
 	{
+		// The radius is a per particle property now, and a lattice length.
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> rad_p;
+		rad_p.at({}).set(2.0);
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 
 		auto& spheroid_grp = particles;
 
-		spheroid_grp = create_spheroid_particle_group<T,Desc::D,2.0f>(
+		spheroid_grp = create_spheroid_particle_group<T,Desc::D,particle_amount>(
+			rad_p,
 			dense_p,
 			{32u}
 		);
 
 		{
 			auto& p = spheroid_grp.template get<"particles">();
-			p = {{{1u}}};
-
 			iterator<1u>::apply(
 				[&](auto& index){
 					auto& p_ind = p.at(index);
@@ -180,7 +179,7 @@ kel::lbm::error_or<void> setup_initial_conditions(
 					p_pos_old = p_pos;
 				},
 				{},
-				p.meta()
+				p.get_dims()
 			);
 		}
 	}
@@ -217,13 +216,12 @@ kel::lbm::error_or<void> step(
 			
 	q.submit([&](acpp::sycl::handler& h){
 		h.parallel_for(acpp::sycl::range<1u>{1u}, [=](acpp::sycl::id<1u> idx){
-			auto& vel_f = macros.template get<"momentum">();
+			auto& vel_f = macros.template get<"velocity">();
 			auto& dense_f = macros.template get<"density">();
 
 			auto& ps = particles;
 			auto& mask = ps.template get<"mask">();
 			auto& mask_step = ps.template get<"mask_step">().at({});
-			auto& p_dense = ps.template get<"density">().at({});
 			auto& com = ps.template get<"center_of_mass">();
 
 			auto& parts = ps.template get<"particles">();
@@ -235,7 +233,8 @@ kel::lbm::error_or<void> step(
 			/// In this case it's simple since I'm too lazy to do scaling and rotation
 			/// Technically scale => rotate => translate
 			/// Here it's only translate
-			auto& p_i_rb_pos = p_i_rb.template get<"position">();
+			// Unwrapped: the IBM shift works in raw lattice offsets.
+			auto& p_i_rb_pos = p_i_rb.template get<"position">().handle();
 
 			iterator<Desc::D>::apply([&](const auto& index){
 				/// Calculate the shift from the mask
@@ -371,9 +370,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});

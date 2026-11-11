@@ -17,7 +17,8 @@ constexpr uint64_t D = 2u;
 
 template<uint64_t PC>
 auto make_group(double radius, double density){
-	kel::lbm::data<sch::Scalar<sch::T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<sch::T>>> r;
+	kel::lbm::data<sch::Scalar<sch::T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(density);
 	return kel::lbm::create_spheroid_particle_group<sch::T,D,PC>(r,d,{8u});
@@ -138,7 +139,7 @@ SAW_TEST("Dynamics / resting contact settles at the force balance"){
 	kel::lbm::data<sch::FixedArray<sch::UInt64,D>> extent{{64u,32u}};
 
 	// Gravity pointing at the wall, as a body acceleration.
-	kel::lbm::data<sch::Vector<sch::T,D>> body_acc;
+	kel::lbm::data<sch::LbmAcceleration<sch::Vector<sch::T,D>>> body_acc;
 	body_acc.at({{0u}}).set(-gravity);
 	body_acc.at({{1u}}).set(0.0);
 

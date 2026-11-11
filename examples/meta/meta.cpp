@@ -28,10 +28,16 @@ template<typename T, typename Desc>
 kel::lbm::error_or<void> meta_lbm_info(const kel::lbm::data<kel::lbm::sch::MetaArgsStruct>& args_str){
 	using namespace kel::lbm;
 	converter<T> conv{
-		{args_str.template get<"dx">()},
-		{args_str.template get<"dt">()}
+		as_unit<typename unit_division<sch::SiMeter<T>, sch::LbmMeter<T>>::Schema>(
+			args_str.template get<"dx">()),
+		as_unit<typename unit_division<sch::SiSecond<T>, sch::LbmSecond<T>>::Schema>(
+			args_str.template get<"dt">())
 	};
-	print_lbm_meta<T,Desc>(conv, {args_str.template get<"kin_vis">()},{args_str.template get<"char_vel">()},{args_str.template get<"char_len">()});
+	print_lbm_meta<T,Desc>(
+		conv,
+		as_unit<sch::SiKinematicViscosity<T>>(args_str.template get<"kin_vis">()),
+		as_unit<sch::SiVelocity<T>>(args_str.template get<"char_vel">()),
+		as_unit<sch::SiMeter<T>>(args_str.template get<"char_len">()));
 
 	return kel::lbm::make_void();
 }

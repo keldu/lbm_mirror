@@ -46,7 +46,7 @@ using CellStruct = CellFieldStruct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "momentum">,
+	Member<FixedArray<T,D>, "velocity">,
 	Member<T, "pressure">
 >;
 
@@ -309,7 +309,9 @@ int main(){
 		{0.1}
 	};
 
-	print_lbm_meta<sch::T, sch::D2Q9>(conv, {1e-3});
+	// Lid driven cavity: the lid velocity and the cavity height are the
+	// characteristic scales.
+	print_lbm_meta<sch::T, sch::D2Q9>(conv, {1e-3}, {0.1}, {dim_y});
 
 	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
@@ -361,7 +363,7 @@ int main(){
 				auto dfs_field = even_step ? dfs_old : dfs;
 
 				auto& rho = macros.at(index).template get<"pressure">();
-				auto& vel = macros.at(index).template get<"momentum">();
+				auto& vel = macros.at(index).template get<"velocity">();
 				compute_rho_u<sch::T,sch::D2Q9>(dfs_field[j],rho,vel);
 			}, {{0u,0u}}, meta);
 			std::string vtk_f_name{"tmp/cavity_2d_gpu_"};

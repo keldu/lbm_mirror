@@ -33,7 +33,8 @@ using GroupSch = kel::lbm::sch::ParticleGroup<sch::T,D,2u,kel::lbm::coll::Sphero
 using GroupView = kel::lbm::data<sch::Ptr<GroupSch>, kel::lbm::enc::Native>;
 
 auto make_group(double radius){
-	kel::lbm::data<sch::Scalar<sch::T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<sch::T>>> r;
+	kel::lbm::data<sch::Scalar<sch::T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(1.0);
 	return kel::lbm::create_spheroid_particle_group<sch::T,D,2u>(r,d,{8u});
@@ -102,7 +103,8 @@ SAW_TEST("Component / ParticleIntegrate instantiates and moves the body"){
 	auto mass = rb.template get<"mass">().at({}).get();
 	rb.template get<"force">().at({{0u}}).set(mass);   // unit acceleration
 
-	kel::lbm::data<sch::Vector<sch::T,D>> gravity;
+	// Gravity is an acceleration, and now has to say so.
+	kel::lbm::data<sch::LbmAcceleration<sch::Vector<sch::T,D>>> gravity;
 	gravity.at({{1u}}).set(-0.5);
 
 	lbm::component<sch::T,TestDesc,lbm::cmpt::ParticleIntegrate,lbm::enc::Native> integrate{gravity};

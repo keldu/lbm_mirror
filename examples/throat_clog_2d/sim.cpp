@@ -33,9 +33,9 @@ kel::lbm::error_or<void> lbm_main(std::string_view coupling){
 
 	converter<T> conv {
 		// delta_x
-		{{0.64 / dim_y}},
+		{0.64 / dim_y},
 		// delta_t
-		{{1.067e-2}}
+		{1.067e-2}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{1e-3},{1e-4},{0.2 * dim_y});

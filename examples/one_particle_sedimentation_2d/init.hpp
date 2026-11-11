@@ -37,7 +37,7 @@ kel::lbm::error_or<void> init(
 	
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
@@ -74,8 +74,8 @@ kel::lbm::error_or<void> init(
 	);
 
 	{
-		kel::lbm::data<sch::Scalar<T>> radius_p;
-		radius_p.at({}).set(conv.meter_si_to_lbm({{0.00125}}).handle().get());
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radius_p;
+		radius_p.at({}).set(conv.meter_si_to_lbm({0.00125}).handle().get());
 		std::cout<<"RADIUS: "<<radius_p.at({}).get()<<std::endl;
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
@@ -87,8 +87,8 @@ kel::lbm::error_or<void> init(
 			auto& prb = p.template get<"rigid_body">();
 			auto& p_pos = prb.template get<"position">();
 			auto& p_posold = prb.template get<"position_old">();
-			p_pos.at({{0u}}) = conv.meter_si_to_lbm({{0.01}}).handle();
-			p_pos.at({{1u}}) = conv.meter_si_to_lbm({{0.04}}).handle();
+			p_pos.at({{0u}}) = conv.meter_si_to_lbm({0.01}).handle();
+			p_pos.at({{1u}}) = conv.meter_si_to_lbm({0.04}).handle();
 
 			p_posold = p_pos;
 		}

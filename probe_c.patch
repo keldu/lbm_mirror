@@ -1,0 +1,55 @@
+Probe C: split the remaining D3Q27 JIT failure in half.
+
+WHAT IS BROKEN
+  At D3Q27 the HlbmOneParticleGather kernel fails AdaptiveCpp's SSCP JIT at
+  run time, every launch:
+
+      LLVMToHost: clang invocation failed with exit code 1
+
+  The kernel then never executes, so the particle never moves and its force
+  reads exactly 0. It builds fine -- this only shows up when running.
+  The same chain at D2Q9 is fine, so it is specific to 3D.
+
+WHAT IS ALREADY KNOWN
+  Inserting an early return at successive points in the gather:
+
+      after the AABB setup ................................. JIT passes
+      + iterator<3>::apply with an empty body .............. JIT passes
+      + porosity, before the 27-direction loop ............. THIS PROBE
+      full gather .......................................... JIT fails
+
+  So the failure is inside the per-cell lambda, and this probe is the one
+  that separates its two halves.
+
+HOW TO READ THE RESULT
+  JIT passes  -> the 27-direction momentum-exchange loop is the culprit.
+  JIT fails   -> the particle_porosity call is the culprit.
+
+APPLY / REVERT  (from the repo root)
+  patch -p1 < probe_c.patch
+  patch -p1 -R < probe_c.patch
+
+RUN
+  nix-build -A ex.poiseulle_particle_3d_hlbm_gpu
+  HOME=$(mktemp -d) ./result/bin/* --name probe_c --time_steps 2 2>&1 \
+      | grep -c 'clang invocation failed'
+
+  0 = JIT passed, nonzero = still failing. Expect roughly one failure per
+  launch per step, so 2 steps gives 0 or ~2-4.
+
+NOTE
+  This makes the gather compute no force at all -- it is a diagnostic, not a
+  fix. Revert before running anything real.
+
+--- a/modules/core/c++/hlbm.hpp
++++ b/modules/core/c++/hlbm.hpp
+@@ -188,6 +188,9 @@
+ 					return;
+ 				}
+ 
++				// --- PROBE C: stop here, before the 27-direction loop. ---
++				return;
++
+ 				kel::lbm::data<sch::Vector<T,Desc::D>> momentum;
+ 				for(uint64_t i{0u}; i < Desc::D; ++i){
+ 					momentum.at({{i}}) = 0.0;

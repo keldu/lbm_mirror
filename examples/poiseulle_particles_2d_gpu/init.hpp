@@ -57,7 +57,7 @@ kel::lbm::error_or<void> init(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
 	
 	iterator<Desc::D>::apply(
@@ -113,7 +113,7 @@ kel::lbm::error_or<void> init(
 	);
 
 	{
-		kel::lbm::data<sch::Scalar<T>> radius_p;
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> radius_p;
 		radius_p.at({}).set(2);
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);

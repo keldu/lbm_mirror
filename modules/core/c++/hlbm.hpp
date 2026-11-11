@@ -78,7 +78,7 @@ public:
 
 		auto& porosity_f = macros.template get<"porosity">();
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"momentum">();
+		auto& vel_f = macros.template get<"velocity">();
 
 		kel::lbm::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		kel::lbm::data<sch::Vector<T,Desc::D>>& vel = vel_f.at(index);
@@ -128,7 +128,7 @@ public:
 		auto& dfs_old_f = (is_even) ? field.template get<"dfs_old">() : field.template get<"dfs">();
 
 		auto& part_spheroid_group = part_group;
-		auto& mvel_f = macros.template get<"momentum">();
+		auto& mvel_f = macros.template get<"velocity">();
 		auto& mrho_f = macros.template get<"density">();
 		auto& mpor_f = macros.template get<"porosity">();
 		{
@@ -136,9 +136,15 @@ public:
 
 			auto& pi = parts.at(index);
 			auto& pirb = pi.template get<"rigid_body">();
-			auto& p_rad = pi.template get<"collision">().template get<"radius">();
-			kel::lbm::data<sch::Vector<T,Desc::D>>& pirb_pos = pirb.template get<"position">();
-			auto& pirb_pos_old = pirb.template get<"position_old">();
+			auto& p_rad = pi.template get<"collision">().template get<"radius">().handle();
+			/**
+			 * Unwrapped once here. The unit is checked where the position is
+			 * stored and assigned; inside the sweep it meets lattice
+			 * coordinates and lattice directions, which carry no unit yet, so
+			 * the kernel works on the raw vector.
+			 */
+			auto& pirb_pos = pirb.template get<"position">().handle();
+			auto& pirb_pos_old = pirb.template get<"position_old">().handle();
 
 			// Matches cmpt::ParticleIntegrate: zero sub steps means one step.
 			uint64_t steps = sub_steps.get();
@@ -163,6 +169,16 @@ public:
 			for(uint64_t i{0u}; i < Desc::D; ++i){
 				force_p.at({{i}}) = 0.0;
 			}
+
+			/**
+			 * Hydrodynamic torque about the body centre.
+			 *
+			 * Accumulated from the same per-cell momentum as force_p and with
+			 * the same sign applied at the end, so the two cannot disagree
+			 * about which way the reaction points.
+			 */
+			kel::lbm::data<typename sch::impl::rotation_type_helper<T,Desc::D>::Schema> torque_p{};
+
 			auto vel_p_old = (pirb_pos-pirb_pos_old) / ts;
 
 			iterator<Desc::D>::apply([&](const auto& index_f) -> void{
@@ -203,18 +219,37 @@ public:
 					momentum = momentum + ei_dfs;
 				}
 
-				// TODO technically needs to adjust for rotation as well
-
 				auto& rho = mrho_f.at(index_f);
 				(void) rho;
 
 				macros.template get<"force">().at(index_f) = momentum;
 				force_p = force_p + momentum;
+
+				/**
+				 * r x f, with r the cell offset from the body centre already
+				 * computed above. cross() returns a Scalar in 2D and a
+				 * Vector3 in 3D, which is exactly the rotation type in each
+				 * case, so one spelling covers both.
+				 */
+				torque_p = torque_p + kel::lbm::math::cross<T>(rel_dist,momentum);
 			},start,stop);
 
 			// Accumulate, do not assign: contact adds to this before integration.
 			auto& pirb_force = pirb.template get<"force">();
 			pirb_force = pirb_force - force_p;
+
+			/**
+			 * Same sign as the force above -- the per-cell momentum is what
+			 * the fluid gained, so the body gets the negative of it.
+			 *
+			 * Gated: accumulating a torque no integrator will consume is a
+			 * silent no-op, and in 3D only the fixed-axis integrator consumes
+			 * it (see particle_fixed_axis_supported).
+			 */
+			if constexpr ( particle_angular_supported<Desc::D> or particle_fixed_axis_supported<Desc::D> ){
+				auto& pirb_torque = pirb.template get<"torque">();
+				pirb_torque = pirb_torque - torque_p;
+			}
 		}
 	}
 };
@@ -236,7 +271,7 @@ public:
 		kel::lbm::data<sch::Scalar<T>> one;
 		one.at({}) = 1.0;
 
-		auto& mvel_f = macros.template get<"momentum">();
+		auto& mvel_f = macros.template get<"velocity">();
 		auto& mpor_f = macros.template get<"porosity">();
 		auto& particle_N_f = field.template get<"particle_N">();
 		auto& particle_D_f = field.template get<"particle_D">();
@@ -244,8 +279,8 @@ public:
 		auto parts = part_group.template get<"particles">();
 		auto& pi = parts.at(index);
 		auto& pirb = pi.template get<"rigid_body">();
-		auto& pirb_pos = pirb.template get<"position">();
-		auto& pirb_pos_old = pirb.template get<"position_old">();
+		auto& pirb_pos = pirb.template get<"position">().handle();
+		auto& pirb_pos_old = pirb.template get<"position_old">().handle();
 
 		uint64_t steps = sub_steps.get();
 		if(steps == 0u){

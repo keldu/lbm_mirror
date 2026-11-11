@@ -48,7 +48,7 @@ using ForceChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
+	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
 	Member<VelChunk<T,Desc>, "force">,
 	Member<ScalarChunk<T,Desc>, "porosity">
@@ -124,7 +124,7 @@ kel::lbm::error_or<void> setup_initial_conditions(
 	//
 	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
 
 	iterator<Desc::D>::apply(
@@ -299,9 +299,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 
 	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});

@@ -19,7 +19,7 @@ private:
 	kel::lbm::data<typename kel::lbm::unit_division<sch::SiSecond<T>, sch::LbmSecond<T> >::Schema > second_conv_; 
 public:
 	converter() = delete;
-	converter(
+	explicit converter(
 		kel::lbm::data<typename kel::lbm::unit_division<sch::SiMeter<T>, sch::LbmMeter<T> >::Schema > meter_conv__,
 		kel::lbm::data<typename kel::lbm::unit_division<sch::SiSecond<T>, sch::LbmSecond<T> >::Schema > second_conv__
 	):

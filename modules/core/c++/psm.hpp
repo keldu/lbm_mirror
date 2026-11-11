@@ -65,7 +65,7 @@ public:
 		auto& porous_f = macros.template get<"porosity">();
 
 		auto& rho_f = macros.template get<"density">();
-		auto& vel_f = macros.template get<"momentum">();
+		auto& vel_f = macros.template get<"velocity">();
 		
 		kel::lbm::data<sch::Scalar<T>>& rho = rho_f.at(index);
 		kel::lbm::data<sch::Vector<T,Descriptor::D>>& vel = vel_f.at(index);
@@ -125,7 +125,7 @@ void apply(
 
     auto& por_f   = macros.template get<"porosity">();
     auto& rho_f   = macros.template get<"density">();
-    auto& vel_f   = macros.template get<"momentum">();
+    auto& vel_f   = macros.template get<"velocity">();
     auto& force_f = macros.template get<"force">();
 
     kel::lbm::data<sch::Scalar<T>> one;
@@ -145,16 +145,20 @@ void apply(
         auto& pi = parts.at(index);
 
         auto& p_rad =
-            pi.template get<"collision">().template get<"radius">();
+            pi.template get<"collision">().template get<"radius">().handle();
 
         auto& pirb =
             pi.template get<"rigid_body">();
 
-        kel::lbm::data<sch::Vector<T,Descriptor::D>>& pirb_pos =
-            pirb.template get<"position">();
+        /**
+         * Unwrapped once here. The unit is checked where the position is
+         * stored and assigned; inside the sweep it meets lattice coordinates
+         * and lattice directions, which carry no unit yet, so the kernel
+         * works on the raw vector.
+         */
+        auto& pirb_pos = pirb.template get<"position">().handle();
 
-        auto& pirb_pos_old =
-            pirb.template get<"position_old">();
+        auto& pirb_pos_old = pirb.template get<"position_old">().handle();
 
 
         /*

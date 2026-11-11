@@ -71,7 +71,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x*N, dim_y*N>;
 
 template<typename T, typename Desc, uint64_t N = 1u>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc,N>, "momentum">,
+	Member<VelChunk<T,Desc,N>, "velocity">,
 	Member<RhoChunk<T,N>, "density">,
 	Member<ScalarChunk<T,Desc,N>, "porosity">,
 	Member<VelChunk<T,Desc,N>, "force">

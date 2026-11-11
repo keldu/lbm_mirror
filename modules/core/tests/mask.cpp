@@ -15,7 +15,8 @@ using T = Float64;
 constexpr uint64_t D = 2u;
 
 auto make_one(double radius){
-	kel::lbm::data<sch::Scalar<sch::T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<sch::T>>> r;
+	kel::lbm::data<sch::Scalar<sch::T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(1.0);
 	return kel::lbm::create_spheroid_particle_group<sch::T,D,1u>(r,d,{32u});
@@ -209,7 +210,8 @@ SAW_TEST("Mask / porosity agrees with the analytic sphere"){
 
 	kel::lbm::data<sch::Scalar<sch::T>> eps;
 	eps.at({}).set(1.5);
-	auto rad = p.template get<"collision">().template get<"radius">();
+	// The analytic porosity works on raw lengths, as the solvers do.
+	auto rad = p.template get<"collision">().template get<"radius">().handle();
 
 	double worst = 0.0;
 	for(int i = 0; i <= 40; ++i){

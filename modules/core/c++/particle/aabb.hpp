@@ -56,7 +56,7 @@ public:
 		auto& b = aabb.template get<"b">();
 
 		// Radius is per particle now, so a group can hold mixed sizes.
-		const kel::lbm::data<sch::Scalar<T>>& rad_d = pi.template get<"collision">().template get<"radius">();
+		const kel::lbm::data<sch::Scalar<T>>& rad_d = pi.template get<"collision">().template get<"radius">().handle();
 
 		kel::lbm::data<sch::Vector<T,D>> lower;
 		kel::lbm::data<sch::Vector<T,D>> upper;

@@ -39,10 +39,18 @@ using CellStruct = Struct<
 	Member<CellInfo<Desc>, "info">
 >;
 
-template<typename T, uint64_t D>
+/**
+ * Macroscopic fields, one chunk per quantity.
+ *
+ * This used to be an Array of per cell structs. The VTK writer takes a Struct
+ * whose members are all Chunks of the same extent, and compute_rho_u wants
+ * Scalar/Vector rather than a bare primitive and a FixedArray, so the layout
+ * moved from array-of-struct to struct-of-arrays.
+ */
+template<typename T, uint64_t D, uint64_t DimX, uint64_t DimY>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "momentum">,
-	Member<T, "pressure">
+	Member<Chunk<Vector<T,D>, 0u, DimX, DimY>, "velocity">,
+	Member<Chunk<Scalar<T>, 0u, DimX, DimY>, "density">
 >;
 
 using CavityFieldD2Q9 = CellField<D2Q9, CellStruct<D2Q9>>;
@@ -267,7 +275,9 @@ int main(){
 		{0.1}
 	};
 
-	print_lbm_meta<sch::T, sch::D2Q9>(conv, {1e-3});
+	// Lid driven cavity: the lid velocity and the cavity height are the
+	// characteristic scales.
+	print_lbm_meta<sch::T, sch::D2Q9>(conv, {1e-3}, {0.1}, {dim_y});
 
 	//auto& df_field = lattices.at(0).template get<"dfs">();
 	//for(uint64_t i = 0; i < df_field.get_dim_size<0u>(); ++i){
@@ -308,7 +318,8 @@ int main(){
 	uint64_t print_every = 256u;
 	uint64_t file_no = 0u;
 
-	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,sch::D2Q9::D>,sch::D2Q9::D>> macros{dim};
+	// Chunks carry their extent in the type, so no runtime dim argument.
+	kel::lbm::data<sch::MacroStruct<sch::T,sch::D2Q9::D,dim_x,dim_y>> macros;
 
 	for(uint64_t step = 0; step < lattice_steps; ++step){
 
@@ -319,9 +330,21 @@ int main(){
 
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 				auto& dfs = cell.template get<"dfs">();
-				typename kel::lbm::native_data_type<sch::T>::type rho;
-				std::array<typename kel::lbm::native_data_type<sch::T>::type, sch::D2Q9::D> vel;
-				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
+				// compute_rho_u takes a FixedArray of populations now, while this
+				// example still stores them in a Cell. Same Q values, different
+				// schema, so copy across rather than reinterpret.
+				kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::Q>> dfs_arr;
+				for(uint64_t q{0u}; q < sch::D2Q9::Q; ++q){
+					dfs_arr.at({q}) = dfs({q});
+				}
+
+				kel::lbm::data<sch::Scalar<sch::T>> rho_d;
+				kel::lbm::data<sch::Vector<sch::T,sch::D2Q9::D>> vel_d;
+				compute_rho_u<sch::T,sch::D2Q9>(dfs_arr,rho_d,vel_d);
+
+				const auto rho = rho_d.at({}).get();
+				const typename kel::lbm::native_data_type<sch::T>::type vel[sch::D2Q9::D] = {
+					vel_d.at({{0u}}).get(), vel_d.at({{1u}}).get()};
 
 				if(i > 1 && (i+2) < dim_x && j > 1 && (j+2) < dim_y){
 					sum += rho;
@@ -404,14 +427,17 @@ int main(){
 			apply_for_cells([&](auto& cell, std::size_t i, std::size_t j){
 				auto dfs = even_step ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
 
-				auto& rho = macros.at({{i,j}}).template get<"pressure">();
-				auto& vel = macros.at({{i,j}}).template get<"momentum">();
-				compute_rho_u<sch::T,sch::D2Q9>(dfs,rho,vel);
+				kel::lbm::data<sch::FixedArray<sch::T,sch::D2Q9::Q>> dfs_arr;
+				for(uint64_t q{0u}; q < sch::D2Q9::Q; ++q){
+					dfs_arr.at({q}) = dfs({q});
+				}
+
+				auto& rho = macros.template get<"density">().at({{i,j}});
+				auto& vel = macros.template get<"velocity">().at({{i,j}});
+				compute_rho_u<sch::T,sch::D2Q9>(dfs_arr,rho,vel);
 			}, lattice);
 
-			std::string vtk_f_name{"tmp/cavity_2d_"};
-			vtk_f_name += std::to_string(file_no) + ".vtk";
-			write_vtk_file(vtk_f_name, macros);
+			write_vtk_file("tmp", "cavity_2d", file_no, macros);
 
 			++file_no;
 		}

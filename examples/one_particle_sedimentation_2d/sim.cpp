@@ -2,12 +2,13 @@
 #include "init.hpp"
 #include "step.hpp"
 
-#include <forstio/codec/args.hpp>
 
 /**
  * For deciding what parameters to use maybe?
  */
 namespace args {
+using namespace kel::lbm::sch;
+
 
 using LbmArgsStruct = Struct<
 	Member<String, "coupling">
@@ -45,16 +46,16 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{0.02 / dim_x}},
+		{0.02 / dim_x},
 		// delta_t
-		{{3e-7}}
+		{3e-7}
 	};
 	kel::lbm::data<sch::SiKinematicViscosity<T>> kin_vis_si{1e-3};
 	auto kin_vis_lbm = conv.kinematic_viscosity_si_to_lbm(kin_vis_si);
 	auto tau = conv.template kinematic_viscosity_lbm_to_tau<Desc>(kin_vis_lbm);
 	
 	print_lbm_meta<T,Desc>(conv,kin_vis_si,{1e-4},{2});
-	std::cout<<"Position: "<<conv.meter_si_to_lbm({{0.01}}).handle().get()<<", "<<conv.meter_si_to_lbm({{0.04}}).handle().get()<<std::endl;
+	std::cout<<"Position: "<<conv.meter_si_to_lbm({0.01}).handle().get()<<", "<<conv.meter_si_to_lbm({0.04}).handle().get()<<std::endl;
 
 	// kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
 	auto lbm_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ChunkStruct<T,Desc>>>();
@@ -220,7 +221,7 @@ kel::lbm::error_or<void> k_main(int argc, char** argv){
 	
 	kel::lbm::data<args::LbmArgs> args;
 	{
-		auto eov = saw::parse_args(args,argc,argv);
+		auto eov = kel::lbm::parse_args(args,argc,argv);
 		if(eov.is_error()){
 			return eov;
 		}

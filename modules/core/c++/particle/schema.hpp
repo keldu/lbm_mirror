@@ -2,6 +2,8 @@
 
 #include "common.hpp"
 
+#include "../lbm_unit.hpp"
+
 namespace kel {
 namespace lbm {
 
@@ -10,7 +12,8 @@ template<typename T>
 struct Spheroid {
 	using ValueSchema = T;
 	using Schema = sch::Struct<
-		sch::Member<sch::Scalar<ValueSchema>,"radius">
+		// A radius is a lattice length, like the position it is compared against.
+		sch::Member<sch::LbmMeter<sch::Scalar<ValueSchema>>,"radius">
 	>;
 };
 }
@@ -47,12 +50,23 @@ struct inertia_type_helper {
 
 template<typename T, uint64_t D>
 using ParticleRigidBody = Struct<
-	Member<Vector<T,D>, "position">,
-	Member<Vector<T,D>, "position_old">,
+	/**
+	 * Lattice length. The unit sits on the vector rather than on its
+	 * components: a position is metres in every direction, and the component
+	 * type is what the kernels index.
+	 */
+	Member<LbmMeter<Vector<T,D>>, "position">,
+	Member<LbmMeter<Vector<T,D>>, "position_old">,
 	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation">,
 	Member<typename impl::rotation_type_helper<T,D>::Schema, "rotation_old">,
 
-	Member<Vector<T,D>, "acceleration">,
+	/**
+	 * Lattice acceleration. Typed because the Verlet update adds
+	 * acceleration * dt^2 to a position and so must come out in metres.
+	 * It is also where the typed and untyped halves meet: force and mass have
+	 * no units yet, so integrate_particle attaches this one explicitly.
+	 */
+	Member<LbmAcceleration<Vector<T,D>>, "acceleration">,
 	Member<typename impl::rotation_type_helper<T,D>::Schema, "angular_acceleration">,
 
 	/**

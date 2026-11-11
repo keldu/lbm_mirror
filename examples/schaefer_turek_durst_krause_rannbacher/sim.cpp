@@ -2,12 +2,13 @@
 #include "init.hpp"
 #include "step.hpp"
 
-#include <forstio/codec/args.hpp>
 
 /**
  * For deciding what parameters to use maybe?
  */
 namespace args {
+using namespace kel::lbm::sch;
+
 
 using LbmArgsStruct = Struct<
 	Member<String, "coupling">
@@ -45,9 +46,9 @@ kel::lbm::error_or<void> lbm_main(const kel::lbm::data<args::LbmArgs>& args){
 
 	converter<T> conv {
 		// delta_x
-		{{0.41 / (dim_y*N)}},
+		{0.41 / (dim_y*N)},
 		// delta_t
-		{{3e-3/(N*N)}}
+		{3e-3/(N*N)}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{1e-3},{0.3},{0.1});
@@ -203,7 +204,7 @@ kel::lbm::error_or<void> k_main(int argc, char** argv){
 	
 	kel::lbm::data<args::LbmArgs> args;
 	{
-		auto eov = saw::parse_args(args,argc,argv);
+		auto eov = kel::lbm::parse_args(args,argc,argv);
 		if(eov.is_error()){
 			return eov;
 		}

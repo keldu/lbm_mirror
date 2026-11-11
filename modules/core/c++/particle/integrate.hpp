@@ -45,21 +45,29 @@ constexpr bool particle_angular_supported = (D == 2u);
 template<typename T, uint64_t D>
 void integrate_particle(
 	kel::lbm::data<sch::Particle<T,D>>& pi,
-	const kel::lbm::data<sch::Vector<T,D>>& body_acceleration,
+	const kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,D>>>& body_acceleration,
 	kel::lbm::data<sch::UInt64> sub_steps
 ){
 	auto& pirb = pi.template get<"rigid_body">();
 
 	const uint64_t steps = particle_sub_steps(sub_steps);
 
-	kel::lbm::data<sch::Scalar<T>> ts;
+	// A sub step is a lattice time, not a bare number.
+	kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> ts;
 	ts.at({}).set(
 		typename kel::lbm::native_data_type<T>::type(1)
 		/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
 	);
 
+	/**
+	 * The seam between the typed and untyped halves. Force and mass carry no
+	 * units yet -- there is no mass base unit -- so their quotient is a bare
+	 * vector and the acceleration unit is attached here, deliberately and in
+	 * one place, rather than being acquired silently at an assignment.
+	 */
 	pirb.template get<"acceleration">() =
-		pirb.template get<"force">() / pirb.template get<"mass">()
+		kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,D>>>{
+			pirb.template get<"force">() / pirb.template get<"mass">()}
 		+ body_acceleration;
 
 	// See particle_angular_supported for why 3D is excluded rather than
@@ -67,6 +75,113 @@ void integrate_particle(
 	if constexpr ( particle_angular_supported<D> ){
 		pirb.template get<"angular_acceleration">() =
 			pirb.template get<"torque">() / pirb.template get<"inertia">();
+	}
+
+	for(uint64_t i{0u}; i < steps; ++i){
+		verlet_step_lambda<T,D>(pi,ts);
+	}
+}
+
+/**
+ * Whether rotation about a single FIXED axis can be integrated exactly.
+ *
+ * True in 3D as well as 2D, unlike particle_angular_supported. Constraining
+ * the body to one axis does not paper over the three problems listed there --
+ * it removes all of them:
+ *
+ *  - Rotation composition only fails to commute when the axis moves. If the
+ *    angular acceleration is always parallel to a fixed axis and the rotation
+ *    starts parallel to it, the rotation vector stays parallel to it for all
+ *    time, so verlet_step_lambda's component-wise update is exact rather than
+ *    a small-angle approximation.
+ *  - omega x (I omega) vanishes when omega lies along a principal axis. Every
+ *    axis of a sphere is principal, and a rotor symmetric about its own axis
+ *    has that axis principal. The term is genuinely zero, not neglected.
+ *  - A scalar inertia is exactly the moment about that one axis.
+ *
+ * This is the wind turbine case: a body pinned in place, free to spin about
+ * one axis and nothing else.
+ */
+template<uint64_t D>
+constexpr bool particle_fixed_axis_supported = (D == 2u or D == 3u);
+
+namespace impl {
+/**
+ * The spin axis has the same schema as the rotation it drives: a signed scalar
+ * in 2D (there is only the out-of-plane direction), a unit vector in 3D.
+ */
+template<typename T, uint64_t D>
+using spin_axis_schema = typename sch::impl::rotation_type_helper<T,D>::Schema;
+
+template<typename T, uint64_t D>
+kel::lbm::data<spin_axis_schema<T,D>> normalise_spin_axis(
+	const kel::lbm::data<spin_axis_schema<T,D>>& axis
+){
+	if constexpr ( D == 2u ){
+		kel::lbm::data<spin_axis_schema<T,D>> out;
+		const auto a = axis.at({}).get();
+		out.at({}).set((a < 0) ? -1 : 1);
+		return out;
+	}else{
+		// math::normalize returns a zero vector unchanged rather than NaN, so
+		// a caller that forgets the axis gets a body that never spins instead
+		// of one that poisons the whole simulation.
+		return kel::lbm::math::normalize(axis);
+	}
+}
+}
+
+/**
+ * Projects the accumulated torque onto a fixed axis and advances the body
+ * about it, holding the position fixed.
+ *
+ * The position is pinned by zeroing the acceleration, not by writing the
+ * position back each step. Position-Verlet is x_new = 2x - x_old + a dt^2, so
+ * with x_old == x at construction and a == 0 the body stays exactly where it
+ * started, every step, bitwise, with no drift to correct for.
+ */
+template<typename T, uint64_t D>
+void integrate_particle_fixed_axis(
+	kel::lbm::data<sch::Particle<T,D>>& pi,
+	const kel::lbm::data<impl::spin_axis_schema<T,D>>& axis,
+	kel::lbm::data<sch::UInt64> sub_steps
+){
+	static_assert(particle_fixed_axis_supported<D>, "Fixed axis spin needs D == 2 or D == 3");
+
+	auto& pirb = pi.template get<"rigid_body">();
+
+	const uint64_t steps = particle_sub_steps(sub_steps);
+
+	// A sub step is a lattice time, not a bare number.
+	kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> ts;
+	ts.at({}).set(
+		typename kel::lbm::native_data_type<T>::type(1)
+		/ static_cast<typename kel::lbm::native_data_type<T>::type>(steps)
+	);
+
+	// Pinned: the accumulated force is deliberately ignored.
+	auto& acc = pirb.template get<"acceleration">();
+	for(uint64_t i{0u}; i < D; ++i){
+		acc.at({{i}}).set(0);
+	}
+
+	auto& torque  = pirb.template get<"torque">();
+	auto& inertia = pirb.template get<"inertia">();
+	auto& ang_acc = pirb.template get<"angular_acceleration">();
+
+	if constexpr ( D == 2u ){
+		ang_acc.at({}).set(
+			axis.at({}).get() * torque.at({}).get() / inertia.at({}).get()
+		);
+	}else{
+		// tau_axis = axis . torque, then alpha = axis * (tau_axis / I). Any
+		// torque component off the axis is reacted by the mounting and does
+		// not accelerate the rotor.
+		const auto tau_axis = kel::lbm::math::dot(axis,torque).at({}).get();
+		const auto alpha = tau_axis / inertia.at({}).get();
+		for(uint64_t i{0u}; i < 3u; ++i){
+			ang_acc.at({{i}}).set(axis.at({{i}}).get() * alpha);
+		}
 	}
 
 	for(uint64_t i{0u}; i < steps; ++i){
@@ -113,6 +228,16 @@ struct ParticleForceReset {};
  * acceleration directly, so a second contributor silently overwrote the first.
  */
 struct ParticleIntegrate {};
+
+/**
+ * Integrates a body pinned in place and free to spin about one fixed axis.
+ *
+ * The rotor case: the fluid torque projected onto the axis spins it, the
+ * position never moves, and angular velocity is an output. Unlike
+ * ParticleIntegrate this works in 3D -- see particle_fixed_axis_supported for
+ * why the constraint makes that exact rather than approximate.
+ */
+struct ParticleAxisIntegrate {};
 }
 
 template<typename T, typename Descriptor, typename Encode>
@@ -145,14 +270,14 @@ private:
 	 * Body acceleration applied to every particle, e.g. gravity. Kept as an
 	 * acceleration rather than a force so it does not need the mass.
 	 */
-	kel::lbm::data<sch::Vector<T,Descriptor::D>> body_acceleration_;
+	kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration_;
 
 public:
 	component():
 		body_acceleration_{}
 	{}
 
-	component(const kel::lbm::data<sch::Vector<T,Descriptor::D>>& body_acceleration__):
+	component(const kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>>& body_acceleration__):
 		body_acceleration_{body_acceleration__}
 	{}
 
@@ -167,6 +292,37 @@ public:
 
 		auto& parts = pg.template get<"particles">();
 		integrate_particle<T,Descriptor::D>(parts.at(index), body_acceleration_, sub_steps);
+	}
+};
+
+template<typename T, typename Descriptor, typename Encode>
+class component<T, Descriptor, cmpt::ParticleAxisIntegrate, Encode> final {
+public:
+	using Component = cmpt::ParticleAxisIntegrate;
+
+private:
+	/**
+	 * Normalised once here rather than per step, so the kernel never divides
+	 * by a length and a caller cannot change the axis mid-run.
+	 */
+	kel::lbm::data<impl::spin_axis_schema<T,Descriptor::D>> axis_;
+
+public:
+	component(const kel::lbm::data<impl::spin_axis_schema<T,Descriptor::D>>& axis__):
+		axis_{impl::normalise_spin_axis<T,Descriptor::D>(axis__)}
+	{}
+
+	template<typename ParticleSchema>
+	void apply(
+		const kel::lbm::data<ParticleSchema,Encode>& pg,
+		kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index,
+		kel::lbm::data<sch::UInt64> time_step,
+		kel::lbm::data<sch::UInt64> sub_steps
+	) const {
+		(void) time_step;
+
+		auto& parts = pg.template get<"particles">();
+		integrate_particle_fixed_axis<T,Descriptor::D>(parts.at(index), axis_, sub_steps);
 	}
 };
 

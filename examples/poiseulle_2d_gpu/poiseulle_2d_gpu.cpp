@@ -35,7 +35,7 @@ using CellStruct = Struct<
 >;
 
 using MacroStruct = Struct<
-	Member<FixedArray<Float64,D2Q9::D>, "momentum">,
+	Member<FixedArray<Float64,D2Q9::D>, "velocity">,
 	Member<Float64, "pressure">
 >;
 
@@ -244,7 +244,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
+				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
@@ -261,7 +261,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
+				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
@@ -278,7 +278,7 @@ void step(
 				auto& macro_c = macro_cells[acc_id];
 
 				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"momentum">();
+				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
 
 				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
 				auto eq = equilibrium<sch::T,Desc>(rho,vel);
@@ -341,9 +341,9 @@ kel::lbm::error_or<void> kel_main(int argc, char** argv){
 	// 
 	lbm::converter<lbm::sch::Float64> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 
 	uint64_t x_d = 1024u;

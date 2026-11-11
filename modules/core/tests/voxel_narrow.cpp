@@ -15,7 +15,8 @@ using T = Float64;
 constexpr uint64_t D = 2u;
 
 auto make_pair(double radius, uint64_t res = 32u){
-	kel::lbm::data<sch::Scalar<sch::T>> r,d;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<sch::T>>> r;
+	kel::lbm::data<sch::Scalar<sch::T>> d;
 	r.at({}).set(radius);
 	d.at({}).set(1.0);
 	return kel::lbm::create_spheroid_particle_group<sch::T,D,2u>(r,d,{res});

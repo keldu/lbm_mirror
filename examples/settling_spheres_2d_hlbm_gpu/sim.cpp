@@ -33,8 +33,8 @@ using ChunkStruct = Struct<
 	Member<InfoChunk, "info">,
 	Member<DfChunk<T,Desc>, "dfs">,
 	Member<DfChunk<T,Desc>, "dfs_old">,
-	Member<VectorChunk<T,Desc>, "p_N">,
-	Member<ScalarChunk<T,Desc>, "p_D">
+	Member<VectorChunk<T,Desc>, "particle_N">,
+	Member<ScalarChunk<T,Desc>, "particle_D">
 >;
 
 template<typename T, typename Desc>
@@ -48,8 +48,10 @@ using PorChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
+	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
+	// HlbmOneParticleGather reads this one.
+	Member<VelChunk<T,Desc>, "force">,
 	Member<PorChunk<T>, "porosity">
 >;
 
@@ -88,9 +90,9 @@ kel::lbm::error_or<void> setup_initial_conditions(
 		{{1u,1u}}
 	);
 	//
-	auto& df_f = fields.template gStarted hearing about similar cases not long after, many of which were successful on the part of the crooks. Scary stuff. et<"dfs_old">();
+	auto& df_f = fields.template get<"dfs_old">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	
 	iterator<Desc::D>::apply(
 		[&](auto& index){
@@ -108,21 +110,22 @@ kel::lbm::error_or<void> setup_initial_conditions(
 
 	// Particles
 	{
+		// Radius is per particle now, and a lattice length.
+		kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> rad_p;
+		rad_p.at({}).set(2.0);
 		kel::lbm::data<sch::Scalar<T>> dense_p;
 		dense_p.at({}).set(1);
 		// auto& spheroid_group = particles.template get<0u>();
-		auto& spheroid_group = particles;
+		auto& spheroid_group = p_group;
 
-		spheroid_group = create_spheroid_particle_group<T,Desc::D,2.0f>(
+		spheroid_group = create_spheroid_particle_group<T,Desc::D,particle_amount>(
+			rad_p,
 			dense_p,
 			{64u}
 		);
 
 		{
 			auto& p = spheroid_group.template get<"particles">();
-
-			/// 16 if I remember correctly?
-			p = {{{particle_amount}}};
 
 			iterator<1u>::apply(
 				[&](auto& index){
@@ -138,13 +141,13 @@ kel::lbm::error_or<void> setup_initial_conditions(
 					p.at({{0u}}).set( 0.2 + 0.6 / (x-1u) );
 					p.at({{1u}}).set( 0.8 + y * 0.1 );
 
-					p_pos = p;
+					p_pos.handle() = p;
 
 					auto& p_pos_old = p_rb.template get<"position_old">();
 					p_pos_old = p_pos;
 				},
 				{},
-				p.meta()
+				p.get_dims()
 			);
 		}
 	}
@@ -167,7 +170,7 @@ kel::lbm::error_or<void> step(
 
 	auto& parts = p_group.template get<"particles">();
 	auto& p_mask = p_group.template get<"mask">();
-	auto& vels = macros.template get<"momentum">();
+	auto& vels = macros.template get<"velocity">();
 	auto& forces = macros.template get<"force">();
 
 	auto p_meta = parts.meta();
@@ -196,9 +199,9 @@ kel::lbm::error_or<void> step(
 			auto& p_rot = pirb.template get<"rotation">();
 			auto& p_acc = pirb.template get<"acceleration">();
 
-			kel::lbm::data<sch::Scalar<T>> delta_t;
+			kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> delta_t;
 			delta_t.at({}).set(1.0f);
-			verlet_step_lambda<T,Desc::D>(p,delta_t);
+			verlet_step_lambda<T,Desc::D>(pi,delta_t);
 		});
 	}).wait();
 
@@ -249,13 +252,13 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	using dfi = df_info<T,Desc>;
 
-	auto eo_lbm_env = lbm_directory();
-	if(eo_lbm_env.is_error()){
-		return std::move(eo_lbm_env.get_error());
+	auto eo_lbm_dir = output_directory();
+	if(eo_lbm_dir.is_error()){
+		return std::move(eo_lbm_dir.get_error());
 	}
-	auto& lbm_env = eo_lbm_env.get_value();
+	auto& lbm_dir = eo_lbm_dir.get_value();
 
-	auto out_dir = lbm_env.data_dir / "settling_spheres_2d_hlbm_gpu";
+	auto out_dir = lbm_dir / "settling_spheres_2d_hlbm_gpu";
 
 	{
 		std::error_code ec;
@@ -267,9 +270,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{0.05},{0.01},{0.4 * dim_y});

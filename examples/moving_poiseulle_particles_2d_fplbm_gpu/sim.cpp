@@ -6,7 +6,6 @@
 #include <forstio/remote/filesystem/easy.hpp>
 #include <forstio/codec/json/json.hpp>
 #include <forstio/codec/simple.hpp>
-#include <forstio/codec/args.hpp>
 
 namespace kel {
 namespace lbm {
@@ -54,7 +53,7 @@ using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
 
 template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<VelChunk<T,Desc>, "momentum">,
+	Member<VelChunk<T,Desc>, "velocity">,
 	Member<RhoChunk<T>, "density">,
 	Member<ScalarChunk<T,Desc>, "porosity">,
 	Member<VelChunk<T,Desc>, "force">
@@ -118,7 +117,7 @@ kel::lbm::error_or<void> init(
 	auto& dfs_old_f = fields.template get<"dfs_old">();
 	auto& dfs_f = fields.template get<"dfs">();
 	auto& rho_f = macros.template get<"density">();
-	auto& vel_f = macros.template get<"momentum">();
+	auto& vel_f = macros.template get<"velocity">();
 	auto& por_f = macros.template get<"porosity">();
 	auto& force_f = macros.template get<"force">();
 	
@@ -145,7 +144,7 @@ kel::lbm::error_or<void> init(
 		dfs_f.get_dims()
 	);
 
-	kel::lbm::data<sch::Scalar<T>> rad;
+	kel::lbm::data<sch::LbmMeter<sch::Scalar<T>>> rad;
 	rad.at({}) = dim_y * 0.1f;
 	kel::lbm::data<sch::Scalar<T>> dense;
 	dense.at({}) = 1.0f;
@@ -159,7 +158,12 @@ kel::lbm::error_or<void> init(
 		kel::lbm::data<sch::Vector<T,Desc::D>> zero;
 		zero.at({{0u}}) = 0.0f;
 		zero.at({{1u}}) = 0.0f;
-		rb.template get<"acceleration">() = zero;
+		// Acceleration is unit typed, so its zero has to be too.
+		kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Desc::D>>> zero_acc;
+		for(uint64_t i{0u}; i < Desc::D; ++i){
+			zero_acc.at({{i}}).set(0);
+		}
+		rb.template get<"acceleration">() = zero_acc;
 		rb.template get<"rotation">() = {};
 		rb.template get<"rotation_old">() = {};
 		rb.template get<"angular_acceleration">() = {};
@@ -174,11 +178,11 @@ kel::lbm::error_or<void> step(
 		kel::lbm::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& macros,
 		kel::lbm::data<sch::Ptr<sch::ParticleSpheroidGroup<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& particles,
 		kel::lbm::data<sch::UInt64> t_i,
+		kel::lbm::data<sch::UInt64> sub_steps,
 		device& dev
 ){
 	auto& q = dev.get_handle();
 	auto& info_f = fields.template get<"info">();
-	auto& porous_f = macros.template get<"porosity">();
 
 	q.submit([&](acpp::sycl::handler& h){
 		component<T,Desc,cmpt::FpLbmReset,encode::Sycl<kel::lbm::enc::Native>> fplbm_reset;
@@ -201,7 +205,7 @@ kel::lbm::error_or<void> step(
 				index.at({{i}}).set(idx[i]);
 			}
 
-			fplbm_one_part.apply(fields,macros,particles,index,t_i,{64u});
+			fplbm_one_part.apply(fields,macros,particles,index,t_i,sub_steps);
 		});
 	}).wait();
 
@@ -262,20 +266,21 @@ template<typename T, typename Desc>
 kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 	using namespace kel::lbm;
 
-	using dfi = df_info<T,Desc>;
-
 	kel::lbm::data<sch::LbmArgs> args;
 	{
 		auto& args_n = args.template get<"args">();
 		auto& name = args_n.template get<"name">();
 		name.set("moving_poiseulle_particles_2d_fplbm_gpu");
+		auto& sub_steps_arg = args_n.template get<"sub_steps">();
+		sub_steps_arg.set(64u);
 	}
 	{
-		auto eov = saw::parse_args(args,argc,argv);
+		auto eov = kel::lbm::parse_args(args,argc,argv);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
+	kel::lbm::data<sch::UInt64> sub_steps = args.template get<"args">().template get<"sub_steps">();
 	auto eo_lbm_env = init_lbm_env(args);
 	if(eo_lbm_env.is_error()){
 		return std::move(eo_lbm_env.get_error());
@@ -294,9 +299,9 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 
 	converter<T> conv {
 		// delta_x
-		{{1.0}},
+		{1.0},
 		// delta_t
-		{{1.0}}
+		{1.0}
 	};
 	
 	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});
@@ -378,7 +383,7 @@ kel::lbm::error_or<void> lbm_main(int argc, char** argv){
 	for(kel::lbm::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
 		// BC + Collision
 		{
-			auto eov = step<T,Desc>(lsd_view,lsdm_view,lsdp_view,i,dev);
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,lsdp_view,i,sub_steps,dev);
 			if(eov.is_error()){
 				return eov;
 			}

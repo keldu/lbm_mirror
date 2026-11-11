@@ -67,7 +67,7 @@ using CellStruct = Struct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<Vector<T,D>, "momentum">,
+	Member<Vector<T,D>, "velocity">,
 	Member<T, "pressure">,
 	Member<UInt16, "particle">,
 	Member<FixedArray<T,D>, "force">
@@ -368,7 +368,7 @@ void couple_particles_to_lattice(
 
 			// Interpolate this from close U cells.
 			// For now pick the closest U
-			auto& closest_u = macros.at(p_cell_pos).template get<"momentum">();
+			auto& closest_u = macros.at(p_cell_pos).template get<"velocity">();
 			// auto p_shift = closest_u;
 
 			// p_pos - p_pos_old
@@ -720,7 +720,7 @@ kel::lbm::error_or<void> real_main(int argc, char** argv){
 				auto& macro_cell = macros.at(index);
 
 				auto& rho = macro_cell.template get<"pressure">();
-				auto& vel = macro_cell.template get<"momentum">();
+				auto& vel = macro_cell.template get<"velocity">();
 				auto& force = macro_cell.template get<"force">();
 
 				auto& part_mask = macro_cell.template get<"particle">();

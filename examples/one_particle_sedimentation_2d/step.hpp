@@ -90,7 +90,8 @@ kel::lbm::error_or<void> step(
 		}).wait();
 
 		q.submit([&](acpp::sycl::handler& h){
-			kel::lbm::data<sch::Vector<T,Desc::D>> gf;
+			// Gravity is an acceleration, which is what the integrator expects.
+			kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Desc::D>>> gf;
 			gf.at({{1u}}) = conv.acceleration_si_to_lbm({-9.81}).handle();
 			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<kel::lbm::enc::Native>> fplbm_one_part{gf};
 
@@ -134,8 +135,8 @@ kel::lbm::error_or<void> step(
 								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
 									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -210,8 +211,8 @@ kel::lbm::error_or<void> step(
 								[&]() -> kel::lbm::data<sch::Vector<T,Desc::D>> {
 									kel::lbm::data<sch::Vector<T,Desc::D>> vel;
 									{
-										auto y_si = conv.meter_lbm_to_si(index.at({{1u}}).template cast_to<T>()).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({{static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}}).handle();
+										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((1.2 / 0.41) * y_si.get() - (1.2 / (0.41*0.41)) * y_si.get() * y_si.get())}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;

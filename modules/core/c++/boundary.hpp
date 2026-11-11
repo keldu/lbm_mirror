@@ -231,6 +231,22 @@ class component<FP, sch::Descriptor<3u,27u>, cmpt::ZouHePressureX<East>, Encode>
 public:
 	using Descriptor = sch::Descriptor<3u,27u>;
 private:
+	/**
+	 * The flag has to mean the same thing here as it does in the D2Q9
+	 * specialisation above, or the same call site picks a different wall
+	 * depending on the descriptor.
+	 *
+	 * There, Dir == true reconstructs the populations with cx = +1, which are
+	 * the unknowns at the x = 0 inlet. The body below is written for the
+	 * opposite wall (unknowns with cx = -1, i.e. x = max), so the sense is
+	 * flipped once here instead of at each branch.
+	 *
+	 * This used to be inverted, and since every example passes true for the
+	 * inlet -- correct for D2Q9 -- the 3D cases drove the wrong face and
+	 * diverged.
+	 */
+	static constexpr bool AtXMax = not East;
+private:
 	kel::lbm::data<FP> rho_setting_;
 public:
 	component(const kel::lbm::data<FP>& rho_setting__):
@@ -290,7 +306,7 @@ public:
 
     kel::lbm::data<FP> S;
 
-    if constexpr (East) {
+    if constexpr (AtXMax) {
 
         S =
             // cx = 0
@@ -347,10 +363,24 @@ public:
 
     kel::lbm::data<FP> rho_ux;
 
-    if constexpr (East) {
-        rho_ux = rho_setting_ - S;
-    } else {
+    /*
+     * With S = S0 + 2*S_known:
+     *
+     *   x = max (unknown cx = -1):
+     *     S_unknown = rho - S0 - S_known
+     *     rho*ux    = S_known - S_unknown = S - rho
+     *
+     *   x = 0   (unknown cx = +1):
+     *     rho*ux    = S_unknown - S_known = rho - S
+     *
+     * Both of these were inverted, which drove the inlet and outlet the wrong
+     * way round and pumped mass into the domain every step. The D2Q9
+     * specialisation above already has the correct signs.
+     */
+    if constexpr (AtXMax) {
         rho_ux = S - rho_setting_;
+    } else {
+        rho_ux = rho_setting_ - S;
     }
 
 
@@ -378,7 +408,7 @@ public:
     kel::lbm::data<FP> rho_uy;
     kel::lbm::data<FP> rho_uz;
 
-    if constexpr (East) {
+    if constexpr (AtXMax) {
 
         rho_uy =
             // cx = 0
@@ -506,7 +536,7 @@ public:
      * ============================================================
      */
 
-    if constexpr (East) {
+    if constexpr (AtXMax) {
 
         /*
          * --------------------------------------------------------
@@ -516,7 +546,7 @@ public:
 
         f.at({1u}) =
             f.at({2u})
-            - kel::lbm::data<FP>{1.0 / 6.0} * rho_ux;
+            - kel::lbm::data<FP>{4.0 / 9.0} * rho_ux;
 
 
         /*
@@ -624,7 +654,7 @@ public:
 
         f.at({2u}) =
             f.at({1u})
-            + kel::lbm::data<FP>{1.0 / 6.0} * rho_ux;
+            + kel::lbm::data<FP>{4.0 / 9.0} * rho_ux;
 
 
         /*

@@ -47,37 +47,49 @@ public:
 		{ 1, 1, 1}   // 26
 	}};
 
+	/**
+	 * D3Q27 weights, keyed on |e_i|^2:
+	 *
+	 *   rest   (|e|^2 = 0, 1 of them)   8/27
+	 *   face   (|e|^2 = 1, 6 of them)   2/27
+	 *   edge   (|e|^2 = 2, 12 of them)  1/54
+	 *   corner (|e|^2 = 3, 8 of them)   1/216
+	 *
+	 * These sum to 1. The six face weights used to read 1/36, which summed to
+	 * 13/18 -- equilibrium then returned less mass than it was given and any
+	 * 3D run diverged within a handful of steps.
+	 */
 	static constexpr std::array<typename kel::lbm::native_data_type<T>::type,Q> weights = {
-		8./27.,
+		8./27.,   // 0  rest
 		// 1D
-		1./36.,
-		1./36.,
-		// 2D
-		1./36.,
-		1./54.,
-		1./54.,
-		1./36.,
-		1./54.,
-		1./54.,
-		// 3D
-		1./36.,
-		1./54.,
-		1./54.,
-		1./54.,
-		1./216.,
-		1./216.,
-		1./54.,
-		1./216.,
-		1./216.,
-		1./36.,
-		1./54.,
-		1./54.,
-		1./54.,
-		1./216.,
-		1./216.,
-		1./54.,
-		1./216.,
-		1./216.
+		2./27.,   // 1  face
+		2./27.,   // 2  face
+		// Expand into 2D
+		2./27.,   // 3  face
+		1./54.,   // 4  edge
+		1./54.,   // 5  edge
+		2./27.,   // 6  face
+		1./54.,   // 7  edge
+		1./54.,   // 8  edge
+		// Expand into 3D
+		2./27.,   // 9  face
+		1./54.,   // 10 edge
+		1./54.,   // 11 edge
+		1./54.,   // 12 edge
+		1./216.,  // 13 corner
+		1./216.,  // 14 corner
+		1./54.,   // 15 edge
+		1./216.,  // 16 corner
+		1./216.,  // 17 corner
+		2./27.,   // 18 face
+		1./54.,   // 19 edge
+		1./54.,   // 20 edge
+		1./54.,   // 21 edge
+		1./216.,  // 22 corner
+		1./216.,  // 23 corner
+		1./54.,   // 24 edge
+		1./216.,  // 25 corner
+		1./216.   // 26 corner
 	};
 
 	static constexpr std::array<uint64_t,Q> opposite_index = {

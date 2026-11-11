@@ -31,7 +31,7 @@ using CellStruct = Struct<
 
 template<typename T, uint64_t D>
 using MacroStruct = Struct<
-	Member<FixedArray<T,D>, "momentum">,
+	Member<FixedArray<T,D>, "velocity">,
 	Member<T, "pressure">
 >;
 
@@ -47,7 +47,7 @@ SAW_TEST("VTK Write test example"){
 	kel::lbm::data<sch::Array<sch::MacroStruct<sch::T,2>, 2>> cells{{{2u,2u}}};
 
 	auto& cell_0 = cells.at({{{0,0}}});
-	cell_0.template get<"momentum">()= {{0.5,-0.1}};
+	cell_0.template get<"velocity">()= {{0.5,-0.1}};
 	cell_0.template get<"pressure">().set(1.1);
 
 	auto eov = lbm::impl::lbm_vtk_writer<sch::Array<sch::MacroStruct<sch::T,2>, 2>>::apply(sstream, cells);
@@ -74,7 +74,7 @@ SAW_TEST("VTK Write raw test example"){
 	auto meta = cells.dims();
 
 	auto& cell_0 = cells.at({{{0,0}}});
-	cell_0.template get<"momentum">()= {{0.5,-0.1}};
+	cell_0.template get<"velocity">()= {{0.5,-0.1}};
 	cell_0.template get<"pressure">().set(1.1);
 
 	auto eov = lbm::impl::lbm_vtk_writer_raw<sch::MacroStruct<sch::T,2u>,2u>::apply(sstream, &cell_0, meta);
