@@ -7,6 +7,13 @@
 # host/OpenMP path stays cheap to build; turn on with
 #   nix-build -A <attr> --arg rocm true
 , rocm ? false
+# Same for the CUDA backend:
+#   nix-build -A <attr> --arg cuda true
+# Note that nixpkgs ships the CUDA toolkit as unfree, so this additionally
+# needs allowUnfree, e.g.
+#   nix-build -A kel.lbm.sycl-cuda --arg cuda true \\
+#     --arg pkgs '(import <nixpkgs> { config.allowUnfree = true; })'
+, cuda ? false
 }:
 
 let
@@ -36,21 +43,26 @@ let
 		'';
 	};
 
-	# One builder, two instances, so the ROCm and non-ROCm toolchains differ in
-	# exactly one input and nothing else.
-	mkAdaptiveCpp = enableRocm: pkgs.callPackage .nix/adaptive-cpp.nix {
+	# One builder, three instances, so the GPU toolchains differ from the base
+	# one in exactly one input and nothing else.
+	mkAdaptiveCpp = backend: pkgs.callPackage .nix/adaptive-cpp.nix {
 		inherit stdenv llvmPackages lld;
 
 		config = {
-			rocm = enableRocm;
+			rocm = backend == "rocm";
+			cuda = backend == "cuda";
 		};
 	};
 
-	adaptive-cpp-base = mkAdaptiveCpp false;
-	adaptive-cpp-rocm = mkAdaptiveCpp true;
+	adaptive-cpp-base = mkAdaptiveCpp "host";
+	adaptive-cpp-rocm = mkAdaptiveCpp "rocm";
+	adaptive-cpp-cuda = mkAdaptiveCpp "cuda";
 
-	# What the examples and the default build use. Flip with --arg rocm true.
-	adaptive-cpp = if rocm then adaptive-cpp-rocm else adaptive-cpp-base;
+	# What the examples and the default build use. Flip with --arg rocm/cuda true.
+	adaptive-cpp =
+		if rocm then adaptive-cpp-rocm
+		else if cuda then adaptive-cpp-cuda
+		else adaptive-cpp-base;
 
 	# forstio master as of 2026-11-09. Bump together with the sha256 below.
 	forstioRev = "97ae1a8f23074fea3784a008921c5d9fc3c1e8fb";
@@ -107,7 +119,32 @@ in rec {
 				adaptive-cpp = adaptive-cpp-rocm;
 				variant = "-rocm";
 			};
+			sycl-cuda = pkgs.callPackage ./modules/sycl/.nix/derivation.nix {
+				inherit forstio stdenv clang-tools pname version kel;
+				adaptive-cpp = adaptive-cpp-cuda;
+				variant = "-cuda";
+			};
+
+			# Control protocol shared by the orchestrator and the workers.
+			# Schemas and arithmetic only -- no transport, no GL -- so it stays
+			# testable natively on both sides of the browser boundary.
+			swarm = pkgs.callPackage ./modules/swarm/.nix/derivation.nix {
+				inherit forstio stdenv clang-tools pname version kel;
+			};
+
+			# Browser backend. Built by em++ rather than the nix cc-wrapper, which
+			# is why it takes its include roots through sconsFlags instead of
+			# buildInputs.
+			webgl = pkgs.callPackage ./modules/webgl/.nix/derivation.nix {
+				inherit stdenv clang-tools pname version kel;
+			};
 		};
+	};
+
+	# Proof of concept work. Reachable from the top level so it actually gets
+	# built; it was previously orphaned and had drifted into not evaluating.
+	poc = import ./poc/default.nix {
+		inherit pkgs stdenv pname version kel;
 	};
 
 	util = {
@@ -149,21 +186,6 @@ in rec {
 		# Fixed-position rotor, free to spin about one arbitrary fixed axis and
 		# driven by the fluid. Angular velocity is an output.
 		vawt_3d_hlbm_gpu = pkgs.callPackage ./examples/vawt_3d_hlbm_gpu/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel;
-		};
-		
-		cavity_2d = pkgs.callPackage ./examples/cavity_2d/.nix/derivation.nix {
-			inherit pname version stdenv forstio;
-			inherit kel;
-		};
-
-		meta = pkgs.callPackage ./examples/meta/.nix/derivation.nix {
-			inherit pname version stdenv forstio;
-			inherit kel;
-		};
-
-		poiseulle_2d = pkgs.callPackage ./examples/poiseulle_3d/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
 		};
@@ -249,11 +271,6 @@ in rec {
 			inherit kel;
 		};
 
-		particles_gpu = pkgs.callPackage ./examples/particles_gpu/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel;
-		};
-		
 		settling_cubes_2d_ibm_gpu = pkgs.callPackage ./examples/settling_cubes_2d_ibm_gpu/.nix/derivation.nix {
 			inherit pname version stdenv forstio adaptive-cpp;
 			inherit kel;
@@ -284,11 +301,6 @@ in rec {
 			inherit kel;
 		};
 
-		heterogeneous_computing = pkgs.callPackage ./examples/heterogeneous_computing/.nix/derivation.nix {
-			inherit pname version stdenv forstio adaptive-cpp;
-			inherit kel;
-		};
-
 		settling_particles = pkgs.symlinkJoin {
 			name = "kel-lbm-settling_particles-${version}";
 			paths = [
@@ -311,7 +323,6 @@ in rec {
 			paths = [
 				kel.lbm.core
 				kel.lbm.sycl
-				ex.meta
 				ex.poiseulle_particles_2d_bgk_gpu
 				ex.poiseulle_particles_2d_psm_gpu
 				ex.poiseulle_particles_2d_hlbm_gpu

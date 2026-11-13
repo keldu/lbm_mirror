@@ -1,0 +1,31 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+webgl_env = env.Clone();
+
+webgl_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+webgl_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += webgl_env.sources;
+env.headers += webgl_env.headers;
+
+# The module is headers plus probe.cpp. toolchain_probe.cpp is the smoke test
+# target: it proves em++ can compile against the core and swarm headers and
+# that both the .js and the .wasm land where SCons expects them.
+objects = []
+webgl_env.add_source_files(objects, webgl_env.sources, shared=False);
+env.probe = webgl_env.em_program('#bin/kel_lbm_webgl_probe', [objects]);
+
+env.targets += [env.probe];
+
+env.Install('$prefix/include/kel/lbm/webgl/', webgl_env.headers);
+# Both the loader and the sidecar; the .js is useless without the .wasm.
+env.Install('$prefix/share/kel-lbm/webgl/', env.probe);

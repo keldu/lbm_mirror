@@ -25,7 +25,26 @@ struct NativeRaw {
 struct Json {
 	static constexpr string_literal name = "enc::Json";
 };
+
+/**
+ * A packed little endian binary layout. See abstract/forst.hpp.
+ *
+ * Every value sits at a computable byte offset, so reading one member costs no
+ * decoding of the members before it. Fixed size schemas are inline; variable
+ * length ones spend their slot on dimensions plus an offset and put their bytes
+ * in a single dynamic layer after the static section.
+ */
+struct Forst {
+	static constexpr string_literal name = "enc::Forst";
+};
 } // namespace enc
+
+/**
+ * Declared here rather than in any one codec header so that an encoding does
+ * not have to include an unrelated one to specialise it. json.hpp and
+ * forst.hpp are siblings; neither should need the other.
+ */
+template <typename Schema, typename Encoding> class codec;
 
 #ifndef KEL_LBM_DEFAULT_DATA_ENCODING
 #define KEL_LBM_DEFAULT_DATA_ENCODING ::kel::lbm::enc::Native

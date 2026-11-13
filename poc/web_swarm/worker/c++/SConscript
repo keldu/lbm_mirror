@@ -1,0 +1,32 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+worker_env = env.Clone();
+
+worker_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+worker_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += worker_env.sources;
+env.headers += worker_env.headers;
+
+objects = []
+worker_env.add_source_files(objects, worker_env.sources, shared=False);
+env.worker = worker_env.em_program('#bin/kel_lbm_worker', [objects]);
+
+env.targets += [env.worker];
+
+# The page and its glue live beside the module: index.html loads worker.js for
+# the transport and kel_lbm_worker.js for the emscripten loader.
+web_dir = Dir('#web').abspath
+web_files = sorted(glob.glob(web_dir + "/*"))
+
+env.Install('$prefix/share/kel-lbm/worker/', env.worker);
+env.Install('$prefix/share/kel-lbm/worker/', web_files);

@@ -1,0 +1,26 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+worker_env = env.Clone();
+
+worker_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+worker_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += worker_env.sources;
+env.headers += worker_env.headers;
+
+objects = []
+worker_env.add_source_files(objects, worker_env.sources, shared=False);
+env.worker_native = worker_env.Program('#bin/kel_lbm_worker_native', [objects]);
+
+env.targets += [env.worker_native];
+
+env.Install('$prefix/bin/', env.worker_native);

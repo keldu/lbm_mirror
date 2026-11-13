@@ -11,8 +11,10 @@
 , python3
 , config ? {
     rocm = false;
+    cuda = false;
   }
 , rocmPackages
+, cudaPackages
 , spirv-tools
 , spirv-headers
 , spirv-llvm-translator
@@ -50,21 +52,31 @@ in stdenv.mkDerivation ({
 		spirv-tools
 		spirv-headers
 		spirv-llvm-translator
+	] ++ lib.optionals config.cuda [
+		cudaPackages.cuda_cudart
+		cudaPackages.cuda_nvcc
 	];
 
   cmakeFlags = [
     "-DCLANG_INCLUDE_PATH=${llvmPackages.libclang.dev}/include"
   ] ++ lib.optionals config.rocm [
     "-DWITH_ROCM_BACKEND=ON"
+  ] ++ lib.optionals config.cuda [
+    "-DWITH_CUDA_BACKEND=ON"
 
+    # nixpkgs splits the toolkit across outputs, so point cmake at the joined
+    # root rather than letting it search /usr/local/cuda.
+    "-DCUDA_TOOLKIT_ROOT_DIR=${cudaPackages.cudatoolkit}"
+  ] ++ lib.optionals (config.rocm || config.cuda) [
     # Keep OpenCL and Level Zero off. src/CMakeLists.txt turns WITH_LLVM_TO_SPIRV
     # on for either of them, and that target FetchContent-clones
     # SPIRV-LLVM-Translator at configure time, which a nix build cannot do --
-    # it has neither git nor network. ROCm is the backend we want here and it
-    # does not go through SPIR-V.
+    # it has neither git nor network. Neither ROCm (amdgcn) nor CUDA (PTX) goes
+    # through SPIR-V, so turning them off costs nothing here.
     #
-    # This only bites when rocm = true: rocmPackages.clr brings OpenCL in, so
-    # the backend autodetects on, where in the base build it stays off.
+    # This only bites with a GPU backend on: rocmPackages.clr and the CUDA
+    # toolkit both bring OpenCL in, so the backend autodetects on, where in the
+    # base build it stays off.
     "-DWITH_OPENCL_BACKEND=OFF"
     "-DWITH_LEVEL_ZERO_BACKEND=OFF"
   ];
@@ -89,18 +101,22 @@ in stdenv.mkDerivation ({
       --add-flags "-I${llvmPackages.openmp.dev}/include" \
   '' + lib.optionalString config.rocm ''
     --add-flags "--rocm-device-lib-path=${rocmPackages.rocm-device-libs}/amdgcn/bitcode"
+  '' + lib.optionalString config.cuda ''
+    --add-flags "--cuda-path=${cudaPackages.cudatoolkit}"
   '';
 
   postPatch = ''
     patchShebangs .
   '';
-} // lib.optionalAttrs config.rocm {
+} // lib.optionalAttrs (config.rocm || config.cuda) {
   # nixpkgs 26.05 turns the zerocallusedregs hardening flag on by default, and
   # clang rejects -fzero-call-used-regs for the amdgcn-amd-amdhsa target, so
   # every device bitcode object under src/libkernel/sscp/amdgpu fails to build.
   # Not an AdaptiveCpp problem -- the same source built fine on 25.11.
   #
+  # nvptx64 rejects the same flag, so the CUDA backend needs it off as well.
+  #
   # Set via optionalAttrs rather than lib.optionals so the attribute is absent
-  # (not just empty) without rocm, which keeps the base derivation hash stable.
+  # (not just empty) on the base build, which keeps its derivation hash stable.
   hardeningDisable = [ "zerocallusedregs" ];
 })

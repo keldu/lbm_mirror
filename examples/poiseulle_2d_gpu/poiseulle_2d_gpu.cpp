@@ -1,395 +1,439 @@
+#include <kel/lbm/sycl/lbm.hpp>
 #include <kel/lbm/lbm.hpp>
-#include <AdaptiveCpp/sycl/sycl.hpp>
 
-#include <forstio/codec/data.hpp>
-
-template<typename T>
-using SyclHostAlloc = acpp::sycl::usm_allocator<kel::lbm::data<T>, acpp::sycl::usm::alloc::host>;
+#include <forstio/io/io.hpp>
+#include <forstio/remote/filesystem/easy.hpp>
+#include <forstio/codec/json/json.hpp>
+#include <forstio/codec/simple.hpp>
+#include <forstio/codec/args.hpp>
 
 namespace kel {
 namespace lbm {
+
+// The channel this case has always used.
+constexpr uint64_t dim_x = 1024ul;
+constexpr uint64_t dim_y = 512ul;
+
 namespace sch {
 
-/**
- * Basic distribution function
- * Base type
- * D
- * Q
- * Scalar factor
- * D factor
- * Q factor
- */
-using T = Float64;
-using D2Q9 = Descriptor<2u,9u>;
+using InfoChunk = Chunk<UInt8, 0u, dim_x, dim_y>;
 
-using DfCell = Cell<T, D2Q9, 0u, 0u, 1u>;
-using CellInfo = Cell<UInt8, D2Q9, 1u, 0u, 0u>;
+template<typename T, typename Desc>
+using DfChunk = Chunk<FixedArray<T,Desc::Q>, 1u, dim_x, dim_y>;
 
-/**
- * Basic type for simulation
- */
-using CellStruct = Struct<
-	Member<DfCell, "dfs">,
-	Member<DfCell, "dfs_old">,
-	Member<CellInfo, "info">
+template<typename T, typename Desc>
+using ScalarChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
+using VectorChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
+using ChunkStruct = Struct<
+	Member<InfoChunk, "info">,
+	Member<DfChunk<T,Desc>, "dfs">,
+	Member<DfChunk<T,Desc>, "dfs_old">
 >;
 
+template<typename T, typename Desc>
+using VelChunk = Chunk<Vector<T,Desc::D>, 0u, dim_x, dim_y>;
+
+template<typename T>
+using RhoChunk = Chunk<Scalar<T>, 0u, dim_x, dim_y>;
+
+template<typename T, typename Desc>
 using MacroStruct = Struct<
-	Member<FixedArray<Float64,D2Q9::D>, "velocity">,
-	Member<Float64, "pressure">
+	Member<VelChunk<T,Desc>, "velocity">,
+	Member<RhoChunk<T>, "density">
 >;
 
+//template<typename T, typename Desc>
+//using ParticleArray = Array<
+//	Particle<T,Desc::D>
+//>;
 }
 
-namespace cmpt {
-template<bool East>
-struct PressureBoundaryRestrictedVelocityTo {};
-}
-
-template<typename FP,typename Desc, bool East>
-struct component<FP,Desc, cmpt::PressureBoundaryRestrictedVelocityTo<East>> {
-private:
-	kel::lbm::data<FP> pressure_setting_;
-	kel::lbm::data<FP> rho_setting_;
-public:
-	component(const kel::lbm::data<FP>& pressure_setting__):
-		pressure_setting_{pressure_setting__},
-		rho_setting_{pressure_setting__ * df_info<FP,Desc>::inv_cs2}
-	{}
-
-	template<typename CellFieldSchema>
-	void apply(
-			kel::lbm::data<CellFieldSchema>* field,
-			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index,
-			const kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
-			uint64_t time_step
-		) const {
-
-		using dfi = df_info<FP,Desc>;
-
-		auto flat_ind = flatten_index<sch::UInt64,Desc::D>::apply(index,meta);
-
-		bool is_even = ((time_step % 2u) == 0u);
-		auto& cell = field[flat_ind.get()];
-
-		auto& info = cell.template get<"info">();
-		if(info({0u}).get() == 0u){
-			return;
-		}
-		auto& dfs_old = (is_even) ? cell.template get<"dfs_old">() : cell.template get<"dfs">();
-
-		/**
-		 * Sum all known DFs
-		 */
-		kel::lbm::data<FP> sum_df{0u};
-		for(kel::lbm::data<sch::UInt64> k{0u}; k < kel::lbm::data<sch::UInt64>{Desc::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
-			auto flat_ind_n = flatten_index<sch::UInt64,Desc::D>::apply({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}},meta);
-			auto& cell_n = field[flat_ind_n.get()];
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-			auto k_opp = dfi::opposite_index[k.get()];
-
-			if(info_n_val.get() > 0u){
-				sum_df += dfs_old({k_opp});
-			}
-		}
-		/**
-		 * Get the sum of the unknown dfs and precalculate the direction
-		 */
-		constexpr int known_dir = East ? 1 : -1;
-		auto sum_unknown_dfs = (rho_setting_ - sum_df) * kel::lbm::data<FP>{known_dir};
-
-		for(kel::lbm::data<sch::UInt64> k{0u}; k < kel::lbm::data<sch::UInt64>{Desc::Q}; ++k){
-			auto c_k = dfi::directions[k.get()];
-			auto flat_ind_n = flatten_index<sch::UInt64,Desc::D>::apply({{index.at({0u})+c_k[0u], index.at({1u})+c_k[1u]}},meta);
-			auto& cell_n = field[flat_ind_n.get()];
-			auto& info_n = cell_n.template get<"info">();
-			auto info_n_val = info_n({0u});
-
-			if(info_n_val.get() > 0u){
-				sum_unknown_dfs += dfs_old({k}) * c_k[0u];
-			}
-		}
-
-		auto vel_x = sum_unknown_dfs / rho_setting_;
-
-		if constexpr (East) {
-			dfs_old({2u}) = dfs_old({1u}) + kel::lbm::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({6u}) = dfs_old({5u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-			dfs_old({8u}) = dfs_old({7u}) + kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-		}else if constexpr (not East){
-			dfs_old({1u}) = dfs_old({2u}) - kel::lbm::data<FP>{2.0 / 3.0} * rho_setting_ * vel_x;
-			dfs_old({5u}) = dfs_old({6u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({3u}) - dfs_old({4u}));
-			dfs_old({7u}) = dfs_old({8u}) - kel::lbm::data<FP>{1.0 / 6.0} * rho_setting_ * vel_x + kel::lbm::data<FP>{0.5} * (dfs_old({4u}) - dfs_old({3u}));
-		}
-	}
-};
-
-/**
- * This is massively hacky and expects a lot of conditions
- * Either this or mirrored along the horizontal line works
- *
- * 0 - 2 - 2
- * 0 - 3 - 1
- * 0 - 3 - 1
- * .........
- * 0 - 3 - 1
- * 0 - 2 - 2
- *
- */
-
-template<typename Desc>
-kel::lbm::error_or<void> set_geometry(
-	kel::lbm::data<sch::CellStruct>* cells,
-	const kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
-	acpp::sycl::queue& sycl_q
+template<typename T, typename Desc>
+kel::lbm::error_or<void> setup_initial_conditions(
+		kel::lbm::data<sch::ChunkStruct<T,Desc>>& fields,
+		kel::lbm::data<sch::MacroStruct<T,Desc>>& macros
 ){
-	using namespace kel::lbm;
+	auto& info_f = fields.template get<"info">();
+	// Set everything as walls
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(1u);
+		},
+		{},
+		info_f.get_dims(),
+		{}
+	);
+	// Fluid
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(2u);
+		},
+		{},
+		info_f.get_dims(),
+		{{1u,1u}}
+	);
 	
-	kel::lbm::data<sch::T> rho{1.0};
-	kel::lbm::data<sch::FixedArray<sch::T,Desc::D>> vel{{0.0,0.0}};
-	auto eq = equilibrium<sch::T,Desc>(rho, vel);
+	// Inflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(3u);
+		},
+		{{0u,0u}},
+		{{1u,dim_y}},
+		{{0u,1u}}
+	);
+	
+	// Outflow
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			info_f.at(index).set(4u);
+		},
+		{{dim_x-1u,0u}},
+		{{dim_x, dim_y}},
+		{{0u,1u}}
+	);
+	//
+	auto& df_f = fields.template get<"dfs_old">();
+	auto& rho_f = macros.template get<"density">();
+	auto& vel_f = macros.template get<"velocity">();
+	
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			auto& df = df_f.at(index);
+			auto& rho = rho_f.at(index);
+			rho.at({}) = {1};
+			auto& vel = vel_f.at(index);
+			auto eq = equilibrium<T,Desc>(rho,vel);
 
-	sycl_q.submit([&](acpp::sycl::handler& h){
-		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<2> idx){
-			size_t i = idx[0];
-			size_t j = idx[1];
-			size_t acc_id = j * meta.at({0u}).get() + i;
+			df = eq;
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
 
-			auto& c = cells[acc_id];
-			auto& info = c.template get<"info">()({0});
-			auto& dfs = c.template get<"dfs">();
-			auto& dfs_old = c.template get<"dfs_old">();
-
-			if(i >= 2u and j >= 2u and (i+2u) < meta.at({0u}).get() and (j+2u) < meta.at({1u}).get()){
-				// Fluid
-				info.set({2u});
-			}else if(((j+2u) == meta.at({1u}).get() or j == 1u) and (i>=1u and (i+1u)<meta.at({0u}).get() )){
-				// Wall
-				info.set({1u});
-			}else if((i==1u) and (j >= 1 and (j+1 < meta.at({1u}).get()) ) ){
-				// Left input
-				info.set({3u});
-			}else if((i+2u) == meta.at({0u}).get() and (j >= 1 and (j+1) < meta.at({1u}).get() )){
-				// Right output
-				info.set({4u});
-			}else {
-				info.set({0u});
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			auto& df = df_f.at(index);
+			auto& rho = rho_f.at(index);
+			rho.at({}) = {1};
+			auto& vel = vel_f.at(index);
+			if(info_f.at(index).get() == 2u){
+				vel.at({{0u}}) = 0.0;
 			}
-			for(kel::lbm::data<sch::UInt64> k{0u}; k < kel::lbm::data<sch::UInt64>{Desc::Q}; ++k){
-				dfs(k) = eq.at(k);
-				dfs_old(k) = eq.at(k);
+			auto eq = equilibrium<T,Desc>(rho,vel);
+
+			df = eq;
+		},
+		{},// 0-index
+		df_f.get_dims(),
+		{{1u,1u}}
+	);
+	
+	iterator<Desc::D>::apply(
+		[&](auto& index){
+			kel::lbm::data<sch::Vector<T,Desc::D>> middle, ind_vec;
+			middle.at({{0u}}) = dim_x * 0.25;
+			middle.at({{1u}}) = dim_y * 0.5;
+
+			ind_vec.at({{0u}}) = index.at({{0u}}).template cast_to<T>();
+			ind_vec.at({{1u}}) = index.at({{1u}}).template cast_to<T>();
+
+			auto dist = middle - ind_vec;
+			auto dist_2 = kel::lbm::math::dot(dist,dist);
+			if(dist_2.at({}).get() < dim_y*dim_y*0.01){
+				info_f.at(index) = 1u;
 			}
-		});
-	}).wait();
+		},
+		{},// 0-index
+		df_f.get_dims()
+	);
 
 	return kel::lbm::make_void();
 }
 
-template<typename Desc>
-void step(
-	kel::lbm::data<sch::CellStruct>* cells,
-	kel::lbm::data<sch::MacroStruct>* macro_cells,
-	const kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>>& meta,
-	uint64_t time_step,
-	acpp::sycl::queue& sycl_q
+template<typename T, typename Desc>
+kel::lbm::error_or<void> step(
+		kel::lbm::data<sch::Ptr<sch::ChunkStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& fields,
+		kel::lbm::data<sch::Ptr<sch::MacroStruct<T,Desc>>,encode::Sycl<kel::lbm::enc::Native>>& macros,
+		kel::lbm::data<sch::UInt64> t_i,
+		device& dev
 ){
-	using namespace kel::lbm;
-	using dfi = df_info<sch::T,Desc>;
-	
-	constexpr kel::lbm::data<sch::T> frequency{1.0 / 0.6};
+	auto& q = dev.get_handle();
+	auto& info_f = fields.template get<"info">();
 
-	bool is_even = ((time_step % 2u) == 0u);
-  /**
-	* 1. Relaxation parameter \tau
-	*/
-  /*
-	component<sch::T, sch::D2Q9, cmpt::BGK> coll{0.5384};
-	component<sch::T, sch::D2Q9, cmpt::BounceBack> bb;
-	*/
-	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<true>> inlet{1.01 * dfi::cs2 * 2.0/3.0};
-	component<sch::T, Desc, cmpt::PressureBoundaryRestrictedVelocityTo<false>> outlet{1.0 * dfi::cs2 * 2.0/3.0};
+	// auto coll_ev = 
+	q.submit([&](acpp::sycl::handler& h){
+		// Need nicer things to handle the flow. I see improvement here
+		component<T,Desc,cmpt::BGK, encode::Sycl<kel::lbm::enc::Native>> collision{0.8};
+		component<T,Desc,cmpt::BounceBack,encode::Sycl<kel::lbm::enc::Native>> bb;
+		component<T,Desc,cmpt::AntiBounceBack<0u>,encode::Sycl<kel::lbm::enc::Native>> abb;
 
+		kel::lbm::data<sch::Scalar<T>> rho_b;
+		rho_b.at({}) = 1.0;
+		kel::lbm::data<sch::Vector<T,Desc::D>> vel_b;
+		vel_b.at({{0u}}) = 0.015;
+
+		component<T,Desc,cmpt::Equilibrium,encode::Sycl<kel::lbm::enc::Native>> equi{rho_b,vel_b};
+
+		component<T,Desc,cmpt::ZouHeHorizontal<true>,encode::Sycl<kel::lbm::enc::Native>> flow_in{
+			[&](){
+				uint64_t target_t_i = 32u;
+				if(t_i.get() < target_t_i){
+					return 1.0 + (0.0002 / target_t_i) * t_i.get();
+				}
+				return 1.0002;
+			}()
+		};
+		component<T,Desc,cmpt::ZouHeHorizontal<false>,encode::Sycl<kel::lbm::enc::Native>> flow_out{1.0};
+
+
+		h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+			for(uint64_t i = 0u; i < Desc::D; ++i){
+				index.at({{i}}).set(idx[i]);
+			}
+
+			auto info = info_f.at(index);
 			
-	// auto collision_ev = 
-	sycl_q.submit([&](acpp::sycl::handler& h){
-		
-		/// Collision
-		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<Desc::D> idx){
-			size_t i = idx[0];
-			size_t j = idx[1];
-			size_t acc_id = j * meta.at({0u}).get() + i;
-			
-			auto& c = cells[acc_id];
-			auto& info = cells[acc_id].template get<"info">();
-
-			switch (info({0u}).get()) {
-				// Bounce Back
-			 case 1u: {
-				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
-				auto df_cpy = dfs_old.copy();
-
-				for(uint64_t k = 1u; k < Desc::Q; ++k){
-					dfs_old({k}) = df_cpy({dfi::opposite_index.at(k)});
-				}
-
+			switch(info.get()){
+				case 0u:
 				break;
-			 }
-			 // Collision
-			 case 2u: {
-				// coll.apply(latt_acc, {i, j}, time_step);
-				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
-
-				auto& macro_c = macro_cells[acc_id];
-
-				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
-
-				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
-				auto eq = equilibrium<sch::T,Desc>(rho,vel);
-
-				for(uint64_t k = 0u; k < Desc::Q; ++k){
-					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
-				}
+				case 1u:
+					bb.apply(fields,index,t_i);
 				break;
-			}
-			case 3u: {
-				inlet.apply(cells, {{i,j}}, meta, time_step);
-				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
-
-				auto& macro_c = macro_cells[acc_id];
-
-				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
-
-				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
-				auto eq = equilibrium<sch::T,Desc>(rho,vel);
-
-				for(uint64_t k = 0u; k < Desc::Q; ++k){
-					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
-				}
+				case 2u:
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 3u:
+					flow_in.apply(fields,index,t_i);
+					//equi.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
+					break;
+				case 4u:
+					flow_out.apply(fields,index,t_i);
+					collision.apply(fields,macros,index,t_i);
 				break;
-			}
-			case 4u: {
-				outlet.apply(cells, {{i,j}}, meta, time_step);
-				auto& dfs_old = is_even ? c.template get<"dfs_old">() : c.template get<"dfs">();
-
-				auto& macro_c = macro_cells[acc_id];
-
-				kel::lbm::data<sch::T>& rho = macro_c.template get<"pressure">();
-				kel::lbm::data<sch::FixedArray<sch::T,Desc::D>>& vel = macro_c.template get<"velocity">();
-
-				compute_rho_u<sch::T,Desc>(dfs_old,rho,vel);
-				auto eq = equilibrium<sch::T,Desc>(rho,vel);
-
-				for(uint64_t k = 0u; k < Desc::Q; ++k){
-					dfs_old({k}) = dfs_old({k}) + frequency * (eq.at({k}) - dfs_old({k}));
-				}
-				break;
-			}
-			default:
-				// Do nothing
+				default:
 				break;
 			}
 		});
 	}).wait();
+
 	
-	//auto stream_ev = 
-	sycl_q.submit([&](acpp::sycl::handler& h){
-		/// Stream
-		h.parallel_for(acpp::sycl::range<2>{meta.at({0}).get(), meta.at({1}).get()},[=](acpp::sycl::id<Desc::D> idx){
-			size_t i = idx[0];
-			size_t j = idx[1];
-			size_t acc_id = j * meta.at({0u}).get() + i;
-
-			auto& c = cells[acc_id];
-			auto& info = c.template get<"info">();
-			auto& dfs_new = is_even ? c.template get<"dfs">() : c.template get<"dfs_old">();
-
-			if (info({0u}).get() > 0u) {
-				for (uint64_t k = 0u; k < Desc::Q; ++k) {
-					auto dir = dfi::directions[dfi::opposite_index[k]];
-					size_t acc_old_id = (j+dir[1]) * meta.at({0u}).get() + (i+dir[0]);
-
-					auto& dfs_old = is_even ? cells[acc_old_id].template get<"dfs_old">() : cells[acc_old_id].template get<"dfs">();
-					auto& info_old = cells[acc_old_id].template get<"info">();
-
-					dfs_new({k}) = dfs_old({k});
-				}
-			}
-
-		});
+	// Step
+	/*
+	q.submit([&](acpp::sycl::handler& h){
+		// h.depends_on(collision_ev);
 	}).wait();
+	*/
+
+	return kel::lbm::make_void();
 }
 }
 }
 
 template<typename T, typename Desc>
-kel::lbm::error_or<void> kel_main(int argc, char** argv){
-	using namespace kel;
+kel::lbm::error_or<void> lbm_main(int argc, char** argv){
+	using namespace kel::lbm;
 
-	using dfi = lbm::df_info<T,Desc>;
+	/*
+	auto eo_lbm_args = setup_lbm_env<sch::Args<sch::Struct<>,sch::Tuple<>>>(argc,argv);
+	if(eo_lbm_args.is_error()){
+		return std::move(eo_lbm_args.get_error());
+	}
+	auto& lbm_args = eo_lbm_args.get_value();
+	*/
 
-	auto eo_lbm_dir = lbm::output_directory();
+	using dfi = df_info<T,Desc>;
+
+	auto eo_lbm_dir = output_directory();
 	if(eo_lbm_dir.is_error()){
 		return std::move(eo_lbm_dir.get_error());
 	}
 	auto& lbm_dir = eo_lbm_dir.get_value();
-	auto out_dir = lbm_dir / "poiseulle_channel_2d_gpu";
-	std::filesystem::create_directories(out_dir);
-	// 
-	lbm::converter<lbm::sch::Float64> conv {
+
+	auto out_dir = lbm_dir / "poiseulle_2d_gpu";
+
+	{
+		std::error_code ec;
+		std::filesystem::create_directories(out_dir,ec);
+		if(ec != std::errc{}){
+			return kel::lbm::make_error<kel::lbm::err::critical>("Could not create output directory");
+		}
+	}
+
+	converter<T> conv {
 		// delta_x
 		{1.0},
 		// delta_t
 		{1.0}
 	};
+	
+	print_lbm_meta<T,Desc>(conv,{0.1},{1e-4},{0.4 * dim_y});
 
-	uint64_t x_d = 1024u;
-	uint64_t y_d = 512u;
+	// kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> meta{{dim_x,dim_y}};
+	auto lbm_data_ptr = kel::lbm::heap<kel::lbm::data<sch::ChunkStruct<T,Desc>>>();
+	auto lbm_macro_data_ptr = kel::lbm::heap<kel::lbm::data<sch::MacroStruct<T,Desc>>>();
+	
+	std::cout<<"Estimated Bytes: "<<memory_estimate<sch::ChunkStruct<T,Desc>,sch::MacroStruct<T,Desc>>().get()<<std::endl;
 
-	kel::lbm::data<lbm::sch::FixedArray<lbm::sch::UInt64,Desc::D>> meta{{x_d,y_d}};
+	auto eo_aio = saw::setup_async_io();
+	if(eo_aio.is_error()){
+		return kel::lbm::make_error<kel::lbm::err::critical>(
+			std::string{eo_aio.get_error().get_message()});
+	}
+	auto& aio = eo_aio.get_value();
+	saw::wait_scope wait{aio.event_loop};
 
-	acpp::sycl::queue sycl_q;
-	SyclHostAlloc<lbm::sch::MacroStruct> sycl_host_alloc{sycl_q};
-	// SyclDeviceAlloc<lbm::sch::CellStruct> sycl_dev_alloc{sycl_q};
+	bool krun = true;
+	bool print_status = false;
+	aio.event_port.on_signal(saw::Signal::Terminate).then([&](){
+		krun = false;
+	}).detach();
+	aio.event_port.on_signal(saw::Signal::User1).then([&](){
+		print_status = true;
+	}).detach();
 
-	std::vector<kel::lbm::data<lbm::sch::MacroStruct>, SyclHostAlloc<lbm::sch::MacroStruct>> host_cells{x_d * y_d,sycl_host_alloc};
+	device dev;
 
-	kel::lbm::data<lbm::sch::CellStruct>* cells = acpp::sycl::malloc_device<kel::lbm::data<lbm::sch::CellStruct>>(x_d * y_d,sycl_q);
-	kel::lbm::data<lbm::sch::MacroStruct>* macro_cells = acpp::sycl::malloc_device<kel::lbm::data<lbm::sch::MacroStruct>>(x_d * y_d,sycl_q);
+	auto& sycl_q = dev.get_handle();
+
+	sycl_q.wait();
 	{
-		auto eov = lbm::set_geometry<Desc>(cells,meta,sycl_q);
+		auto eov = setup_initial_conditions<T,Desc>(*lbm_data_ptr,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_vtk_file(out_dir,"initial_state",0u,*lbm_data_ptr);
 		if(eov.is_error()){
 			return eov;
 		}
 	}
 
+	kel::lbm::data<sch::ChunkStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_data{sycl_q};
+	kel::lbm::data<sch::MacroStruct<T,Desc>, encode::Sycl<kel::lbm::enc::Native>> lbm_sycl_macro_data{sycl_q};
+	sycl_q.wait();
 
-	uint64_t time_max = 1024u*128u;
-	for(uint64_t i = 0u; i < time_max; ++i){
-		lbm::step<Desc>(cells,macro_cells,meta,i,sycl_q);
+	{
+		auto eov = dev.copy_to_device(*lbm_data_ptr,lbm_sycl_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = dev.copy_to_device(*lbm_macro_data_ptr,lbm_sycl_macro_data);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	sycl_q.wait();
+	auto lsd_view = make_view(lbm_sycl_data);
+	auto lsdm_view = make_view(lbm_sycl_macro_data);
+	kel::lbm::data<sch::UInt64> time_steps{16u*4096ul};
+
+	auto& info_f = lsd_view.template get<"info">();
+
+	for(kel::lbm::data<sch::UInt64> i{0u}; i < time_steps and krun; ++i){
+		// BC + Collision
+		{
+			auto eov = step<T,Desc>(lsd_view,lsdm_view,i,dev);
+			if(eov.is_error()){
+				return eov;
+			}
+		}
 		sycl_q.wait();
-		if(i%4u == 0u){
-			std::string vtk_f_name{"tmp/poiseulle_2d_gpu_"};
-			vtk_f_name += std::to_string(i) + ".vtk";
-			// write_vtk_file(vtk_f_name,host_cells);
-			sycl_q.memcpy(&host_cells[0u], macro_cells, x_d * y_d * sizeof(kel::lbm::data<lbm::sch::MacroStruct>) ).wait();
-			lbm::write_vtk_file<lbm::sch::MacroStruct,Desc::D>(vtk_f_name, &host_cells[0], meta);
+		/*
+		if(i.get() % 128u == 0u){
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_vtk_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+		}
+		*/
+		/*
+		if(i.get() % 32u == 0u){
+			{
+				auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+			{
+				auto eov = write_csv_file(out_dir,"m",i.get(), *lbm_macro_data_ptr);
+				if(eov.is_error()){
+					return eov;
+				}
+			}
+		}
+		*/
+		// Stream
+		sycl_q.submit([&](acpp::sycl::handler& h){
+			component<T,Desc,cmpt::Stream,encode::Sycl<kel::lbm::enc::Native>> stream;
+
+			h.parallel_for(acpp::sycl::range<Desc::D>{dim_x,dim_y}, [=](acpp::sycl::id<Desc::D> idx){
+				kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> index;
+				for(uint64_t i = 0u; i < Desc::D; ++i){
+					index.at({{i}}).set(idx[i]);
+				}
+				
+				auto info = info_f.at(index);
+				
+				if(info.get() > 0u){
+					stream.apply(lsd_view,index,i);
+				}
+			});
+		}).wait();
+		wait.poll();
+		if(print_status){
+			std::cout<<"Status: "<<i.get()<<" of "<<time_steps.get()<<" - "<<(i.template cast_to<sch::Float64>().get() * 100 / time_steps.get())<<"%"<<std::endl;
+			print_status = false;
+		}
+		print_progress_bar(i.get(), time_steps.get()-1u);
+	}
+
+	// After Loop
+	sycl_q.wait();
+	{
+		auto eov = dev.copy_to_host(lbm_sycl_macro_data,*lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_vtk_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
+		}
+	}
+	{
+		auto eov = write_csv_file(out_dir,"m",time_steps.get(), *lbm_macro_data_ptr);
+		if(eov.is_error()){
+			return eov;
 		}
 	}
 
 	sycl_q.wait();
-	acpp::sycl::free(cells, sycl_q);
-	acpp::sycl::free(macro_cells, sycl_q);
-	sycl_q.wait();
-
 	return kel::lbm::make_void();
 }
 
+using FloatT = kel::lbm::sch::Float32;
+
 int main(int argc, char** argv){
-	auto eov = kel_main<kel::lbm::sch::T,kel::lbm::sch::D2Q9>(argc, argv);
+	auto eov = lbm_main<FloatT,kel::lbm::sch::D2Q9>(argc, argv);
 	if(eov.is_error()){
 		auto& err = eov.get_error();
 		std::cerr<<"[Error] "<<err.get_category();

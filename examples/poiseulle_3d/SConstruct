@@ -59,6 +59,8 @@ env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
     ],
     LIBS=[
         'forstio-core',
+        'forstio-async',
+        'forstio-io',
         'acpp-rt',
         'omp'
     ]

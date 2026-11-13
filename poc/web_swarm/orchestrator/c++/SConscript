@@ -1,0 +1,26 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+orch_env = env.Clone();
+
+orch_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+orch_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += orch_env.sources;
+env.headers += orch_env.headers;
+
+objects = []
+orch_env.add_source_files(objects, orch_env.sources, shared=False);
+env.orchestrator = orch_env.Program('#bin/kel_lbm_orchestrator', [objects]);
+
+env.targets += [env.orchestrator];
+
+env.Install('$prefix/bin/', env.orchestrator);

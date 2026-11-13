@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import os.path
+import glob
+import re
+
+
+if sys.version_info < (3,):
+    def isbasestring(s):
+        return isinstance(s,basestring)
+else:
+    def isbasestring(s):
+        return isinstance(s, (str,bytes))
+
+def add_kel_source_files(self, sources, filetype, lib_env=None, shared=False, target_post=""):
+
+    if isbasestring(filetype):
+        dir_path = self.Dir('.').abspath
+        filetype = sorted(glob.glob(dir_path+"/"+filetype))
+
+    for path in filetype:
+        target_name = re.sub( r'(.*?)(\.cpp|\.c\+\+)', r'\1' + target_post, path )
+        if shared:
+            target_name+='.os'
+            sources.append( self.SharedObject( target=target_name, source=path ) )
+        else:
+            target_name+='.o'
+            sources.append( self.StaticObject( target=target_name, source=path ) )
+    pass
+
+def isAbsolutePath(key, dirname, env):
+	assert os.path.isabs(dirname), "%r must have absolute path syntax" % (key,)
+
+# em++ emits a .js loader plus a .wasm sidecar, but SCons only learns about the
+# target it was asked for, so the .wasm is invisible to the dependency graph:
+# `scons -c` leaves it behind and an incremental build can reuse a stale one.
+#
+# Program's emitter is an EmitterProxy rather than a dict, so add_emitter() is
+# not available on it. Declaring the sidecar explicitly is the supported route:
+# SideEffect keeps parallel builds from racing on it, Clean makes -c remove it.
+def em_program(env, target, objects):
+	js = env.Program(target, objects)
+	wasm = env.File(str(js[0])[:-3] + '.wasm')
+	env.SideEffect(wasm, js)
+	env.Clean(js, wasm)
+	return [js[0], wasm]
+
+env_vars = Variables(
+	args=ARGUMENTS
+)
+
+env_vars.Add('prefix',
+	help='Installation target location of build results and headers',
+	default='/usr/local/',
+	validator=isAbsolutePath
+)
+
+# em++ is not a nix cc-wrapper, so it never sees NIX_CFLAGS_COMPILE and cannot
+# pick up buildInputs the way every other module here does. The derivation
+# passes the include roots explicitly instead; see .nix/derivation.nix.
+env_vars.Add('kel_include',
+	help='Colon separated include roots for kel-lbm headers',
+	default=''
+)
+
+env=Environment(ENV=os.environ, variables=env_vars,
+    CPPPATH=[p for p in ARGUMENTS.get('kel_include', '').split(':') if p],
+    CPPDEFINES=[],
+    CXX = 'em++',
+    CC = 'emcc',
+    AR = 'emar',
+    RANLIB = 'emranlib',
+    LINK = 'em++',
+    CXXFLAGS=[
+        '-std=c++20',
+        '-O2',
+        '-Wall',
+        '-Wextra',
+        # kel-lbm's string_literal provides operator""_sl as a string literal
+        # operator template, which is a GNU extension the library leans on
+        # deliberately. Without this it warns once per translation unit from a
+        # core header and drowns out warnings that are actually ours.
+        '-Wno-gnu-string-literal-operator-template'
+    ],
+    LINKFLAGS=[
+        # WebGL2 only, and the GLES3 entry points resolved through
+        # getProcAddress so extension functions work.
+        '-sFULL_ES3=1',
+        '-sWASM=1',
+        '-sMODULARIZE=1',
+        '-sENVIRONMENT=web',
+        '-sALLOW_MEMORY_GROWTH=1',
+        '-sMIN_WEBGL_VERSION=2',
+        '-sMAX_WEBGL_VERSION=2',
+        # The page drives the module through these rather than through main.
+        '-sEXPORTED_FUNCTIONS=_main,_kel_worker_init,_kel_worker_hello,'
+            '_kel_worker_handle,_kel_worker_pongs,_kel_worker_budget_bytes',
+        '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString'
+    ],
+    LIBS=[],
+    PROGSUFFIX='.js'
+);
+env.__class__.add_source_files = add_kel_source_files
+env.__class__.em_program = em_program
+
+env.objects = [];
+env.sources = [];
+env.headers = [];
+env.targets = [];
+
+Export('env')
+SConscript('c++/SConscript')
+SConscript('selftest/SConscript')
+
+env.Alias('all', [env.targets]);
+env.Default('all');
+
+env.Alias('install', '$prefix')

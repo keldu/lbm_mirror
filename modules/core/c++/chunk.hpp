@@ -97,6 +97,16 @@ public:
 		return values_.flat_data();
 	}
 
+	/**
+	 * The const counterpart data<FixedArray> has always had. Without it a
+	 * const-correct reader -- a Forst encode, or a writer taking
+	 * `const data<Sch>&` the way write_vtk_file does -- cannot reach the
+	 * bytes at all.
+	 */
+	auto flat_data() const {
+		return values_.flat_data();
+	}
+
 	static constexpr auto flat_size() {
 		return data<InnerSchema,Encode>::flat_dims();
 	}

@@ -23,13 +23,16 @@ stdenv.mkDerivation {
 
 	buildInputs = [
 		forstio.core
+		forstio.io
 		forstio.async
 		forstio.codec
 		forstio.codec-unit
 		forstio.remote
+		forstio.remote-filesystem
 		forstio.codec-json
 		adaptive-cpp
 		kel.lbm.core
+		kel.lbm.sycl
 #		kel-lbm.sycl
 	];
 

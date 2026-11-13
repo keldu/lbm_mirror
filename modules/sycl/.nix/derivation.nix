@@ -7,7 +7,7 @@
 , forstio
 , kel
 , adaptive-cpp
-# Names the build so the ROCm and non-ROCm variants land in distinct outputs.
+# Names the build so the host, ROCm and CUDA variants land in distinct outputs.
 , variant ? ""
 }:
 

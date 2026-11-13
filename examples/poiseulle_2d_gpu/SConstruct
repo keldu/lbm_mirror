@@ -57,7 +57,9 @@ env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
         '-Wextra'
     ],
     LIBS=[
-        'forstio-core'
+        'forstio-core',
+        'forstio-async',
+        'forstio-io'
     ]
 );
 env.__class__.add_source_files = add_kel_source_files

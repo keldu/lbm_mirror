@@ -1,7 +1,6 @@
 #pragma once
 
 #include "abstract/error.hpp"
-
 #include "abstract/data.hpp"
 #include "abstract/data_math.hpp"
 
@@ -47,7 +46,7 @@ struct lbm_vtk_writer<sch::FixedArray<T,D>> {
 	static kel::lbm::error_or<void> apply(std::ostream& vtk_file, const kel::lbm::data<sch::FixedArray<T,D>>& field){
 		kel::lbm::data<sch::FixedArray<sch::UInt64,D>> index;
 		for(kel::lbm::data<sch::UInt64> it{0}; it.get() < D; ++it){
-			index.at({0u}).set(0u);
+			index.at(it).set(0u);
 		}
 
 		// vtk_file<<"VECTORS "<<name<<" float\n";

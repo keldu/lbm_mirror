@@ -41,7 +41,7 @@ kel::lbm::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				hlbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+				hlbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
 			});
 		}).wait();
 
@@ -75,7 +75,7 @@ kel::lbm::error_or<void> step(
 									kel::lbm::data<T> scale;
 									{
 										scale.set([&](){
-											if(t_i.get() > 1024u){
+											if(t_i.get() >= 0u){// > 1024u
 												return 1.0f;
 											}
 
@@ -84,7 +84,7 @@ kel::lbm::error_or<void> step(
 									}
 									{
 										auto y_si = conv.meter_lbm_to_si(as_unit<sch::LbmMeter<T>>(index.at({{1u}}).template cast_to<T>())).handle();
-										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((0.1 / 0.64) * y_si.get() - (0.1 / (0.64*0.64)) * y_si.get() * y_si.get())}).handle() * scale;
+										vel.at({{0u}}) = conv.velocity_si_to_lbm({static_cast<typename kel::lbm::native_data_type<T>::type>((0.01 / 0.64) * y_si.get() - (0.01 / (0.64*0.64)) * y_si.get() * y_si.get())}).handle();
 										vel.at({{1u}}) = 0.0f;
 									}
 									return vel;
@@ -116,24 +116,9 @@ kel::lbm::error_or<void> step(
 			});
 		}).wait();
 
-		/**
-		 * Particle step, split so contact lands between the fluid gather and
-		 * the integration. With 20 particles in a converging throat they jam
-		 * against one another, so without a contact pass they would simply
-		 * pass through each other and through the walls.
-		 */
 		q.submit([&](acpp::sycl::handler& h){
-			component<T,Desc,cmpt::ParticleForceReset,encode::Sycl<kel::lbm::enc::Native>> p_reset;
-			component<T,Desc,cmpt::FpLbmOneParticleGather,encode::Sycl<kel::lbm::enc::Native>> p_gather;
-			component<T,Desc,cmpt::ParticleIntegrate,encode::Sycl<kel::lbm::enc::Native>> p_integrate;
-
-			/**
-			 * Stiffness is sized so an impact at the inflow speed stays well
-			 * under a tenth of a radius of overlap; see dem_stiffness_for.
-			 */
-			dem_params<T> p_dem{2.0e-2, 0.4, 0.0, 0.0};
-			kel::lbm::data<sch::FixedArray<sch::UInt64,Desc::D>> p_extent{{dim_x,dim_y}};
-			component<T,Desc,cmpt::ParticleContact,encode::Sycl<kel::lbm::enc::Native>> p_contact{p_dem,p_extent};
+			kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Desc::D>>> grav; // body acceleration
+			component<T,Desc,cmpt::FpLbmOneParticle,encode::Sycl<kel::lbm::enc::Native>> fplbm_one_part{grav};
 
 			h.parallel_for(acpp::sycl::range<1u>{particle_amount}, [=](acpp::sycl::id<1u> idx){
 				kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index;
@@ -141,10 +126,7 @@ kel::lbm::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				p_reset.apply(particles,index,t_i);
-				p_gather.apply(fields,macros,particles,index,t_i,{4u});
-				p_contact.apply(particles,index,t_i,{4u});
-				p_integrate.apply(particles,index,t_i,{4u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{1u});
 			});
 		}).wait();
 
@@ -220,7 +202,7 @@ kel::lbm::error_or<void> step(
 					index.at({{i}}).set(idx[i]);
 				}
 
-				fplbm_one_part.apply(fields,macros,particles,index,t_i,{0u});
+				fplbm_one_part.apply(fields,macros,particles,index,t_i,{2u});
 			});
 		}).wait();
 

@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 #include "particle/particle.hpp"
-#include "particle/integrate.hpp"
 #include "iterator.hpp"
 
 namespace kel {
@@ -13,7 +12,6 @@ struct FpLbm {};
 struct FpLbmOneParticle {};
 struct FpLbmMomentumOneParticle {};
 struct FpLbmOneParticleNoVelocity{};
-struct FpLbmOneParticleGather {};
 }
 namespace method {
 struct FpLbm {};
@@ -101,7 +99,10 @@ public:
 
 		// We already computed this in reset
 		// compute_rho_u<T,Descriptor>(dfs,rho,vel);
-		mom = mom + force * half;
+
+		// -------------------------
+		// mom = mom + force * half;
+		// -------------------------
 		auto vel = mom / rho;
 		auto eq = equilibrium<T,Descriptor>(rho,vel);
 
@@ -140,11 +141,10 @@ public:
 };
 
 template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::FpLbmOneParticleGather, Encode> final {
+class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
 public:
-	using Component = cmpt::FpLbmOneParticleGather;
+	using Component = cmpt::FpLbmOneParticle;
 private:
-	// An acceleration, as the comment above says -- now typed as one.
 	kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration_;
 public:
 	component():
@@ -175,28 +175,31 @@ public:
 		auto parts = pg.template get<"particles">();
 
 		auto parts_size = parts.meta().at({0u});
-		auto& pi = parts.at(index);		
+		auto& pi = parts.at(index);
 
 		auto& pirb = pi.template get<"rigid_body">();
+		// Unwrapped once: the sweep works in raw lattice offsets.
 		auto& pirb_pos = pirb.template get<"position">().handle();
 		auto& pirb_pos_old = pirb.template get<"position_old">().handle();
-		auto& p_rad = pi.template get<"collision">().template get<"radius">().handle();
 		
 
+		auto& p_coll = pg.template get<"collision">().at({});
+		auto& p_rad = p_coll.template get<"radius">().handle();
 
-		kel::lbm::data<typename particle_aabb<typename ParticleSchema::ValueType>::AABB> aabb;
-		if(not particle_aabb<typename ParticleSchema::ValueType>::try_calculate(pg,index,mom_f.meta(),aabb)){
+		auto eo_aabb = particle_aabb<typename ParticleSchema::ValueType>::calculate(pg,{{0u}},mom_f.meta());
+		if(eo_aabb.is_error()){
 			return;
 		}
+		auto& aabb = eo_aabb.get_value();
 
 		kel::lbm::data<sch::Scalar<T>> three;
 		three.at({}).set(3.0f);
 
-		kel::lbm::data<sch::Scalar<T>> two;
-		two.at({}).set(2.0f);
-
 		kel::lbm::data<sch::Scalar<T>> one;
 		one.at({}) = 1.0f;
+
+		kel::lbm::data<sch::Scalar<T>> k;
+		k.at({}) = 1.0f;
 		
 		kel::lbm::data<sch::Scalar<T>> eps;
 		eps.at({}) = 1.5f;
@@ -222,51 +225,27 @@ public:
 			// vel_s is technically time the density of the particle?
 
 			// force = body_acceleration_ * por + ( vel_s - mom) * two * flip_por;
-			force = ( vel_s - mom) * two * flip_por;
+			// force = ( vel_s - mom) * eps * flip_por;
+			force = ( vel_s - mom) * k * flip_por;
 			// force = (vel_s - mom) * flip_por / (flip_por / two + one);
 
 			force_p = force_p - force;
 		}, aabb.template get<"a">(), aabb.template get<"b">());
 
-		/**
-		 * Accumulate rather than assign, so a contact pass can add to this
-		 * before cmpt::ParticleIntegrate turns the total into motion.
-		 */
-		auto& pirb_force = pirb.template get<"force">();
-		pirb_force = pirb_force + force_p;
-	}
-};
+		auto& pirb_acc = pirb.template get<"acceleration">();
+		// Mass moved onto the particle; the quotient is untyped because force
+		// and mass have no units, so the acceleration unit is attached here.
+		pirb_acc = kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>>{
+				force_p / (pirb.template get<"mass">().at({}))}
+			+ body_acceleration_;
 
-/**
- * The original fused one-particle step, kept so existing call sites keep
- * working. The body acceleration rides straight through to the integrator;
- * it used to be called global_force_, which it never was -- the integrator
- * takes an acceleration, not a force.
- */
-template<typename T, typename Descriptor, typename Encode>
-class component<T, Descriptor, cmpt::FpLbmOneParticle, Encode> final {
-public:
-	using Component = cmpt::FpLbmOneParticle;
-private:
-	// An acceleration, as the comment above says -- now typed as one.
-	kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration_;
-public:
-	component():
-		body_acceleration_{}
-	{}
-	component(kel::lbm::data<sch::LbmAcceleration<sch::Vector<T,Descriptor::D>>> body_acceleration__):
-		body_acceleration_{body_acceleration__}
-	{}
-
-	template<typename CellFieldSchema, typename MacroFieldSchema, typename ParticleSchema>
-	void apply(const kel::lbm::data<CellFieldSchema, Encode>& field, const kel::lbm::data<MacroFieldSchema,Encode>& macros, const kel::lbm::data<ParticleSchema,Encode>& pg, kel::lbm::data<sch::FixedArray<sch::UInt64,1u>> index, kel::lbm::data<sch::UInt64> time_step, kel::lbm::data<sch::UInt64> sub_steps) const {
-		component<T,Descriptor,cmpt::ParticleForceReset,Encode> reset;
-		component<T,Descriptor,cmpt::FpLbmOneParticleGather,Encode> gather;
-		component<T,Descriptor,cmpt::ParticleIntegrate,Encode> integrate{body_acceleration_};
-
-		reset.apply(pg,index,time_step);
-		gather.apply(field,macros,pg,index,time_step,sub_steps);
-		integrate.apply(pg,index,time_step,sub_steps);
+		if(sub_steps.get() > 0u){
+			// The sub step length in lattice time units: one full step split sss ways.
+			kel::lbm::data<sch::LbmSecond<sch::Scalar<T>>> sss_inv{one / sss};
+			for(kel::lbm::data<sch::UInt64> i{0u}; i < sub_steps; ++i){
+				verlet_step_lambda<T,Descriptor::D>(pi,sss_inv);
+			}
+		}
 	}
 };
 }

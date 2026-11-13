@@ -1,0 +1,27 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+swarm_env = env.Clone();
+
+swarm_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+swarm_env.headers = sorted(glob.glob(dir_path + "/*.hpp"));
+
+env.sources += swarm_env.sources;
+env.headers += swarm_env.headers;
+
+# Header only, like core. The StaticLibrary exists so dependents have something
+# to name; it is built from zero translation units.
+objects = []
+swarm_env.add_source_files(objects, swarm_env.sources, shared=False);
+env.library_static = swarm_env.StaticLibrary('#build/kel-lbm-swarm', [objects]);
+
+env.Install('$prefix/lib/', env.library_static);
+env.Install('$prefix/include/kel/lbm/swarm/', swarm_env.headers);

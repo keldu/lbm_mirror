@@ -1,0 +1,35 @@
+#!/bin/false
+
+import os
+import os.path
+import glob
+
+
+Import('env')
+
+dir_path = Dir('.').abspath
+
+# Built for node rather than the web, so a check phase can run it. Same
+# protocol code as the real worker; only the entry point and the environment
+# differ.
+test_env = env.Clone();
+test_env['LINKFLAGS'] = [
+    '-sWASM=1',
+    '-sENVIRONMENT=node',
+    '-sALLOW_MEMORY_GROWTH=1',
+    # The probe is compiled in and must link, but with no context it returns
+    # cleanly rather than running any of it.
+    '-sMIN_WEBGL_VERSION=2',
+    '-sMAX_WEBGL_VERSION=2',
+    '-sFULL_ES3=1',
+]
+
+test_env.sources = sorted(glob.glob(dir_path + "/*.cpp"));
+
+env.sources += test_env.sources;
+
+objects = []
+test_env.add_source_files(objects, test_env.sources, shared=False);
+env.selftest = test_env.em_program('#bin/kel_lbm_worker_selftest', [objects]);
+
+env.targets += [env.selftest];

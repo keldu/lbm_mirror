@@ -21,14 +21,16 @@ stdenv.mkDerivation {
 
 	buildInputs = [
 		forstio.core
+		forstio.remote-filesystem
+		forstio.io
 		forstio.async
 		forstio.codec
 		forstio.codec-unit
 		forstio.codec-json
 		forstio.remote
-		forstio.remote-sycl
 		adaptive-cpp
 		kel.lbm.core
+		kel.lbm.sycl
 	];
 
 	preferLocalBuild = true;

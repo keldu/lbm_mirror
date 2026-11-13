@@ -43,23 +43,20 @@ env_vars.Add('prefix',
 	validator=isAbsolutePath
 )
 
-env_vars.Add('build_examples',
-	help='If examples should be built',
-	default="true"
-)
-
+# No forstio. The orchestrator is the one native binary here that does not use
+# it: libdatachannel brings its own threads and event handling, and forstio has
+# no WebSocket or WebRTC to contribute.
 env=Environment(ENV=os.environ, variables=env_vars, CPPPATH=[],
-    CPPDEFINES=['SAW_UNIX'],
+    CPPDEFINES=[],
     CXXFLAGS=[
         '-std=c++20',
         '-g',
+        '-O2',
         '-Wall',
         '-Wextra'
     ],
     LIBS=[
-        'forstio-core',
-        'forstio-async',
-        'forstio-io'
+        'datachannel'
     ]
 );
 env.__class__.add_source_files = add_kel_source_files
@@ -71,11 +68,16 @@ env.sources = [];
 env.headers = [];
 env.targets = [];
 
+env.check_script = File('#check.sh');
+
 Export('env')
-SConscript('SConscript')
+SConscript('orchestrator/c++/SConscript')
+SConscript('worker_native/c++/SConscript')
 
 env.Alias('cdb', env.cdb);
 env.Alias('all', [env.targets]);
 env.Default('all');
+
+env.InstallAs('$prefix/bin/kel_lbm_web_swarm_check', env.check_script);
 
 env.Alias('install', '$prefix')

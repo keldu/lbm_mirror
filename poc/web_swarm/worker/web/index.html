@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kel-lbm swarm worker</title>
+<style>
+  body {
+    margin: 0;
+    padding: 1.5rem;
+    background: #14161a;
+    color: #d8dee9;
+    font-family: system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.1rem; margin: 0 0 1rem; font-weight: 600; }
+  .row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  label { min-width: 7rem; align-self: center; font-size: 0.85rem; color: #8c95a3; }
+  input {
+    flex: 1; min-width: 14rem; padding: 0.4rem 0.6rem;
+    background: #1d2027; color: #d8dee9;
+    border: 1px solid #333842; border-radius: 4px;
+    font-family: ui-monospace, monospace; font-size: 0.85rem;
+  }
+  button {
+    padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer;
+    background: #2d4f74; color: #e8eef5;
+    border: 1px solid #3b6694; font-size: 0.85rem;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #status {
+    margin: 1rem 0; padding: 0.75rem 1rem;
+    background: #1d2027; border-left: 3px solid #3b6694; border-radius: 3px;
+  }
+  #state { font-size: 1.05rem; font-weight: 600; }
+  #detail { color: #8c95a3; font-size: 0.85rem; font-family: ui-monospace, monospace; }
+  #log {
+    height: 16rem; overflow-y: auto; white-space: pre-wrap;
+    background: #0f1115; border: 1px solid #262b33; border-radius: 4px;
+    padding: 0.75rem; font-family: ui-monospace, monospace; font-size: 0.78rem;
+    color: #9aa5b1;
+  }
+  /*
+   * The probe needs a real canvas to get a WebGL2 context from, but nothing is
+   * ever drawn for display. Kept at one pixel and out of the way rather than
+   * display:none, which some browsers treat as a reason to skip the context.
+   */
+  #kel-probe { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .note { color: #6b7684; font-size: 0.78rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>kel-lbm swarm worker</h1>
+
+<div class="row">
+  <label for="url">orchestrator</label>
+  <input id="url" type="text" spellcheck="false">
+</div>
+<div class="row">
+  <label for="worker-id">worker id</label>
+  <input id="worker-id" type="text" spellcheck="false">
+</div>
+<div class="row">
+  <button id="connect" disabled>connect</button>
+  <button id="disconnect" disabled>disconnect</button>
+</div>
+
+<div id="status">
+  <div id="state">loading</div>
+  <div id="detail"></div>
+</div>
+
+<div id="log"></div>
+
+<p class="note">
+  Open this page from an HTTP server, not a file:// URL &mdash; wasm is fetched,
+  and file:// is a null origin. The orchestrator is a separate process on its own
+  port; append <code>?orchestrator=ws://host:port/</code> to override.
+</p>
+
+<canvas id="kel-probe" width="1" height="1"></canvas>
+
+<script src="worker.js"></script>
+<script src="kel_lbm_worker.js"></script>
+</body>
+</html>
